@@ -1,4 +1,4 @@
-# Siemens TIA Openness MCP plugin 0.5.0
+# Siemens TIA Openness MCP plugin 0.6.0
 
 This local Windows plugin provides Comfort/classic and Unified engineering object tools, native resource import/export, bulk transfers, and specialized text-list and screen-caption workflows. It uses the official C# MCP SDK and .NET Framework 4.8. No OpenAI API key is needed to connect it to Codex. The desktop WinForms application retains its classic HMI workflow; expanded object tools and Unified support are in the MCP server. See [feature coverage](FEATURE-COVERAGE.md) for implemented routes and remaining boundaries.
 
@@ -148,7 +148,7 @@ powershell.exe -NoProfile -File scripts/test_native_contracts.ps1 -Version V15.1
 powershell -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1
 ```
 
-The protocol test checks all 42 tools, required schemas, classic export conversion, and apply/compile/save write guards. It never attaches, imports, compiles, or saves a project. `--native-read-only` exercises real Siemens process enumeration, API-member checks, and unattached-object rejection. The native contract script checks installed classic/PLC signatures and production export dispatch without creating a TiaPortal instance. Unit tests cover XML/YAML, caption styling, object preview lifecycles, typed bounds, companion files, legacy category/folder conversion, hashes, DTD rejection and unsafe bundle paths. These checks do not simulate Siemens transactions or establish native acceptance.
+The protocol test checks all 44 tools, required schemas, classic export conversion, and apply/compile/save write guards. It never attaches, imports, compiles, or saves a project. `--native-read-only` exercises real Siemens process enumeration, API-member checks, and unattached-object rejection. The native contract script checks installed classic/PLC signatures and production export dispatch without creating a TiaPortal instance. Unit tests cover XML/YAML, caption styling, object preview lifecycles, typed bounds, companion files, legacy category/folder conversion, hashes, DTD rejection and unsafe bundle paths. These checks do not simulate Siemens transactions or establish native acceptance.
 
 The packaging script emits a fresh ZIP and SHA-256 file under `artifacts/`, with a payload manifest, source-file hash manifest, build identity, and dependency notices in the ZIP. It accepts the same `TiaPortalVersion`, `TiaPortalInstallVersion`, and `TiaPublicApiDir` choices as the desktop build. It rejects packages containing Siemens engineering DLLs. Verify a built ZIP and run its freshly extracted executable with `py -3 -X utf8 scripts/verify_plugin.py PATH-TO-ZIP --native-read-only`; the verifier also rejects tampered payloads, unexpected members, and path traversal controls.
 

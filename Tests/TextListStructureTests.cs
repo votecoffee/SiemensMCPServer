@@ -69,6 +69,18 @@ public sealed class TextListStructureTests
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
+    [Fact] public void LastTranslationAndFormattedOrReferencedEntryCannotBeStructurallyChanged()
+    {
+        var xml = XDocument.Parse(TextListTests.Fixture());
+        var entry = xml.Descendants("Hmi.TextGraphicList.TextListEntry").First();
+        entry.Descendants("MultilingualTextItem").Last().Remove();
+        var remove = new ClassicTextListChange { Action = "removeTranslation", Entry = "7", Culture = "en-US", ExpectedText = "Old & ready" };
+        Assert.Throws<InvalidOperationException>(() => new TextListDocument(xml.ToString()).ChangeStructure(new[] { remove }, Active));
+        entry.Descendants("Text").First().Add(new XElement("body", "formatted"));
+        Assert.Throws<NotSupportedException>(() => new TextListDocument(xml.ToString()).ChangeStructure(new[] { Add() }, Active));
+        xml = XDocument.Parse(TextListTests.Fixture()); xml.Descendants("Hmi.TextGraphicList.TextListEntry").First().Add(new XElement("LinkList", new XElement("Link", new XAttribute("TargetID", "@OpenLink"))));
+        Assert.Throws<NotSupportedException>(() => new TextListDocument(xml.ToString()).ChangeStructure(new[] { Add() }, Active));
+    }
     private sealed class Backend : ITextListBackend
     {
         public string Xml = TextListTests.Fixture(); public int Imports;

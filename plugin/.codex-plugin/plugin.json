@@ -1,6 +1,6 @@
 {
   "name": "siemens-tia-openness",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Comfort V15.1-first HMI and offline Siemens PLC engineering through local TIA Portal Openness, with capability-checked Unified support.",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",

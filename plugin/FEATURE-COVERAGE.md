@@ -1,6 +1,6 @@
-# Engineering feature coverage — 0.5.0
+# Engineering feature coverage — 0.6.0
 
-The MCP server has 42 tools. Comfort/classic on V15.1 is the primary profile; Unified follows with version limits. PLC support uses the same V15.1-first offline stack. Installed V15.1 and V19 builds and offline tests do not establish native write/import/generation/compile/save/reopen acceptance; those trials remain pending on disposable projects. Exact V15.0 is not installed/tested here. The WinForms UI remains classic-only.
+The MCP server has 44 tools. Comfort/classic on V15.1 is the primary profile; Unified follows with version limits. PLC support uses the same V15.1-first offline stack. Installed V15.1 and V19 builds and offline tests do not establish native write/import/generation/compile/save/reopen acceptance; those trials remain pending on disposable projects. Exact V15.0 is not installed/tested here. The WinForms UI remains classic-only.
 
 | Feature | Comfort / classic | Unified | Route and limit |
 | --- | --- | --- | --- |
@@ -10,7 +10,7 @@ The MCP server has 42 tools. Comfort/classic on V15.1 is the primary profile; Un
 | Create objects/folders | Advertised native types | Advertised native types | Supported scalar creation arguments only |
 | Delete objects | Native Delete, excluding cycles | Native Delete | Member preview and subtree baseline; roots/singletons excluded |
 | Text-list translations | Specialized XML adapter | Paired-YAML adapter on matching newer API | Existing single-value entries/locales; V19 Unified has no route |
-| Text-list structure/additions | Native XML import | Native YAML import where available | Generic import; native replacement scope, no specialized entry CRUD |
+| Text-list structure/additions | Dedicated add/remove ordinary entry/translation previews | Native YAML import where available | Classic templates, per-entry fingerprints, fresh IDs, explicit translations and active project cultures; default/range/formatted/linked entries protected |
 | Normal screens/folders | XML export/import, including contents | Native graph and creation/edit/delete | Unified serialization requires an actual native method; none synthesized |
 | Captions/layout/colors | Scalar fields or screen XML | Dedicated style-preserving caption tools and generic properties | Complex text can be explicit raw markup; no automatic dynamic/multi-run rewriting |
 | Comfort XML scalar editing | Dedicated read/preview/apply workflow with bounded exact-path catalog | Not routed through classic XML | Exact XPath/old values, retained sidecars/languages, protected composition/identity metadata, native readback equality |
@@ -21,8 +21,8 @@ The MCP server has 42 tools. Comfort/classic on V15.1 is the primary profile; Un
 | Connections | Resources and native objects | Native objects | Integrated classic connections can be unexportable |
 | Cycles | Export; import missing cycles only | Available tag acquisition/configuration model | Existing classic cycles never overwritten/edited/deleted |
 | Graphics / graphic lists | XML with sidecars | Shared graphics; graphic-list API where present | Graphics are project-wide; no guessed V19 Unified graphic-list API |
-| Alarms/classes/logs/audit | Only if exposed by target; no dedicated classic alarm serializer | Advertised object operations | No invented categories or complex value adapters |
-| Events/dynamizations | Screen XML where exported | Browse, advertised creation, scalar edits, delete | Static dynamized properties protected; explicit binding/event edits separate |
+| Alarms/classes/logs/audit | No dedicated classic alarm-definition endpoint in inspected V15.1 API/adapter | Advertised object operations | Explicit capability limit; native editor XLSX workflows and unsupported alarm-view exports remain separate |
+| Events/dynamizations | Existing scalar edits plus native prototype clone/remove workflow | Browse, advertised creation, scalar edits, delete | Exact owner and object fingerprints, ID/reference preservation, inbound-reference removal guards; no runtime execution |
 | Nested controls/parts | Screen XML where exported | Available native navigators | Complex CLR values excluded from scalar tools |
 | Bulk export | API-visible resources and metadata | API-visible resources and metadata | Explicit failures, native companions; not a full backup |
 | Bulk import | Dependency order, supported folders, skip existing cycles; legacy WinForms export conversion | Serializable resources and supported folders/groups | Indexed bundles; selected legacy categories converted with XML/sidecars and folder-name overrides; metadata-only objects not restored |

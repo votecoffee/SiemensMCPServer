@@ -37,6 +37,13 @@ public sealed class ClassicBehaviorTests
         string xml = Xml.Replace("</Hmi.Screen.Screen>", "<LinkList><Event TargetID='2'/></LinkList></Hmi.Screen.Screen>");
         Assert.Throws<InvalidOperationException>(() => new ClassicXmlDocument(xml).ChangeBehaviors(new[] { Change("remove") }));
     }
+    [Fact] public void EditedCloneMustRetainResolvableReferencesAndSupportedIdentityFormat()
+    {
+        var change = Change(); change.Edits = new[] { new ClassicXmlEdit { XPath = "//Control/@TargetID", ExpectedValue = "1", NewValue = "missing" } };
+        Assert.Throws<ArgumentException>(() => new ClassicXmlDocument(Xml).ChangeBehaviors(new[] { change }));
+        var node = XDocument.Parse("<Hmi.Event.Event ID='1' UId='opaque'/>").Root!;
+        Assert.Throws<NotSupportedException>(() => NativeXmlIds.Clone(node, XDocument.Parse(Xml)));
+    }
     [Fact] public void ExportIdRenumberingPreservesSemanticHashAndReferenceChangesDoNot()
     {
         string root = Path.Combine(Path.GetTempPath(), "native-id-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(root);
