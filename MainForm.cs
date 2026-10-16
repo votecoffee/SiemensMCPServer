@@ -8,8 +8,6 @@ using Siemens.Engineering;
 using Siemens.Engineering.Hmi;
 using Siemens.Engineering.Hmi.Screen;
 using HmiScreen = Siemens.Engineering.Hmi.Screen.Screen;
-using Siemens.Engineering.HW;
-using Siemens.Engineering.HW.Features;
 
 namespace SiemensTiaOpenness
 {
@@ -260,28 +258,8 @@ namespace SiemensTiaOpenness
             _hmis.Clear();
             _hmiCombo.Items.Clear();
 
-            foreach (Device device in _project.Devices)
-                FindHmisInDevice(device, device.Name);
-
-            foreach (DeviceUserGroup group in _project.DeviceGroups)
-                FindHmisInDeviceGroup(group, group.Name);
-
-            // Some projects place devices in the system group for ungrouped devices.
-            if (_project.UngroupedDevicesGroup != null)
-            {
-                foreach (Device device in _project.UngroupedDevicesGroup.Devices)
-                    FindHmisInDevice(device, "Ungrouped / " + device.Name);
-            }
-
-            // Remove duplicate targets that may be reachable through more than one project view.
-            var distinct = new List<HmiEntry>();
-            foreach (HmiEntry entry in _hmis)
-            {
-                if (!distinct.Any(x => ReferenceEquals(x.Target, entry.Target)))
-                    distinct.Add(entry);
-            }
-            _hmis.Clear();
-            _hmis.AddRange(distinct);
+            foreach (HmiReference entry in HmiCatalog.Discover(_project))
+                _hmis.Add(new HmiEntry(entry.Target, entry.Label));
 
             foreach (HmiEntry hmi in _hmis)
                 _hmiCombo.Items.Add(hmi);
@@ -296,42 +274,6 @@ namespace SiemensTiaOpenness
             }
 
             UpdateActionState();
-        }
-
-        private void FindHmisInDeviceGroup(DeviceUserGroup group, string groupPath)
-        {
-            foreach (Device device in group.Devices)
-                FindHmisInDevice(device, groupPath + " / " + device.Name);
-
-            foreach (DeviceUserGroup subGroup in group.Groups)
-                FindHmisInDeviceGroup(subGroup, groupPath + " / " + subGroup.Name);
-        }
-
-        private void FindHmisInDevice(Device device, string label)
-        {
-            foreach (DeviceItem item in device.DeviceItems)
-                FindHmisInDeviceItem(item, label + " / " + item.Name);
-        }
-
-        private void FindHmisInDeviceItem(DeviceItem item, string label)
-        {
-            try
-            {
-                SoftwareContainer container = item.GetService<SoftwareContainer>();
-                if (container != null)
-                {
-                    HmiTarget hmi = container.Software as HmiTarget;
-                    if (hmi != null)
-                        _hmis.Add(new HmiEntry(hmi, label));
-                }
-            }
-            catch
-            {
-                // Not every DeviceItem offers a SoftwareContainer service.
-            }
-
-            foreach (DeviceItem child in item.DeviceItems)
-                FindHmisInDeviceItem(child, label + " / " + child.Name);
         }
 
         private void SelectHmi()
