@@ -20,6 +20,10 @@ For a repo-local plugin marketplace, put the extracted folder at `plugins/siemen
 
 The bundled MCP configuration enables writes because this plugin provides editing tools. Launch the executable without `--allow-writes` for inspection and previews only. Apply, compile, and save are then rejected by the server. Codex also applies its configured tool approval policy.
 
+## Classic text-list structure changes
+
+`hmi_read_text_list` now includes per-entry fingerprints, template eligibility and active project cultures. Preview ordinary SingleValue entry creation/removal and translation creation/removal with `hmi_preview_classic_text_list_changes`, then use `hmi_apply_text_edits` with the returned plan/hash. `addEntry` uses an existing plain `templateEntry` and explicit `translations` for every template culture; fresh native XML IDs avoid collisions. `removeEntry` requires its `expectedEntryFingerprint`. `addTranslation` requires an already active project `culture`, an existing `templateCulture` and `text`. `removeTranslation` requires exact `expectedText` and retains at least one translation. Default/range/formatted/linked entries remain protected. New project languages must first be activated in TIA. This route changes an existing list and keeps other entries, locales and metadata; native import/readback acceptance remains pending.
+
 ## First use
 
 Open a backed-up or disposable TIA project first. Ask the chat to list compatible versions and running projects, then identify the exact project and HMI. Example request:

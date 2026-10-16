@@ -27,13 +27,28 @@ namespace SiemensTiaOpenness.Mcp
             var before = TextListDocuments.Parse(originalXml);
             RequireFingerprint(before, expectedFingerprint);
             var after = before.Edit(edits);
+            var diff = edits.Select(e => new { entry = e.Entry, culture = e.Culture, before = e.ExpectedText, after = e.NewText }).ToArray();
+            return Stage(hmiId, listName, originalXml, before, after, diff);
+        }
+
+        public object PreviewStructure(string hmiId, string listName, string expectedFingerprint, ClassicTextListChange[] changes, string[] activeCultures)
+        {
+            if (pending.Count >= 100) throw new InvalidOperationException("Too many pending previews. Reattach to clear them.");
+            string originalXml = backend.ReadTextList(hmiId, listName);
+            if (!(TextListDocuments.Parse(originalXml) is TextListDocument before)) throw new NotSupportedException("Structured entry/translation operations require a classic HMI text list.");
+            RequireFingerprint(before, expectedFingerprint);
+            var after = before.ChangeStructure(changes, activeCultures);
+            return Stage(hmiId, listName, originalXml, before, after, new { operations = changes, before = before.Structure(), after = after.Structure(), beforeValues = before.Read(), afterValues = after.Read(), activeProjectCultures = activeCultures });
+        }
+
+        private object Stage(string hmiId, string listName, string originalXml, ITextListDocument before, ITextListDocument after, object diff)
+        {
             if (after.Fingerprint == before.Fingerprint) throw new ArgumentException("The preview contains no changes.");
             string id = Guid.NewGuid().ToString("N");
             string directory = Path.Combine(root, id);
             Directory.CreateDirectory(directory);
             var plan = new Plan { Id = id, HmiId = hmiId, ListName = listName, Before = before.Fingerprint,
                 After = after.Fingerprint, Candidate = after.Serialize(), Extension = after.ArtifactExtension, Directory = directory, Created = DateTime.UtcNow };
-            var diff = edits.Select(e => new { entry = e.Entry, culture = e.Culture, before = e.ExpectedText, after = e.NewText }).ToArray();
             // Original exports are retained separately; no source bytes are overwritten.
             File.WriteAllText(Path.Combine(directory, "before." + plan.Extension), originalXml, new UTF8Encoding(false));
             File.WriteAllText(Path.Combine(directory, "candidate." + plan.Extension), plan.Candidate, new UTF8Encoding(false));

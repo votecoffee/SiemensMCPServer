@@ -37,6 +37,7 @@ namespace SiemensTiaOpenness.Mcp
         object ListTextLists(string hmiId);
         object Read(string hmiId, string listName);
         object Preview(string hmiId, string listName, string expectedFingerprint, TextEdit[] edits);
+        object PreviewClassicTextStructure(string hmiId, string listName, string expectedFingerprint, ClassicTextListChange[] changes);
         object Apply(string planId, string candidateSha256);
         object Compile(string hmiId);
         object Save(string expectedProjectPath);

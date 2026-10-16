@@ -26,7 +26,8 @@ namespace SiemensTiaOpenness.Mcp
             return new {
                 apiAssembly = assembly.GetName().Name, apiVersion = assembly.GetName().Version!.ToString(),
                 classicTextLists = true, unifiedDiscovery = software != null, unifiedScreenInspection = screens,
-                comfortXmlResourceEdits = true, primaryEngineeringProfile = "Comfort/classic V15.1",
+                comfortXmlResourceEdits = true, classicTextListStructureChanges = true, primaryEngineeringProfile = "Comfort/classic V15.1",
+                classicAlarmDefinitions = new { available = false, reason = "No dedicated classic alarm-definition endpoint in this adapter or the inspected V15.1 HmiTarget API. Native editor alarm XLSX workflows are separate from screen XML." },
                 plcEngineering = new { available = ResolveType("Siemens.Engineering.SW.PlcSoftware") != null,
                     scope = "Offline blocks, PLC data types, tag tables/groups, native XML import/export, SCL/STL source generation and compile diagnostics. Native trials pending.",
                     downloadOrRuntimeControl = false },

@@ -96,6 +96,11 @@ namespace SiemensTiaOpenness.Mcp
         public Task<CallToolResult> Apply(string planId, string candidateSha256, CancellationToken token)
             => Result(() => runtime.Invoke(s => s.Apply(planId, candidateSha256), token, writes: true));
 
+        [McpServerTool(Name = "hmi_preview_classic_text_list_changes", ReadOnly = false, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
+        [Description("Preview Comfort/classic text-list entry and translation creation/removal using the fingerprint and structure returned by hmi_read_text_list. addEntry needs a new numeric entry, templateEntry and explicit translations for every template culture. removeEntry needs expectedEntryFingerprint. addTranslation needs entry, an already active project culture, templateCulture and text. removeTranslation needs entry, culture and expectedText. Default/range/formatted/linked entries are protected. Preserves other content, allocates fresh XML IDs, and writes before/candidate/diff artifacts. Apply with hmi_apply_text_edits; no project change during preview.")]
+        public Task<CallToolResult> PreviewClassicTextStructure(string hmiId, string listName, string expectedFingerprint, ClassicTextListChange[] changes, CancellationToken token)
+            => Result(() => runtime.Invoke(s => s.PreviewClassicTextStructure(hmiId, listName, expectedFingerprint, changes), token));
+
         [McpServerTool(Name = "hmi_compile", ReadOnly = false, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
         [Description("Compile the selected HMI with Siemens Openness and return native error/warning diagnostics. Does not save or download. Requires --allow-writes.")]
         public Task<CallToolResult> Compile(string hmiId, CancellationToken token) => Result(() => runtime.Invoke(s => s.Compile(hmiId), token, writes: true));

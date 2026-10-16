@@ -32,7 +32,7 @@ namespace SiemensTiaOpenness
 
     // Deliberately narrow: edit existing plain text in SingleValue entries only.
     // Preserve every unselected language, attribute, object and default entry.
-    internal sealed class TextListDocument : ITextListDocument
+    internal sealed partial class TextListDocument : ITextListDocument
     {
         private readonly XDocument document;
         private readonly XElement list;

@@ -141,7 +141,8 @@ namespace SiemensTiaOpenness.Mcp
         public object Read(string hmiId, string listName)
         {
             var document = TextListDocuments.Parse(ReadTextList(hmiId, listName));
-            return new { hmiId, listName, fingerprint = document.Fingerprint, values = document.Read(), nativeImportScope = document.NativeImportScope };
+            return new { hmiId, listName, fingerprint = document.Fingerprint, values = document.Read(), nativeImportScope = document.NativeImportScope,
+                structure = (document as TextListDocument)?.Structure(), activeProjectCultures = project!.LanguageSettings.ActiveLanguages.Select(l => l.Culture.Name).ToArray() };
         }
 
         public object Preview(string hmiId, string listName, string expectedFingerprint, TextEdit[] edits)
@@ -154,6 +155,12 @@ namespace SiemensTiaOpenness.Mcp
         {
             CheckProject();
             return workflow!.Apply(planId, candidateSha256);
+        }
+
+        public object PreviewClassicTextStructure(string hmiId, string listName, string expectedFingerprint, ClassicTextListChange[] changes)
+        {
+            FindClassicHmi(hmiId);
+            return workflow!.PreviewStructure(hmiId, listName, expectedFingerprint, changes, project!.LanguageSettings.ActiveLanguages.Select(l => l.Culture.Name).ToArray());
         }
 
         public string ReadTextList(string hmiId, string listName)
