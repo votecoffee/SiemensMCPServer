@@ -29,6 +29,8 @@ Review the returned diff against the user's requested changes. When those change
 
 An apply updates the open engineering project and verifies native readback in a Siemens transaction. It does not save. Run `hmi_compile` after applying; report errors and warnings. Save with `tia_save_project` only within the user's authorization to save the entire project, since it includes edits already present from other editors. Resolve compile errors before saving unless the user explicitly requests saving the work in progress. Retain the artifact directory for original/candidate XML or JSON snapshots and the apply report.
 
+For a native project backup, `tia_archive_project` requires the exact attached project path and a saved project. It never saves automatically; retain its archive path and SHA-256. Simple V15.1 text-list captions with a single unstyled body/p wrapper are exposed as plain text and retain that wrapper when edited or used as entry templates. Styled, multi-paragraph, linked and dynamic content remains protected. To verify persistence within authorized testing, `tia_reopen_project` closes/reopens only the exact saved project in the same TIA process; it refuses unsaved changes and invalidates every preview. Re-read after reopening. If reopening fails, inspect TIA before explicitly reattaching.
+
 On a stale fingerprint, re-read and create a new preview. On an uncertain write or transport failure, inspect the current HMI before proceeding; never replay a consumed plan or assume rollback. Native import/readback, compile, save, and device/runtime acceptance are distinct results. The tools do not download to an HMI or control runtime.
 
 For setup and build-specific version requirements, read [the bundled guide](../../README.md).

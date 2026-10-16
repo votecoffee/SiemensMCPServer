@@ -1,6 +1,6 @@
-# Engineering feature coverage — 0.6.1
+# Engineering feature coverage — 0.6.2
 
-The MCP server has 44 tools. Comfort/classic on V15.1 is the primary profile; Unified follows with version limits. PLC support uses the same V15.1-first offline stack. Installed V15.1 and V19 builds and offline tests do not establish native write/import/generation/compile/save/reopen acceptance; those trials remain pending on disposable projects. Exact V15.0 is not installed/tested here. The WinForms UI remains classic-only.
+The MCP server has 46 tools. Comfort/classic on V15.1 is the primary profile; Unified follows with version limits. PLC support uses the same V15.1-first offline stack. Installed V15.1 and V19 builds and offline tests do not establish native write/import/generation/compile/save/reopen acceptance; those trials remain pending on disposable projects. Exact V15.0 is not installed/tested here. The WinForms UI remains classic-only.
 
 | Feature | Comfort / classic | Unified | Route and limit |
 | --- | --- | --- | --- |
@@ -28,6 +28,7 @@ The MCP server has 44 tools. Comfort/classic on V15.1 is the primary profile; Un
 | Bulk import | Dependency order, supported folders, skip existing cycles; legacy WinForms export conversion | Serializable resources and supported folders/groups | Indexed bundles; selected legacy categories converted with XML/sidecars and folder-name overrides; metadata-only objects not restored |
 | Compile diagnostics | Implemented | Where compile service exists | Does not save or download |
 | Whole-project save | Implemented | Implemented | Exact project path; includes other editors' changes |
+| Project archive / reopen | Implemented | Shared project API | Exact attached path; native compressed archive, saved-state guards, preview invalidation on reopen |
 | Library faceplate definitions / project text XLSX | No dedicated adapter | No dedicated adapter | Outside HMI descendant/resource workflow |
 | Download / running-device control | Not implemented | Not implemented | Engineering plugin scope |
 
