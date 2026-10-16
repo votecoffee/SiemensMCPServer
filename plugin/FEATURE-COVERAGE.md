@@ -1,4 +1,4 @@
-# Engineering feature coverage — 0.6.2
+# Engineering feature coverage — 0.6.3
 
 The MCP server has 46 tools. Comfort/classic on V15.1 is the primary profile; Unified follows with version limits. Selected Comfort V15.1 native edit/import/compile/save/reopen tests passed on the user-supplied test project; see [native acceptance](NATIVE-ACCEPTANCE.md) for the exact workflows and remaining trials. PLC and Unified native writes remain pending. V15.1 and V19 builds/offline tests do not extend that native scope. Exact V15.0 is not installed/tested here. The WinForms UI remains classic-only.
 
@@ -13,14 +13,14 @@ The MCP server has 46 tools. Comfort/classic on V15.1 is the primary profile; Un
 | Text-list structure/additions | Dedicated add/remove ordinary entries and supported translation changes | Native YAML import where available | Classic templates, fingerprints, fresh IDs and explicit translations; V15.1 retains active language slots, so clear text instead of removing a slot; default/range/formatted/linked entries protected |
 | Normal screens/folders | XML export/import, including contents | Native graph and creation/edit/delete | Unified serialization requires an actual native method; none synthesized |
 | Captions/layout/colors | Scalar fields or screen XML | Dedicated style-preserving caption tools and generic properties | Complex text can be explicit raw markup; no automatic dynamic/multi-run rewriting |
-| Comfort XML scalar editing | Dedicated read/preview/apply workflow with bounded exact-path catalog | Not routed through classic XML | Exact XPath/old values, retained sidecars/languages, protected composition/identity metadata, native readback equality |
+| Comfort XML scalar editing | Dedicated read/preview/apply workflow with bounded exact-path catalog | Not routed through classic XML | Exact XPath/old values, retained sidecars/languages, protected composition/identity metadata including slide-in edge, native readback equality |
 | Templates/popups/slide-ins | Native XML resources | Available native screen/group/item model | Device/API dependent; unavailable categories reported |
 | Permanent/global screens | Dedicated XML singleton import | Available native model | Classic ImportScreenOverview / ImportScreenGlobalElements |
 | Tags/tables/groups | XML resources and advertised operations | Native objects and YAML export/import | API-dependent properties and signatures |
 | Scripts | VB-script XML | Script-module YAML/JS | Check known companions and actual filename; drain deferred exports; classic export uses ExportOptions.None |
 | Connections | Resources and native objects | Native objects | Integrated classic connections can be unexportable |
 | Cycles | Export; import missing cycles only | Available tag acquisition/configuration model | Existing classic cycles never overwritten/edited/deleted |
-| Graphics / graphic lists | XML with sidecars | Shared graphics; graphic-list API where present | Graphics are project-wide; no guessed V19 Unified graphic-list API |
+| Graphics / graphic lists | XML with sidecars | Shared graphics; graphic-list API where present | Graphics are project-wide; classic external file references must resolve inside the staged resource; no guessed V19 Unified graphic-list API |
 | Alarms/classes/logs/audit | No dedicated classic alarm-definition endpoint in inspected V15.1 API/adapter | Advertised object operations | Explicit capability limit; native editor XLSX workflows and unsupported alarm-view exports remain separate |
 | Events/dynamizations | Existing scalar edits plus native prototype clone/remove workflow | Browse, advertised creation, scalar edits, delete | Exact owner and object fingerprints, ID/reference preservation, inbound-reference removal guards; no runtime execution |
 | Nested controls/parts | Screen XML where exported | Available native navigators | Complex CLR values excluded from scalar tools |
