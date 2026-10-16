@@ -63,6 +63,8 @@ namespace SiemensTiaOpenness.Mcp
             if (node is XAttribute attribute && (attribute.IsNamespaceDeclaration || attribute.Name.LocalName == "ID" || attribute.Name.LocalName == "UId" || attribute.Name.LocalName == "CompositionName"))
                 return "Export identity, namespace and composition metadata cannot be changed by scalar edits.";
             if (preserveResourceIdentity && node == resource.Element("AttributeList")?.Element("Name")) return "Resource identity requires an explicit create/rename operation.";
+            if (resource.Name.LocalName == "Hmi.Screen.ScreenSlidein" && node == resource.Element("AttributeList")?.Element("SlideinType"))
+                return "The slide-in edge identifies this native resource and cannot be changed by scalar edits.";
             if (node is XElement element && (element == resource || element.Name.LocalName == "ObjectList" || element.Name.LocalName == "AttributeList" || element.Name.LocalName == "LinkList"))
                 return "Structural XML containers require a reviewed native resource import.";
             return null;

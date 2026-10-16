@@ -34,6 +34,15 @@ public sealed class ClassicResourceTests
         Assert.Throws<ArgumentException>(() => new ClassicXmlDocument(Xml).Edit(new[] { Edit(), Edit("/Document/Hmi.Screen.Screen/AttributeList/Width") }));
         Assert.Throws<ArgumentException>(() => new ClassicXmlDocument(Xml).Edit(new[] { Edit(value: "800") }));
     }
+    [Fact] public void SlideinEdgeCannotBeChangedByScalarEdits()
+    {
+        const string xml = "<Document><Hmi.Screen.ScreenSlidein><AttributeList><SlideinType>Left</SlideinType><GridColor>0, 0, 0</GridColor></AttributeList></Hmi.Screen.ScreenSlidein></Document>";
+        var document = new ClassicXmlDocument(xml);
+        Assert.Throws<ArgumentException>(() => document.Edit(new[] { Edit("//SlideinType", "Left", "Right") }));
+        var fields = JsonSerializer.SerializeToElement(document.Catalog(true), JsonDefaults.Options).GetProperty("fields").EnumerateArray().ToArray();
+        Assert.Contains(fields, f => f.GetProperty("value").GetString() == "Left" && !f.GetProperty("editable").GetBoolean());
+        Assert.Contains("1, 2, 3", document.Edit(new[] { Edit("//GridColor", "0, 0, 0", "1, 2, 3") }));
+    }
     [Fact] public void ResourceParserRejectsDtdAndMultipleResources()
     {
         Assert.ThrowsAny<Exception>(() => new ClassicXmlDocument("<!DOCTYPE Document [<!ENTITY a SYSTEM 'file:///missing'>]><Document>&a;</Document>"));
