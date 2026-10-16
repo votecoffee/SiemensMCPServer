@@ -69,7 +69,8 @@ def run(executable, native=False):
                         "hmi_read_classic_resource", "hmi_preview_classic_xml_edits", "hmi_apply_classic_xml_edits",
                         "plc_list_targets", "plc_read_object", "plc_read_resource", "plc_export_objects", "plc_preview_object_edits",
                         "plc_preview_create_object", "plc_preview_delete_object", "plc_preview_import", "plc_preview_xml_import",
-                        "plc_preview_import_bundle", "plc_preview_generate_source", "plc_apply_object_plan", "plc_compile"}
+                        "plc_preview_import_bundle", "plc_preview_generate_source", "plc_apply_object_plan", "plc_compile",
+                        "hmi_prepare_classic_export_bundle"}
             assert set(tools) == expected, set(tools)
             for tool in tools.values():
                 assert "result" in tool["outputSchema"]["properties"], tool
@@ -79,6 +80,20 @@ def run(executable, native=False):
             edit_schema = preview_schema["properties"]["edits"]["items"]
             assert {"entry", "culture", "expectedText", "newText"} <= set(edit_schema["required"]), edit_schema
             assert "token" not in preview_schema.get("properties", {}), "Cancellation token leaked into tool arguments"
+            converter_schema = tools["hmi_prepare_classic_export_bundle"]["inputSchema"]
+            assert {"sourceDirectory", "categories", "folderNames"} <= set(converter_schema["required"]), converter_schema
+            assert {"exportedPath", "name"} <= set(converter_schema["properties"]["folderNames"]["items"]["required"])
+            legacy = Path(scratch) / "legacy"
+            (legacy / "TextLists").mkdir(parents=True)
+            (legacy / "ExportSummary.txt").write_text("OK     TextLists\n", encoding="utf-8")
+            original_xml = b"<Document><Hmi.TextGraphicList.TextList><AttributeList><Name>Messages</Name></AttributeList></Hmi.TextGraphicList.TextList></Document>"
+            (legacy / "TextLists" / "Messages.xml").write_bytes(original_xml)
+            converted = call("hmi_prepare_classic_export_bundle", sourceDirectory=str(legacy), categories=["TextLists"], folderNames=[])
+            assert not converted.get("isError"), converted
+            converted_data = converted["structuredContent"]["result"]
+            assert converted_data["projectChanged"] is False and converted_data["resources"] == 1, converted
+            assert (Path(converted_data["artifactDirectory"]) / "objects" / "00000" / "native" / "Messages.xml").read_bytes() == original_xml
+            assert (legacy / "TextLists" / "Messages.xml").read_bytes() == original_xml
             versions = call("tia_list_versions")
             assert not versions.get("isError"), versions
             data = versions["structuredContent"]["result"]
@@ -110,7 +125,7 @@ def run(executable, native=False):
                 rejected = call(name, **arguments)
                 assert rejected.get("isError") and "Writes are disabled" in rejected["content"][0]["text"], rejected
             report = {"protocol": initialized["protocolVersion"], "toolCount": len(tools), "compatibleVersions": data["compatibleEngineeringVersions"],
-                      "writeGuards": "passed", "schema": "passed", "nativeProcessEnumeration": "not requested"}
+                      "writeGuards": "passed", "schema": "passed", "classicBundleConversion": "passed", "nativeProcessEnumeration": "not requested"}
             if native:
                 capabilities = call("tia_get_api_capabilities")
                 assert not capabilities.get("isError"), capabilities

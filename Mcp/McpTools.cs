@@ -24,6 +24,13 @@ namespace SiemensTiaOpenness.Mcp
         [Description("List installed TIA versions compatible with this server build, the selected API, and whether writes are enabled.")]
         public Task<CallToolResult> Versions(CancellationToken token) => Result(() => runtime.Versions(token));
 
+        [McpServerTool(Name = "hmi_prepare_classic_export_bundle", ReadOnly = false, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
+        [Description("Convert selected categories from the existing WinForms Comfort/classic HMI export into a new indexed bundle, preserving original XML and sidecar bytes. Writes local artifacts only; requires no TIA attachment. Select the exact root containing ExportSummary.txt. Failed categories are rejected; legacy per-object completeness is not established. Import still requires hmi_preview_import_bundle and a separate apply.")]
+        public Task<CallToolResult> PrepareClassicBundle(string sourceDirectory,
+            [Description("Explicit categories: ProjectGraphics, Connections, Cycles, VBScripts, TagTables, TextLists, GraphicLists, ScreenTemplates, PopupScreens, SlideInScreens, PermanentArea, Screens.")] string[] categories,
+            [Description("Use [] to preserve exported folder names. If the GUI sanitized folder names, supply original native names as {exportedPath:'Screens/ExportedFolder',name:'Original folder name'}; use forward slashes and exact category-relative paths.")] ClassicFolderName[] folderNames,
+            CancellationToken token) => Result(() => runtime.PrepareClassicBundle(sourceDirectory, categories, folderNames, token));
+
         [McpServerTool(Name = "tia_select_version", ReadOnly = false, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
         [Description("Select an installed compatible TIA engineering version before using Openness. Changing versions after loading Siemens assemblies requires a server restart.")]
         public Task<CallToolResult> SelectVersion([Description("Version returned by tia_list_versions, such as V15.1 or V19.")] string version, CancellationToken token)

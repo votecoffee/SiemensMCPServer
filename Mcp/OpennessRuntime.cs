@@ -67,6 +67,9 @@ namespace SiemensTiaOpenness.Mcp
             writesEnabled = allowWrites, artifactRoot
         }, token);
 
+        public Task<object> PrepareClassicBundle(string sourceDirectory, string[] categories, ClassicFolderName[] folderNames, CancellationToken token)
+            => Enqueue(() => ClassicExportBundle.Prepare(sourceDirectory, Path.Combine(artifactRoot, "classic-export-bundles", Guid.NewGuid().ToString("N")), categories, folderNames), token);
+
         public Task<object> SelectVersion(string version, CancellationToken token) => Enqueue(() => {
             string selected = Normalize(version);
             if (!TiaPortalAssemblyResolver.GetCompatibleEngineeringVersions().Contains(selected, StringComparer.OrdinalIgnoreCase))

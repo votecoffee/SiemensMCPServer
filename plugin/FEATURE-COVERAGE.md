@@ -1,6 +1,6 @@
 # Engineering feature coverage — 0.4.0
 
-The MCP server has 41 tools. Comfort/classic on V15.1 is the primary profile; Unified follows with version limits. PLC support uses the same V15.1-first offline stack. Installed V15.1 and V19 builds and offline tests do not establish native write/import/generation/compile/save/reopen acceptance; those trials remain pending on disposable projects. Exact V15.0 is not installed/tested here. The WinForms UI remains classic-only.
+The MCP server has 42 tools. Comfort/classic on V15.1 is the primary profile; Unified follows with version limits. PLC support uses the same V15.1-first offline stack. Installed V15.1 and V19 builds and offline tests do not establish native write/import/generation/compile/save/reopen acceptance; those trials remain pending on disposable projects. Exact V15.0 is not installed/tested here. The WinForms UI remains classic-only.
 
 | Feature | Comfort / classic | Unified | Route and limit |
 | --- | --- | --- | --- |
@@ -25,7 +25,7 @@ The MCP server has 41 tools. Comfort/classic on V15.1 is the primary profile; Un
 | Events/dynamizations | Screen XML where exported | Browse, advertised creation, scalar edits, delete | Static dynamized properties protected; explicit binding/event edits separate |
 | Nested controls/parts | Screen XML where exported | Available native navigators | Complex CLR values excluded from scalar tools |
 | Bulk export | API-visible resources and metadata | API-visible resources and metadata | Explicit failures, native companions; not a full backup |
-| Bulk import | Dependency order, supported folders, skip existing cycles | Serializable resources and supported folders/groups | New indexed bundle format; metadata-only objects not restored |
+| Bulk import | Dependency order, supported folders, skip existing cycles; legacy WinForms export conversion | Serializable resources and supported folders/groups | Indexed bundles; selected legacy categories converted with XML/sidecars and folder-name overrides; metadata-only objects not restored |
 | Compile diagnostics | Implemented | Where compile service exists | Does not save or download |
 | Whole-project save | Implemented | Implemented | Exact project path; includes other editors' changes |
 | Library faceplate definitions / project text XLSX | No dedicated adapter | No dedicated adapter | Outside HMI descendant/resource workflow |

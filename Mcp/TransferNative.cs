@@ -9,9 +9,10 @@ namespace SiemensTiaOpenness.Mcp
 {
     internal static class TransferNative
     {
-        internal static MethodInfo? ExportMethod(object node) => node.GetType().GetMethod("Export", new[] { typeof(FileInfo), typeof(ExportOptions) })
-            ?? node.GetType().GetMethod("Export", new[] { typeof(DirectoryInfo) })
-            ?? node.GetType().GetMethod("Export", new[] { typeof(DirectoryInfo), typeof(string) });
+        internal static MethodInfo? ExportMethod(object node) => ExportMethod(node.GetType());
+        internal static MethodInfo? ExportMethod(Type type) => type.GetMethod("Export", new[] { typeof(FileInfo), typeof(ExportOptions) })
+            ?? type.GetMethod("Export", new[] { typeof(DirectoryInfo) })
+            ?? type.GetMethod("Export", new[] { typeof(DirectoryInfo), typeof(string) });
         private static string? SingletonImport(object node) => node.GetType().FullName == "Siemens.Engineering.Hmi.Screen.ScreenOverview" ? "ImportScreenOverview"
             : node.GetType().FullName == "Siemens.Engineering.Hmi.Screen.ScreenGlobalElements" ? "ImportScreenGlobalElements" : null;
         internal static MethodInfo? ImportMethod(object node) => SingletonImport(node) != null ? ((IEngineeringObject)node).Parent.GetType().GetMethod(SingletonImport(node)!, new[] { typeof(FileInfo), typeof(ImportOptions) })

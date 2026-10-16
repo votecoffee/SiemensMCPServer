@@ -31,6 +31,9 @@ namespace SiemensTiaOpenness.Mcp
             if (child is MultilingualTextItem text) return "l:" + Uri.EscapeDataString(text.Language.Culture.Name);
             var prop = child.GetType().GetProperty("Name");
             if (prop?.PropertyType == typeof(string)) return "n:" + Uri.EscapeDataString((string)prop.GetValue(child, null)!);
+            // Classic slide-ins have a stable side/type identity, but no Name property.
+            if (child.GetType().FullName == "Siemens.Engineering.Hmi.Screen.ScreenSlidein")
+                return "s:" + Uri.EscapeDataString(Convert.ToString(child.GetType().GetProperty("SlideinType")!.GetValue(child, null), System.Globalization.CultureInfo.InvariantCulture)!);
             return "i:" + index.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
         internal static List<KeyValuePair<string, object>> Children(object node, string unused)
