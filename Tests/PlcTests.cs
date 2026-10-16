@@ -29,6 +29,14 @@ public sealed class PlcTests
         var source = Source(); source.AllowBlockReplacement = false;
         Assert.Throws<ArgumentException>(() => source.Validate());
     }
+    [Fact] public void WorkerCannotEscalateReplacementOrRewriteExactSource()
+    {
+        var requested = Source(); var candidate = Source(); requested.RequireExactCandidate(candidate);
+        candidate.Code += "// changed";
+        Assert.Throws<InvalidOperationException>(() => requested.RequireExactCandidate(candidate));
+        requested.AllowBlockReplacement = false; candidate = Source();
+        Assert.Throws<ArgumentException>(() => requested.RequireExactCandidate(candidate));
+    }
     [Theory][InlineData("../outside")][InlineData("C:\\outside")][InlineData("bad/name")][InlineData("name\nnext")]
     public void SourceNameCannotBecomeAPath(string name) { var source = Source(); source.Name = name; Assert.Throws<ArgumentException>(() => source.Validate()); }
     [Fact] public void SourceRejectsUnknownLanguageEmptyCodeAndExtraFiles()

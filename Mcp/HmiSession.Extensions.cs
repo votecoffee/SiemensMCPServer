@@ -34,6 +34,8 @@ namespace SiemensTiaOpenness.Mcp
                 case "plcSource":
                     FindPlcReference(targetId); RequireOfflineIfPlc(targetId);
                     if (path != "") throw new ArgumentException("PLC source generation requires an empty root path.");
+                    if (!arguments.TryGetProperty("allowBlockReplacement", out var replacementScope) || replacementScope.ValueKind != JsonValueKind.True)
+                        throw new ArgumentException("PLC source extensions require explicit allowBlockReplacement=true in the caller's arguments.");
                     var source = ExtensionWire.Parse<PlcSourceInput>(manager.Execute(module, operation, new { arguments }).GetProperty("source"));
                     string directory = Path.Combine(artifactRoot, "plc-source-candidates", Guid.NewGuid().ToString("N"));
                     PlcSourceFiles.Write(directory, source);

@@ -20,6 +20,12 @@ namespace SiemensTiaOpenness.Mcp
             if (!AllowBlockReplacement) throw new ArgumentException("Native source generation may replace blocks declared in the source. Set allowBlockReplacement=true only for that reviewed scope.");
         }
         public string FileName => Language == "SCL" ? "payload.scl" : "payload.awl";
+        public void RequireExactCandidate(PlcSourceInput candidate)
+        {
+            Validate(); candidate.Validate();
+            if (Name != candidate.Name || Language != candidate.Language || Code != candidate.Code || AllowBlockReplacement != candidate.AllowBlockReplacement)
+                throw new InvalidOperationException("Extension cannot change the exact PLC source or replacement scope supplied to this tool.");
+        }
     }
     internal static class PlcSourceFiles
     {
