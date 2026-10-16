@@ -44,6 +44,7 @@ namespace SiemensTiaOpenness.Mcp
                         && !entry.NativeType.StartsWith("Siemens.Engineering.Graphics.", StringComparison.Ordinal)
                         && !PlcPolicy.AllowsResourceType(entry.NativeType)) throw new ArgumentException("Bundle contains an unsupported engineering resource.");
                     TransferFiles.Inventory(SafePath(directory, entry.SourceDirectory));
+                    TransferFiles.ValidateXmlCompanions(SafePath(directory, entry.SourceDirectory));
                 }
                 if (resources.GroupBy(r => r.Path, StringComparer.Ordinal).Any(g => g.Count() != 1)) throw new ArgumentException("Duplicate bundle resource paths.");
                 return resources.OrderBy(r => Priority(r.ImportPath)).ThenBy(r => r.Path, StringComparer.Ordinal).ToArray();

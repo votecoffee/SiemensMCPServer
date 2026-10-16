@@ -61,6 +61,7 @@ namespace SiemensTiaOpenness.Mcp
             string files = System.IO.Path.Combine(directory, "candidate-files");
             TransferFiles.Copy(before.Directory, files);
             File.WriteAllText(System.IO.Path.Combine(files, before.XmlFile), candidate, new UTF8Encoding(false));
+            TransferFiles.ValidateXmlCompanions(files);
             var plan = new Plan { Before = before, BeforeFingerprint = fingerprint, Directory = directory, Created = DateTime.UtcNow,
                 CandidateFingerprint = TransferFiles.SemanticHash(files), Hash = TransferFiles.Hash(TransferFiles.Inventory(files)) };
             var report = new { planId = id, hmiId = before.HmiId, path = before.Path, candidateSha256 = plan.Hash, beforeFingerprint = fingerprint,

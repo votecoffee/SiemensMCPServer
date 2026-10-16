@@ -62,6 +62,26 @@ namespace SiemensTiaOpenness.Mcp
             return doc.Root?.Elements().Select(e => e.Element("AttributeList")?.Element("Name")?.Value).SingleOrDefault(n => n != null)
                 ?? throw new ArgumentException("Expected one native resource with an AttributeList/Name.");
         }
+        internal static void ValidateXmlCompanions(string directory)
+        {
+            // Native classic graphics use external="path" with Windows-relative
+            // companion names. Every referenced file must be inside this staged set.
+            var files = Inventory(directory);
+            var known = new HashSet<string>(files.Select(f => f.Path), StringComparer.OrdinalIgnoreCase);
+            foreach (var file in files.Where(f => f.Path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)))
+            {
+                var document = Xml(File.ReadAllText(System.IO.Path.Combine(directory, file.Path)));
+                foreach (var node in document.Descendants().Where(e => string.Equals((string?)e.Attribute("external"), "path", StringComparison.OrdinalIgnoreCase)))
+                {
+                    string relative = node.Value.Replace('\\', '/');
+                    if (node.HasElements || string.IsNullOrEmpty(relative) || System.IO.Path.IsPathRooted(relative)
+                        || relative.Contains(':') || relative.Split('/').Any(p => p == "" || p == "." || p == ".."))
+                        throw new ArgumentException("Native XML companion must use a safe relative file path inside the staged resource.");
+                    string parent = file.Path.Contains('/') ? file.Path.Substring(0, file.Path.LastIndexOf('/') + 1) : "";
+                    if (!known.Contains(parent + relative)) throw new FileNotFoundException("Native XML companion is missing from the staged resource: " + relative);
+                }
+            }
+        }
         // Exclude volatile export headers/IDs; retain authored values, open links, sidecars, and file names.
         internal static string SemanticHash(string directory)
         {

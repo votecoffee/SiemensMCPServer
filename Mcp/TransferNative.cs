@@ -43,6 +43,7 @@ namespace SiemensTiaOpenness.Mcp
                 // A single resource XML with its original sidecars. Bulk ordering is supplied by the bundle manifest.
                 var xml = Directory.GetFiles(directory, "*.xml", SearchOption.TopDirectoryOnly);
                 if (xml.Length != 1) throw new ArgumentException("Classic import requires exactly one top-level resource XML and any required sidecars.");
+                TransferFiles.ValidateXmlCompanions(directory);
                 if (node.GetType().FullName!.StartsWith("Siemens.Engineering.Hmi.Cycle.", StringComparison.Ordinal))
                 {
                     string name = TransferFiles.XmlObjectName(File.ReadAllText(xml[0]));
@@ -74,6 +75,7 @@ namespace SiemensTiaOpenness.Mcp
             {
                 var files = Directory.GetFiles(directory, "*.xml", SearchOption.TopDirectoryOnly);
                 if (files.Length != 1) throw new ArgumentException("Classic import requires exactly one top-level XML resource plus sidecars.");
+                TransferFiles.ValidateXmlCompanions(directory);
                 if (!skipExistingCycles && node.GetType().FullName!.StartsWith("Siemens.Engineering.Hmi.Cycle.", StringComparison.Ordinal))
                 {
                     string name = TransferFiles.XmlObjectName(File.ReadAllText(files[0]));

@@ -95,6 +95,16 @@ public sealed class ClassicResourceTests
         File.AppendAllText(Path.Combine(plan.GetProperty("artifactDirectory").GetString()!, "candidate-files", "image.png"), "tamper");
         Assert.Throws<InvalidOperationException>(() => workflow.Apply(plan.GetProperty("planId").GetString()!, plan.GetProperty("candidateSha256").GetString()!)); Assert.Equal(0, fixture.Attempts);
     }
+    [Fact] public void MissingExternalCompanionCannotProduceAnApplicableScalarPreview()
+    {
+        using var fixture = new Fixture();
+        string resource = Path.Combine(fixture.ReadClassicResource("hmi", "screen").Directory, "payload.xml");
+        File.WriteAllText(resource, Xml.Replace("<Width>800</Width>", "<Width>800</Width><Image external='path'>image.png</Image>"));
+        var workflow = new ClassicXmlWorkflow(fixture, fixture.Plans);
+        Assert.Throws<FileNotFoundException>(() => workflow.Preview("hmi", "screen", fixture.ReadClassicResource("hmi", "screen").Fingerprint,
+            new[] { Edit("//Image", "image.png", "missing.png") }));
+        Assert.Equal(0, fixture.Attempts);
+    }
     [Fact] public void NativeFailureConsumesPlanAndProtectedCycleCannotPreview()
     {
         using var fixture = new Fixture(); var workflow = new ClassicXmlWorkflow(fixture, fixture.Plans);
