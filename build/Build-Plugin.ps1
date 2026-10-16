@@ -64,6 +64,7 @@ $files = @(Get-ChildItem -LiteralPath $packageRoot -File -Recurse -Force | Sort-
 })
 ConvertTo-Json -InputObject $files -Depth 5 | Set-Content -LiteralPath (Join-Path $packageRoot 'manifest.json') -Encoding UTF8
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+Add-Type -AssemblyName System.IO.Compression
 $zipPath = Join-Path $artifactRoot ($packageName + '.zip')
 $zip = [IO.Compression.ZipFile]::Open($zipPath, [IO.Compression.ZipArchiveMode]::Create)
 try {
