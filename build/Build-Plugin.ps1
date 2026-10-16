@@ -13,6 +13,10 @@ $packageRoot = Join-Path $artifactRoot $packageName
 New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
 Get-ChildItem -LiteralPath (Join-Path $repoRoot 'plugin') -Force | Copy-Item -Destination $packageRoot -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $packageRoot 'LICENSE')
+$helperDirectory = Join-Path $packageRoot 'scripts'
+New-Item -ItemType Directory -Path $helperDirectory -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Install-CodexPlugin.ps1') -Destination $helperDirectory
+Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\test_codex_integration.py') -Destination $helperDirectory
 $buildArgs = @('publish', (Join-Path $repoRoot 'Mcp\SiemensTiaOpenness.Mcp.csproj'), '-c', 'Release', '--nologo', '-v', 'minimal',
     '-p:RestoreLockedMode=true', ('-p:TiaPortalVersion=' + $TiaPortalVersion), '-o', (Join-Path $packageRoot 'server'))
 if ($TiaPortalInstallVersion) { $buildArgs += '-p:TiaPortalInstallVersion=' + $TiaPortalInstallVersion }
@@ -61,7 +65,13 @@ $files = @(Get-ChildItem -LiteralPath $packageRoot -File -Recurse -Force | Sort-
 ConvertTo-Json -InputObject $files -Depth 5 | Set-Content -LiteralPath (Join-Path $packageRoot 'manifest.json') -Encoding UTF8
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zipPath = Join-Path $artifactRoot ($packageName + '.zip')
-[IO.Compression.ZipFile]::CreateFromDirectory($packageRoot, $zipPath)
+$zip = [IO.Compression.ZipFile]::Open($zipPath, [IO.Compression.ZipArchiveMode]::Create)
+try {
+    foreach ($file in Get-ChildItem -LiteralPath $packageRoot -File -Recurse -Force) {
+        $entryName = $file.FullName.Substring($packageRoot.Length + 1).Replace('\', '/')
+        [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $file.FullName, $entryName, [IO.Compression.CompressionLevel]::Optimal) | Out-Null
+    }
+} finally { $zip.Dispose() }
 $zipHash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
 ($zipHash + '  ' + [IO.Path]::GetFileName($zipPath)) | Set-Content -LiteralPath ($zipPath + '.sha256') -Encoding ASCII
 Write-Output ('Plugin ZIP: ' + $zipPath)

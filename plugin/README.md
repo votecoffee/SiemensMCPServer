@@ -8,7 +8,17 @@ Comfort on the V15 generation is the primary development target; V15.1 is instal
 
 Extract the ZIP to a permanent directory. It includes `server/SiemensTiaOpenness.Mcp.exe`, its runtime dependencies, a workflow skill, portable plugin manifests, and a Codex compatibility manifest. Siemens DLLs are not included. Install TIA Portal, the matching Openness API, and the appropriate WinCC engineering components; use a Windows user in the local `Siemens TIA Openness` group. Use the V19 package for the Unified screen workflow on the installed V19 API.
 
-For direct Codex MCP registration, run this command with the actual extraction path:
+For installation with both skills and tools, run the bundled installer with the original ZIP beside its `.sha256` sidecar:
+
+```powershell
+powershell.exe -NoProfile -File 'C:\path\to\extracted-plugin\scripts\Install-CodexPlugin.ps1' -Package 'C:\path\to\plugin.zip'
+```
+
+From this repository, the equivalent installer is `build/Install-CodexPlugin.ps1`. It checks ZIP/payload hashes, safe paths, member limits and plugin identity; keeps a versioned source under `%LOCALAPPDATA%\SiemensTiaOpenness\CodexMarketplace`; backs up affected settings; then uses `codex plugin marketplace add` and `codex plugin add`. Existing unrelated plugins/settings are preserved. `-PrepareOnly` verifies/stages a package without registering it. A direct Siemens MCP registration blocks plugin installation to prevent duplicate tools. Resolve that existing registration explicitly before switching installation methods. No TIA project is attached or changed.
+
+Verify the installed configuration using `py -3 -X utf8 scripts/test_codex_integration.py` from the extracted plugin or repository. The probe gets the actual registered command/arguments from Codex, starts that cached server, checks both skills and the tool list, and reads API capabilities/process metadata without attachment or model calls. Start a new Codex chat to load the installed tools and skills. This validates configuration and transport; it does not establish native project editing or a model-driven project trial.
+
+This follows the official [local plugin packaging/installation workflow](https://developers.openai.com/plugins/build/plugins); the installed Codex CLI's `plugin add --help` confirms its supported install command. Clients lacking plugin installation can use direct MCP registration:
 
 ```powershell
 codex mcp add siemens-tia-openness -- 'C:\path\to\extracted-plugin\server\SiemensTiaOpenness.Mcp.exe' --allow-writes

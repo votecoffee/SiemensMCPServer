@@ -51,9 +51,10 @@ def main():
     assert sidecar.exists(), "Package SHA-256 sidecar is missing"
     assert sidecar.read_text(encoding="utf-8-sig").split()[0] == package_hash
     with zipfile.ZipFile(package) as archive:
-        names = [info.filename for info in archive.infolist() if not info.is_dir()]
+        # On Windows ZipInfo.filename normalizes raw backslashes. Inspect the original central-directory name.
+        names = [info.orig_filename for info in archive.infolist() if not info.is_dir()]
         assert len(names) == len(set(names)), "Duplicate ZIP members"
-        files = {name: archive.read(name) for name in names}
+        files = {info.orig_filename: archive.read(info) for info in archive.infolist() if not info.is_dir()}
     file_count = validate(files)
     controls = {}
     for name, mutated in (
