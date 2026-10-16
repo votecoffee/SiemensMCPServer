@@ -42,6 +42,8 @@ namespace SiemensTiaOpenness.Mcp
         object Apply(string planId, string candidateSha256);
         object Compile(string hmiId);
         object Save(string expectedProjectPath);
+        object Archive(string expectedProjectPath);
+        object Reopen(string expectedProjectPath);
     }
 
     internal sealed class OpennessRuntime : IDisposable

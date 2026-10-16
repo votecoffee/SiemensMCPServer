@@ -109,6 +109,14 @@ namespace SiemensTiaOpenness.Mcp
         [Description("Save the entire attached TIA project, including changes already present from other editors. Use only when the user authorizes saving this project; provide its exact path. Requires --allow-writes.")]
         public Task<CallToolResult> Save(string expectedProjectPath, CancellationToken token) => Result(() => runtime.Invoke(s => s.Save(expectedProjectPath), token, writes: true));
 
+        [McpServerTool(Name = "tia_archive_project", ReadOnly = false, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
+        [Description("Create a native compressed backup of the exact attached saved project in a new local artifact directory. Returns archive path, size and SHA-256. Refuses unsaved changes; never saves or changes the project location. Requires --allow-writes.")]
+        public Task<CallToolResult> Archive(string expectedProjectPath, CancellationToken token) => Result(() => runtime.Invoke(s => s.Archive(expectedProjectPath), token, writes: true));
+
+        [McpServerTool(Name = "tia_reopen_project", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
+        [Description("Close and reopen the exact attached project in its existing TIA process. Use only within the user's authorization to reopen that project. Refuses unsaved changes and invalidates every pending preview. Does not save or discard edits; on failure inspect TIA and reattach explicitly. Requires --allow-writes.")]
+        public Task<CallToolResult> Reopen(string expectedProjectPath, CancellationToken token) => Result(() => runtime.Invoke(s => s.Reopen(expectedProjectPath), token, writes: true));
+
         [McpServerTool(Name = "hmi_read_object", ReadOnly = true, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
         [Description("Browse Comfort/classic or Unified engineering objects using Siemens self-description. Start with empty path; follow exact returned child paths. Returns supported scalar attributes with types/enum choices, child paths, native creation arguments, import/export availability and fingerprint. Multilingual texts, event handlers, dynamizations, tags, alarms, scripts and settings are navigable when the API exposes them. $projectGraphics selects shared project graphics. Parent/services cannot be traversed. Complex non-scalar values require native export/import.")]
         public Task<CallToolResult> ReadObject(string hmiId, string path, CancellationToken token)

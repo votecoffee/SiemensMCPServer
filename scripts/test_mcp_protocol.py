@@ -62,7 +62,7 @@ def run(executable, native=False):
             tools = {t["name"]: t for t in send("tools/list", {})["tools"]}
             expected = {"tia_list_versions", "tia_select_version", "tia_list_processes", "tia_attach", "tia_get_status",
                         "hmi_list_text_lists", "hmi_read_text_list", "hmi_preview_text_edits", "hmi_apply_text_edits",
-                        "hmi_compile", "tia_save_project", "tia_get_api_capabilities", "hmi_list_screens", "hmi_list_screen_items",
+                        "hmi_compile", "tia_save_project", "tia_archive_project", "tia_reopen_project", "tia_get_api_capabilities", "hmi_list_screens", "hmi_list_screen_items",
                         "hmi_read_unified_object", "hmi_preview_unified_edits", "hmi_apply_unified_edits",
                         "hmi_read_object", "hmi_preview_object_edits", "hmi_preview_create_object", "hmi_preview_delete_object",
                         "hmi_export_objects", "hmi_preview_import", "hmi_preview_import_bundle", "hmi_apply_object_plan",
@@ -109,6 +109,9 @@ def run(executable, native=False):
             assert blocked.get("isError") is True and "Writes are disabled" in blocked["content"][0]["text"]
             save = call("tia_save_project", expectedProjectPath="C:\\unselected.ap15_1")
             assert save.get("isError") is True and "Writes are disabled" in save["content"][0]["text"]
+            for operation in ["tia_archive_project", "tia_reopen_project"]:
+                rejected = call(operation, expectedProjectPath="C:\\unselected.ap15_1")
+                assert rejected.get("isError") and "Writes are disabled" in rejected["content"][0]["text"], rejected
             compile_result = call("hmi_compile", hmiId="unselected")
             assert compile_result.get("isError") is True and "Writes are disabled" in compile_result["content"][0]["text"]
             unified_blocked = call("hmi_apply_unified_edits", planId="unapproved", candidateSha256="wrong")

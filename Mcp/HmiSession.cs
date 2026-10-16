@@ -106,11 +106,7 @@ namespace SiemensTiaOpenness.Mcp
                     throw new InvalidOperationException("The project changed during attach.");
                 projectPath = expected; processId = pid;
                 hmis = HmiCatalog.Discover(project, includeUnified: true);
-                string sessionRoot = Path.Combine(artifactRoot, Guid.NewGuid().ToString("N"));
-                workflow = new TextListWorkflow(this, Path.Combine(sessionRoot, "classic"));
-                unifiedWorkflow = new UnifiedEditWorkflow(this, Path.Combine(sessionRoot, "unified"));
-                engineeringWorkflow = new EngineeringWorkflow(this, Path.Combine(sessionRoot, "engineering"));
-                classicXmlWorkflow = new ClassicXmlWorkflow(this, Path.Combine(sessionRoot, "comfort-xml"));
+                ResetWorkflows();
                 return Status();
             }
             catch { Dispose(); throw; }
@@ -119,7 +115,7 @@ namespace SiemensTiaOpenness.Mcp
         public object Status()
         {
             if (project != null) CheckProject();
-            return new { attached = project != null, processId, projectPath,
+            return new { attached = project != null, processId, projectPath, projectModified = project?.IsModified,
                 plcTargets = project == null ? Array.Empty<object>() : SoftwareCatalog.Discover(project).Where(s => s.Family == "plc")
                     .Select(s => (object)new { plcId = s.Id, label = s.Label, name = s.Software.Name }).ToArray(),
                 hmis = hmis.Select(h => new { hmiId = h.Id, label = h.Label, name = h.Software.Name, family = h.Family,
@@ -276,6 +272,76 @@ namespace SiemensTiaOpenness.Mcp
                 project!.Save();
             }
             return new { projectPath, projectSaved = true };
+        }
+
+        public object Archive(string expectedProjectPath)
+        {
+            CheckProject();
+            RequireExpectedPath(expectedProjectPath);
+            string directory = Path.Combine(artifactRoot, "project-archives", Guid.NewGuid().ToString("N"));
+            string fileName = "project-backup.z" + Path.GetExtension(projectPath!).Substring(1);
+            using (var exclusive = portal!.ExclusiveAccess("Codex archive saved project"))
+            {
+                CheckProject();
+                if (project!.IsModified) throw new InvalidOperationException("Project has unsaved changes. Save within the user's authorization before archiving.");
+                Directory.CreateDirectory(directory);
+                project.Archive(new DirectoryInfo(directory), fileName, ProjectArchivationMode.Compressed);
+            }
+            string path = Path.Combine(directory, fileName);
+            if (!File.Exists(path)) throw new IOException("Siemens did not create the expected project archive: " + path);
+            string hash;
+            using (var stream = File.OpenRead(path))
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+                hash = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+            return new { projectPath, archivePath = path, sha256 = hash, bytes = new FileInfo(path).Length, projectSaved = false,
+                scope = "Native compressed archive of the saved project; no save or project-location change." };
+        }
+
+        public object Reopen(string expectedProjectPath)
+        {
+            CheckProject();
+            RequireExpectedPath(expectedProjectPath);
+            string expected = projectPath!;
+            using (var exclusive = portal!.ExclusiveAccess("Codex reopen saved project"))
+            {
+                CheckProject();
+                if (project!.IsModified) throw new InvalidOperationException("Project has unsaved changes. Reopen refuses to discard them; save within the user's authorization first.");
+                if (!File.Exists(expected)) throw new FileNotFoundException("The saved project file is missing.", expected);
+                try
+                {
+                    // Invalidate every preview before closing, even if reopening fails.
+                    workflow = null; unifiedWorkflow = null; engineeringWorkflow = null; classicXmlWorkflow = null;
+                    project.Close();
+                    project = null;
+                    if (portal.Projects.Count != 0) throw new InvalidOperationException("Another project is open; the saved project was not reopened.");
+                    project = portal.Projects.Open(new FileInfo(expected));
+                    CheckProject();
+                    hmis = HmiCatalog.Discover(project, includeUnified: true);
+                    ResetWorkflows();
+                }
+                catch
+                {
+                    // Keep the TIA process alive. Reattach explicitly after inspecting its state.
+                    project = null; projectPath = null; processId = null; hmis = new List<HmiReference>();
+                    throw;
+                }
+            }
+            return new { projectReopened = true, status = Status() };
+        }
+
+        private void RequireExpectedPath(string expectedProjectPath)
+        {
+            if (string.IsNullOrWhiteSpace(expectedProjectPath) || !Path.IsPathRooted(expectedProjectPath) || !SamePath(expectedProjectPath, projectPath!))
+                throw new InvalidOperationException("Expected absolute project path does not match the attached project.");
+        }
+
+        private void ResetWorkflows()
+        {
+            string sessionRoot = Path.Combine(artifactRoot, Guid.NewGuid().ToString("N"));
+            workflow = new TextListWorkflow(this, Path.Combine(sessionRoot, "classic"));
+            unifiedWorkflow = new UnifiedEditWorkflow(this, Path.Combine(sessionRoot, "unified"));
+            engineeringWorkflow = new EngineeringWorkflow(this, Path.Combine(sessionRoot, "engineering"));
+            classicXmlWorkflow = new ClassicXmlWorkflow(this, Path.Combine(sessionRoot, "comfort-xml"));
         }
 
         private HmiReference FindReference(string hmiId)
