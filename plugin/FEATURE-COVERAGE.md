@@ -1,4 +1,4 @@
-# Engineering feature coverage — 0.4.0
+# Engineering feature coverage — 0.5.0
 
 The MCP server has 42 tools. Comfort/classic on V15.1 is the primary profile; Unified follows with version limits. PLC support uses the same V15.1-first offline stack. Installed V15.1 and V19 builds and offline tests do not establish native write/import/generation/compile/save/reopen acceptance; those trials remain pending on disposable projects. Exact V15.0 is not installed/tested here. The WinForms UI remains classic-only.
 
@@ -13,11 +13,11 @@ The MCP server has 42 tools. Comfort/classic on V15.1 is the primary profile; Un
 | Text-list structure/additions | Native XML import | Native YAML import where available | Generic import; native replacement scope, no specialized entry CRUD |
 | Normal screens/folders | XML export/import, including contents | Native graph and creation/edit/delete | Unified serialization requires an actual native method; none synthesized |
 | Captions/layout/colors | Scalar fields or screen XML | Dedicated style-preserving caption tools and generic properties | Complex text can be explicit raw markup; no automatic dynamic/multi-run rewriting |
-| Comfort XML scalar editing | Dedicated read/preview/apply workflow | Not routed through classic XML | Exact XPath/old values, retained sidecars/languages, native readback equality |
+| Comfort XML scalar editing | Dedicated read/preview/apply workflow with bounded exact-path catalog | Not routed through classic XML | Exact XPath/old values, retained sidecars/languages, protected composition/identity metadata, native readback equality |
 | Templates/popups/slide-ins | Native XML resources | Available native screen/group/item model | Device/API dependent; unavailable categories reported |
 | Permanent/global screens | Dedicated XML singleton import | Available native model | Classic ImportScreenOverview / ImportScreenGlobalElements |
 | Tags/tables/groups | XML resources and advertised operations | Native objects and YAML export/import | API-dependent properties and signatures |
-| Scripts | VB-script XML | Script-module YAML/JS | Retain companions; classic export uses ExportOptions.None |
+| Scripts | VB-script XML | Script-module YAML/JS | Check known companions and actual filename; drain deferred exports; classic export uses ExportOptions.None |
 | Connections | Resources and native objects | Native objects | Integrated classic connections can be unexportable |
 | Cycles | Export; import missing cycles only | Available tag acquisition/configuration model | Existing classic cycles never overwritten/edited/deleted |
 | Graphics / graphic lists | XML with sidecars | Shared graphics; graphic-list API where present | Graphics are project-wide; no guessed V19 Unified graphic-list API |

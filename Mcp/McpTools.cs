@@ -145,7 +145,7 @@ namespace SiemensTiaOpenness.Mcp
             => Result(() => runtime.Invoke(s => s.ApplyEngineeringPlan(planId, candidateSha256), token, writes: true));
 
         [McpServerTool(Name = "hmi_read_classic_resource", ReadOnly = false, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
-        [Description("Comfort/classic V15.1-first workflow: export one selected screen, tag table, script, list or other native XML resource with sidecars. Returns complete XML, its content fingerprint, and artifact files. Choose an exact resource path from hmi_read_object. Does not modify TIA.")]
+        [Description("Comfort/classic V15.1-first workflow: export one selected screen, tag table, script, list or other native XML resource with sidecars. Returns complete XML, a bounded scalar catalog with exact XPath/value/editability fields, its content fingerprint, and artifact files. Choose an exact resource path from hmi_read_object. Does not modify TIA.")]
         public Task<CallToolResult> ReadClassicResource(string hmiId, string path, CancellationToken token)
             => Result(() => runtime.Invoke(s => s.ReadClassicXml(hmiId, path), token));
 

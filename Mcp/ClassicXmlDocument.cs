@@ -15,6 +15,13 @@ namespace SiemensTiaOpenness.Mcp
         [JsonRequired] public string ExpectedValue { get; set; } = "";
         [JsonRequired] public string NewValue { get; set; } = "";
     }
+    internal sealed class ClassicXmlField
+    {
+        public string XPath { get; set; } = "";
+        public string Value { get; set; } = "";
+        public bool Editable { get; set; }
+        public string? ReadOnlyReason { get; set; }
+    }
     internal sealed class ClassicXmlDocument
     {
         private readonly XDocument document;
@@ -30,6 +37,45 @@ namespace SiemensTiaOpenness.Mcp
             resource = resources[0];
             Name = resource.Element("AttributeList")?.Element("Name")?.Value ?? "";
         }
+        public object Catalog(bool resourceEditable)
+        {
+            const int limit = 1000;
+            var fields = ScalarNodes().Take(limit + 1).Select(node => {
+                string? reason = ReadOnlyReason(node);
+                return new ClassicXmlField { XPath = Path(node), Value = node is XAttribute a ? a.Value : ((XElement)node).Value,
+                    Editable = resourceEditable && reason == null, ReadOnlyReason = resourceEditable ? reason : "This native resource is inspection-only." };
+            }).ToArray();
+            return new { fields = fields.Take(limit).ToArray(), truncated = fields.Length > limit, limit,
+                scope = "Existing XML scalars. Editable means eligible for a preview; native semantic acceptance remains pending. Inspect the full XML for fields beyond this bounded catalog." };
+        }
+        private IEnumerable<XObject> ScalarNodes()
+        {
+            foreach (var element in resource.DescendantsAndSelf())
+            {
+                if (!element.HasElements && element.Nodes().All(n => n is XText)) yield return element;
+                foreach (var attribute in element.Attributes().Where(a => !a.IsNamespaceDeclaration)) yield return attribute;
+            }
+        }
+        private string? ReadOnlyReason(XObject node)
+        {
+            if (node is XAttribute attribute && (attribute.IsNamespaceDeclaration || attribute.Name.LocalName == "ID" || attribute.Name.LocalName == "UId" || attribute.Name.LocalName == "CompositionName"))
+                return "Export identity, namespace and composition metadata cannot be changed by scalar edits.";
+            if (node == resource.Element("AttributeList")?.Element("Name")) return "Resource identity requires an explicit create/rename operation.";
+            if (node is XElement element && (element == resource || element.Name.LocalName == "ObjectList" || element.Name.LocalName == "AttributeList" || element.Name.LocalName == "LinkList"))
+                return "Structural XML containers require a reviewed native resource import.";
+            return null;
+        }
+        private static string Path(XObject node)
+        {
+            XElement owner = node is XAttribute attribute ? attribute.Parent! : (XElement)node;
+            var ancestors = owner.AncestorsAndSelf().Reverse().ToArray();
+            if (ancestors.Length > 128) throw new ArgumentException("XML scalar path exceeds the 128-level inspection limit.");
+            string result = "/" + string.Join("/", ancestors.Select(e => Step(e.Name) + "[" + (e.ElementsBeforeSelf(e.Name).Count() + 1).ToString(System.Globalization.CultureInfo.InvariantCulture) + "]"));
+            return node is XAttribute attr ? result + "/@" + Step(attr.Name) : result;
+        }
+        private static string Step(XName name) => name.NamespaceName.Length == 0 ? name.LocalName
+            : "*[local-name()=" + Literal(name.LocalName) + " and namespace-uri()=" + Literal(name.NamespaceName) + "]";
+        private static string Literal(string value) => !value.Contains("'") ? "'" + value + "'" : !value.Contains("\"") ? "\"" + value + "\"" : "concat('" + value.Replace("'", "',\"'\",'") + "')";
         public string Edit(ClassicXmlEdit[] edits)
         {
             if (edits == null || edits.Length < 1 || edits.Length > 1000) throw new ArgumentException("Supply 1 to 1000 existing scalar XML edits.");
@@ -46,15 +92,15 @@ namespace SiemensTiaOpenness.Mcp
                 XElement? owner = node is XAttribute attribute ? attribute.Parent : node as XElement;
                 if (owner == null || !owner.AncestorsAndSelf().Contains(resource)) throw new ArgumentException("Edits must stay inside the selected HMI resource.");
                 if (!touched.Add(node)) throw new ArgumentException("Duplicate XML edit target.");
+                string? reason = ReadOnlyReason(node);
+                if (reason != null) throw new ArgumentException(reason);
                 string old;
                 if (node is XAttribute attr)
                 {
-                    if (attr.IsNamespaceDeclaration || attr.Name.LocalName == "ID" || attr.Name.LocalName == "UId") throw new ArgumentException("Export IDs and namespace declarations cannot be changed.");
                     old = attr.Value;
                 }
                 else if (node is XElement element && !element.HasElements && !element.Nodes().Any(n => !(n is XText)))
                 {
-                    if (element == resource.Element("AttributeList")?.Element("Name")) throw new ArgumentException("This workflow preserves the resource identity. Use an explicit create/rename operation instead.");
                     old = element.Value;
                 }
                 else throw new ArgumentException("Only existing scalar elements/attributes can be edited. Complex XML requires a reviewed native resource import.");

@@ -11,7 +11,7 @@
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <AssemblyName>SiemensTiaOpenness.Mcp</AssemblyName>
-    <Version>0.4.0</Version>
+    <Version>0.5.0</Version>
     <OutputPath>bin/$(Configuration)/$(TiaPortalVersion)/</OutputPath>
     <IntermediateOutputPath>obj/$(TiaPortalVersion)/$(Configuration)/</IntermediateOutputPath>
   </PropertyGroup>

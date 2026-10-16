@@ -33,7 +33,7 @@ namespace SiemensTiaOpenness.Mcp
             string xml = File.ReadAllText(System.IO.Path.Combine(resource.Directory, resource.XmlFile), Encoding.UTF8);
             if (xml.Length > 16 * 1024 * 1024) throw new InvalidOperationException("Resource XML exceeds the 16 MiB read limit; use native export files.");
             var document = new ClassicXmlDocument(xml);
-            return new { hmiId, path, fingerprint = resource.Fingerprint, document.Name, document.NativeType, resource.Editable, xml,
+            return new { hmiId, path, fingerprint = resource.Fingerprint, document.Name, document.NativeType, resource.Editable, xml, scalarCatalog = document.Catalog(resource.Editable),
                 artifactDirectory = resource.Directory, files = TransferFiles.Inventory(resource.Directory) };
         }
         public object Preview(string hmiId, string path, string fingerprint, ClassicXmlEdit[] edits)

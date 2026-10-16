@@ -1,4 +1,4 @@
-# Siemens TIA Openness MCP plugin 0.4.0
+# Siemens TIA Openness MCP plugin 0.5.0
 
 This local Windows plugin provides Comfort/classic and Unified engineering object tools, native resource import/export, bulk transfers, and specialized text-list and screen-caption workflows. It uses the official C# MCP SDK and .NET Framework 4.8. No OpenAI API key is needed to connect it to Codex. The desktop WinForms application retains its classic HMI workflow; expanded object tools and Unified support are in the MCP server. See [feature coverage](FEATURE-COVERAGE.md) for implemented routes and remaining boundaries.
 
@@ -32,9 +32,9 @@ Artifacts live under `%LOCALAPPDATA%\SiemensTiaOpenness\Mcp\Sessions` by default
 
 ## Comfort V15.1 resource editing
 
-Use `hmi_read_object` to select a screen/resource path, then `hmi_read_classic_resource` for its full native XML, content fingerprint including companion files, and retained artifacts. This covers native XML-exportable screens, tag tables, scripts, text/graphic lists and related classic resources.
+Use `hmi_read_object` to select a screen/resource path, then `hmi_read_classic_resource` for its full native XML, content fingerprint including companion files, and retained artifacts. It also returns `scalarCatalog`: up to 1000 existing fields with exact `xPath`, current `value`, `editable` and `readOnlyReason`. Paths distinguish repeated/namespaced nodes without using export IDs. The catalog reports truncation; the full XML remains available. This covers native XML-exportable screens, tag tables, scripts, text/graphic lists and related classic resources.
 
-`hmi_preview_classic_xml_edits` accepts that fingerprint and edits with `xPath`, `expectedValue`, and `newValue`. Each XPath must select exactly one existing scalar inside the resource. Use structural/name selectors after inspecting the actual XML. Volatile IDs, resource renaming, ambiguous selectors and complex subtree replacement are rejected. Other fields/languages and image sidecars remain intact. Existing cycles are read-only.
+`hmi_preview_classic_xml_edits` accepts that fingerprint and edits with `xPath`, `expectedValue`, and `newValue`. Reuse a returned editable catalog path/value or use structural/name selectors after inspecting the actual XML. Each XPath must select exactly one existing scalar inside the resource. Volatile IDs, resource renaming, composition metadata, structural containers, ambiguous selectors and complex subtree replacement are rejected. Other fields/languages and image sidecars remain intact. Existing cycles are read-only. Catalog eligibility does not establish native semantic acceptance.
 
 `hmi_apply_classic_xml_edits` consumes the plan/hash once, rechecks the selected native resource, imports in a transaction, and requires matching native readback while ignoring volatile export IDs/headers. It leaves the project unsaved. Prefer the specialized text-list tool for translation changes; use reviewed native resource import for structural changes. Native V15.1 edit/compile/save trials remain pending.
 

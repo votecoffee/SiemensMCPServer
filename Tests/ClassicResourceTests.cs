@@ -1,8 +1,10 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
+using System.Xml.XPath;
 using SiemensTiaOpenness.Mcp;
 using Xunit;
 
@@ -36,6 +38,44 @@ public sealed class ClassicResourceTests
     {
         Assert.ThrowsAny<Exception>(() => new ClassicXmlDocument("<!DOCTYPE Document [<!ENTITY a SYSTEM 'file:///missing'>]><Document>&a;</Document>"));
         Assert.Throws<ArgumentException>(() => new ClassicXmlDocument("<Document><Hmi.Screen.Screen/><Hmi.Screen.Screen/></Document>"));
+    }
+    [Fact] public void CatalogPathsSelectExactEditableScalarsWithoutVolatileIdentities()
+    {
+        var fields = JsonSerializer.SerializeToElement(new ClassicXmlDocument(Xml).Catalog(true), JsonDefaults.Options).GetProperty("fields").EnumerateArray().ToArray();
+        Assert.Contains(fields, f => f.GetProperty("xPath").GetString()!.EndsWith("/@ID") && !f.GetProperty("editable").GetBoolean());
+        Assert.Contains(fields, f => f.GetProperty("value").GetString() == "Caption" && !f.GetProperty("editable").GetBoolean());
+        foreach (var field in fields.Where(f => f.GetProperty("editable").GetBoolean()))
+        {
+            string path = field.GetProperty("xPath").GetString()!, value = field.GetProperty("value").GetString()!;
+            Assert.DoesNotContain("@ID", path);
+            string result = new ClassicXmlDocument(Xml).Edit(new[] { Edit(path, value, value + " updated") });
+            Assert.Equal(value + " updated", XDocument.Parse(result).XPathSelectElement(path)!.Value);
+        }
+    }
+    [Fact] public void CatalogDistinguishesRepeatedAndNamespacedScalars()
+    {
+        string xml = "<Document><Hmi.Screen.Screen><AttributeList><Name>S</Name></AttributeList><ObjectList xmlns:q='urn:a&apos;&quot;b'><q:Value q:Flag='first'>one</q:Value><q:Value q:Flag='second'>two</q:Value></ObjectList></Hmi.Screen.Screen></Document>";
+        var fields = JsonSerializer.SerializeToElement(new ClassicXmlDocument(xml).Catalog(true), JsonDefaults.Options).GetProperty("fields").EnumerateArray().ToArray();
+        Assert.Equal(fields.Length, fields.Select(f => f.GetProperty("xPath").GetString()).Distinct().Count());
+        foreach (var field in fields.Where(f => f.GetProperty("editable").GetBoolean()))
+        {
+            string path = field.GetProperty("xPath").GetString()!, value = field.GetProperty("value").GetString()!;
+            string result = new ClassicXmlDocument(xml).Edit(new[] { Edit(path, value, value + " changed") });
+            Assert.Contains(value + " changed", XDocument.Parse(result).Root!.Value + string.Join("", XDocument.Parse(result).Descendants().Attributes().Select(a => a.Value)));
+        }
+    }
+    [Fact] public void CatalogIsBoundedAndProtectedResourcesAdvertiseNoEdits()
+    {
+        string xml = "<Document><Hmi.Screen.Screen><AttributeList><Name>S</Name></AttributeList><ObjectList>" + string.Concat(Enumerable.Repeat("<Value>value</Value>", 1100)) + "</ObjectList></Hmi.Screen.Screen></Document>";
+        var catalog = JsonSerializer.SerializeToElement(new ClassicXmlDocument(xml).Catalog(false), JsonDefaults.Options);
+        Assert.True(catalog.GetProperty("truncated").GetBoolean()); Assert.Equal(1000, catalog.GetProperty("fields").GetArrayLength());
+        Assert.All(catalog.GetProperty("fields").EnumerateArray(), f => Assert.False(f.GetProperty("editable").GetBoolean()));
+    }
+    [Fact] public void CompositionMetadataAndEmptyContainersRequireStructuralImport()
+    {
+        Assert.Throws<ArgumentException>(() => new ClassicXmlDocument(Xml).Edit(new[] { Edit("//MultilingualText/@CompositionName", "Caption", "Other") }));
+        string xml = "<Document><Hmi.Screen.Screen><AttributeList><Name>S</Name></AttributeList><ObjectList/></Hmi.Screen.Screen></Document>";
+        Assert.Throws<ArgumentException>(() => new ClassicXmlDocument(xml).Edit(new[] { Edit("//ObjectList", "", "data") }));
     }
     [Fact] public void PreviewPreservesBinarySidecarsAndApplyIsSingleAttempt()
     {
