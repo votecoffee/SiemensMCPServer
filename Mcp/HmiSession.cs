@@ -285,7 +285,19 @@ namespace SiemensTiaOpenness.Mcp
                 CheckProject();
                 if (project!.IsModified) throw new InvalidOperationException("Project has unsaved changes. Save within the user's authorization before archiving.");
                 Directory.CreateDirectory(directory);
-                project.Archive(new DirectoryInfo(directory), fileName, ProjectArchivationMode.Compressed);
+                // V15.1 limits the native archive path to 143 characters. Stage in
+                // a short temporary directory, then retain it under the artifact root.
+                string tempRoot = Path.GetFullPath(Path.GetTempPath()).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                string staging = Path.GetFullPath(Path.Combine(tempRoot, "tia-archive-" + Guid.NewGuid().ToString("N")));
+                if (!staging.StartsWith(tempRoot, StringComparison.OrdinalIgnoreCase)) throw new IOException("Invalid archive staging path.");
+                if (Path.Combine(staging, fileName).Length > 143) throw new IOException("TIA V15.1 needs an archive path no longer than 143 characters. Configure a shorter Windows TEMP directory.");
+                Directory.CreateDirectory(staging);
+                try
+                {
+                    project.Archive(new DirectoryInfo(staging), fileName, ProjectArchivationMode.Compressed);
+                    File.Move(Path.Combine(staging, fileName), Path.Combine(directory, fileName));
+                }
+                finally { Directory.Delete(staging, true); }
             }
             string path = Path.Combine(directory, fileName);
             if (!File.Exists(path)) throw new IOException("Siemens did not create the expected project archive: " + path);
