@@ -1,4 +1,4 @@
-# Engineering feature coverage — 0.6.0
+# Engineering feature coverage — 0.6.1
 
 The MCP server has 44 tools. Comfort/classic on V15.1 is the primary profile; Unified follows with version limits. PLC support uses the same V15.1-first offline stack. Installed V15.1 and V19 builds and offline tests do not establish native write/import/generation/compile/save/reopen acceptance; those trials remain pending on disposable projects. Exact V15.0 is not installed/tested here. The WinForms UI remains classic-only.
 

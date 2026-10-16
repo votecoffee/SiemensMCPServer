@@ -17,16 +17,23 @@ def main():
     assert args.codex, "Codex CLI is not available"
     configured = subprocess.run([args.codex, "mcp", "list", "--json"], check=True, capture_output=True, text=True, encoding="utf-8", timeout=60)
     servers = json.loads(configured.stdout)
-    server = next(s for s in servers if s["name"] == "siemens-tia-openness")
+    server = next((s for s in servers if s["name"] == "siemens-tia-openness"), None)
+    assert server is not None, "Codex has not exposed the installed Siemens MCP server"
     assert server["enabled"] and server["transport"]["type"] == "stdio", server
     transport = server["transport"]
-    plugin_root = Path(transport["env"]["PLUGIN_ROOT"]).resolve()
-    command = Path(transport["command"]).resolve()
-    assert command.is_relative_to(plugin_root)
+    environment = transport.get("env") or {}
+    plugin_root = Path(environment.get("PLUGIN_ROOT") or transport["cwd"]).resolve()
+    command = Path(shutil.which(transport["command"]) or transport["command"]).resolve()
+    if command.name.lower() == "cmd.exe":
+        assert transport["args"] == ["/d", "/c", "server\\SiemensTiaOpenness.Mcp.exe", "--allow-writes"]
+    else:
+        assert command.is_relative_to(plugin_root)
+    server_binary = plugin_root / "server/SiemensTiaOpenness.Mcp.exe"
+    assert server_binary.is_file()
     assert all((plugin_root / "skills" / name / "SKILL.md").is_file() for name in ["edit-hmi-text", "edit-siemens-plc"])
     manifest = json.loads((plugin_root / "plugin.json").read_text(encoding="utf-8-sig"))
     process = subprocess.Popen([str(command), *transport["args"]], cwd=transport.get("cwd"),
-                               env={**os.environ, **transport.get("env", {})}, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                               env={**os.environ, **environment}, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, text=True, encoding="utf-8", bufsize=1)
     messages = queue.Queue()
     errors = []
@@ -78,7 +85,7 @@ def main():
         processes = call("tia_list_processes")
         assert call("tia_get_status")["attached"] is False
         report = {"version": manifest["version"], "codexRegistration": "enabled", "pluginRoot": str(plugin_root),
-                  "server": str(command), "toolCount": len(tools), "skills": ["edit-hmi-text", "edit-siemens-plc"],
+                  "server": str(server_binary), "launcher": str(command), "toolCount": len(tools), "skills": ["edit-hmi-text", "edit-siemens-plc"],
                   "configuredTransportProbe": "passed", "writesEnabled": versions["writesEnabled"], "apiVersion": capabilities["apiVersion"],
                   "nativeProcessCount": len(processes), "projectAttached": False, "projectChanged": False,
                   "chatActivation": "Start a new chat; this probe validates the installed Codex transport without making a model request."}

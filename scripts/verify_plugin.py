@@ -33,8 +33,9 @@ def validate(files):
     compat = json.loads(files[".mcp.json"])["mcpServers"]["siemens-tia-openness"]
     assert modern["type"] == "stdio"
     assert {k: v for k, v in modern.items() if k != "type"} == compat
-    assert modern["command"] == "${PLUGIN_ROOT}/server/SiemensTiaOpenness.Mcp.exe"
-    assert modern["args"] == ["--allow-writes"]
+    assert modern["command"] == "cmd.exe"
+    assert modern["args"] == ["/d", "/c", "server\\SiemensTiaOpenness.Mcp.exe", "--allow-writes"]
+    assert modern["cwd"] == "."
     assert "skills/edit-hmi-text/SKILL.md" in files
     return len(manifest)
 

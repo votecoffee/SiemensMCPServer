@@ -92,11 +92,13 @@ if ($PrepareOnly) {
     exit 0
 }
 $codex = (Get-Command codex -CommandType Application -ErrorAction Stop).Source
+$configurationRoot = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }
+$cachePrefix = [IO.Path]::GetFullPath((Join-Path $configurationRoot 'plugins\cache\siemens-tia-openness-local\siemens-tia-openness')).TrimEnd('\') + '\'
 $servers = & $codex mcp list --json | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect existing Codex MCP registration.' }
-$direct = @($servers | Where-Object { $_.name -eq 'siemens-tia-openness' -and -not $_.transport.env.PLUGIN_ROOT })
+$direct = @($servers | Where-Object { $_.name -eq 'siemens-tia-openness' -and -not $_.transport.env.PLUGIN_ROOT -and
+    -not ($_.transport.cwd -and [IO.Path]::GetFullPath($_.transport.cwd).StartsWith($cachePrefix, [StringComparison]::OrdinalIgnoreCase)) })
 if ($direct.Count) { throw 'A direct Siemens MCP registration already exists. Resolve it before installing the plugin to avoid duplicate tools.' }
-$configurationRoot = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }
 $configuration = Join-Path $configurationRoot 'config.toml'
 if (Test-Path -LiteralPath $configuration) {
     [IO.Directory]::CreateDirectory($backupDirectory) | Out-Null

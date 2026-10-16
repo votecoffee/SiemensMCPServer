@@ -1,4 +1,4 @@
-# Siemens TIA Openness MCP plugin 0.6.0
+# Siemens TIA Openness MCP plugin 0.6.1
 
 This local Windows plugin provides Comfort/classic and Unified engineering object tools, native resource import/export, bulk transfers, and specialized text-list and screen-caption workflows. It uses the official C# MCP SDK and .NET Framework 4.8. No OpenAI API key is needed to connect it to Codex. The desktop WinForms application retains its classic HMI workflow; expanded object tools and Unified support are in the MCP server. See [feature coverage](FEATURE-COVERAGE.md) for implemented routes and remaining boundaries.
 
@@ -6,7 +6,7 @@ This local Windows plugin provides Comfort/classic and Unified engineering objec
 
 Comfort on the V15 generation is the primary development target; V15.1 is installed and build-tested here. Unified follows with its existing version gates. PLC support shares the V15.1-first offline stack. Exact V15.0 needs its own installed API build and native trial.
 
-Extract the ZIP to a permanent directory. It includes `server/SiemensTiaOpenness.Mcp.exe`, its runtime dependencies, a workflow skill, portable plugin manifests, and a Codex compatibility manifest. Siemens DLLs are not included. Install TIA Portal, the matching Openness API, and the appropriate WinCC engineering components; use a Windows user in the local `Siemens TIA Openness` group. Use the V19 package for the Unified screen workflow on the installed V19 API.
+Extract the ZIP to a permanent directory. It includes `server/SiemensTiaOpenness.Mcp.exe`, its runtime dependencies, workflow skills, MCP descriptions and a Codex compatibility manifest. The Windows Codex profile uses a relative `cmd.exe` launcher and compatibility manifest dispatch, verified against the installed client; no unexpanded plugin-root variable is passed as an executable or working directory. Siemens DLLs are not included. Install TIA Portal, the matching Openness API, and the appropriate WinCC engineering components; use a Windows user in the local `Siemens TIA Openness` group. Use the V19 package for the Unified screen workflow on the installed V19 API.
 
 For installation with both skills and tools, run the bundled installer with the original ZIP beside its `.sha256` sidecar:
 
