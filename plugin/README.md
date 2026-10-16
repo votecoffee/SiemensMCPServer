@@ -62,6 +62,8 @@ Use `hmi_read_object` to select a screen/resource path, then `hmi_read_classic_r
 
 `hmi_apply_classic_xml_edits` consumes the plan/hash once, rechecks the selected native resource, imports in a transaction, and requires matching native readback while ignoring volatile export IDs/headers. It leaves the project unsaved. Prefer the specialized text-list tool for translation changes; use reviewed native resource import for structural changes. Selected V15.1 native edit/compile/save/reopen tests have passed; see [native acceptance](NATIVE-ACCEPTANCE.md) for exact scope.
 
+Version 0.6.3 also protects a slide-in's edge identity and verifies native XML external-file references before staging/import. Each companion path must resolve inside its staged resource, relative to the XML file; missing files, absolute paths and traversal are rejected. Keep original binary companions with the XML. Classic tag names are HMI-wide, so copying a table into a new folder still requires unique contained tag names and reviewed references.
+
 ## Unified screen objects
 
 Use `hmi_list_screens` to discover screens recursively through screen groups, then `hmi_list_screen_items` for the selected screen's native item composition. Read a screen/item with `hmi_read_unified_object`; pass an empty `itemPath` to inspect the screen itself. This does not enter faceplate type definitions or nested control parts.
