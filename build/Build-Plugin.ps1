@@ -48,7 +48,7 @@ ConvertTo-Json -InputObject $dependencyNotices -Depth 4 | Set-Content -LiteralPa
 $metadata = [ordered]@{
     pluginVersion = $pluginVersion; tiaPortalApi = $TiaPortalVersion; tiaPortalInstallVersion = $TiaPortalInstallVersion;
     sourceCommit = (& git -C $repoRoot rev-parse HEAD); sourceHasLocalChanges = [bool](& git -C $repoRoot status --porcelain);
-    nativeWriteAcceptance = 'pending'; builtUtc = [DateTime]::UtcNow.ToString('o')
+    nativeWriteAcceptance = 'Selected Comfort V15.1 workflows tested; see NATIVE-ACCEPTANCE.md. Other profiles/workflows pending.'; builtUtc = [DateTime]::UtcNow.ToString('o')
 }
 $metadata | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $packageRoot 'build-info.json') -Encoding UTF8
 $sourceFiles = @(& git -C $repoRoot -c core.quotepath=false ls-files --cached --others --exclude-standard | Sort-Object | ForEach-Object {

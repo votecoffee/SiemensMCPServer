@@ -60,7 +60,7 @@ Use `hmi_read_object` to select a screen/resource path, then `hmi_read_classic_r
 
 `hmi_preview_classic_xml_edits` accepts that fingerprint and edits with `xPath`, `expectedValue`, and `newValue`. Reuse a returned editable catalog path/value or use structural/name selectors after inspecting the actual XML. Each XPath must select exactly one existing scalar inside the resource. Volatile IDs, resource renaming, composition metadata, structural containers, ambiguous selectors and complex subtree replacement are rejected. Other fields/languages and image sidecars remain intact. Existing cycles are read-only. Catalog eligibility does not establish native semantic acceptance.
 
-`hmi_apply_classic_xml_edits` consumes the plan/hash once, rechecks the selected native resource, imports in a transaction, and requires matching native readback while ignoring volatile export IDs/headers. It leaves the project unsaved. Prefer the specialized text-list tool for translation changes; use reviewed native resource import for structural changes. Native V15.1 edit/compile/save trials remain pending.
+`hmi_apply_classic_xml_edits` consumes the plan/hash once, rechecks the selected native resource, imports in a transaction, and requires matching native readback while ignoring volatile export IDs/headers. It leaves the project unsaved. Prefer the specialized text-list tool for translation changes; use reviewed native resource import for structural changes. Selected V15.1 native edit/compile/save/reopen tests have passed; see [native acceptance](NATIVE-ACCEPTANCE.md) for exact scope.
 
 ## Unified screen objects
 
@@ -156,8 +156,8 @@ The protocol test checks all 46 tools, required schemas, classic export conversi
 
 The packaging script emits a fresh ZIP and SHA-256 file under `artifacts/`, with a payload manifest, source-file hash manifest, build identity, and dependency notices in the ZIP. It accepts the same `TiaPortalVersion`, `TiaPortalInstallVersion`, and `TiaPublicApiDir` choices as the desktop build. It rejects packages containing Siemens engineering DLLs. Verify a built ZIP and run its freshly extracted executable with `py -3 -X utf8 scripts/verify_plugin.py PATH-TO-ZIP --native-read-only`; the verifier also rejects tampered payloads, unexpected members, and path traversal controls.
 
-## Native acceptance still required
+## Native acceptance scope
 
-On disposable Comfort and Unified projects, trial browsing, scalar/caption edits, creation/deletion, resource and bundle round trips, protected cycles, unchanged languages/sidecars, editor conflicts, and native failures. Compile, save the disposable project, and reopen separately. For Unified text lists, use an API exposing the paired-YAML methods and verify both files. These native write-path checks remain pending; builds, API inspection and offline tests are not native edit/compile/save acceptance.
+Selected Comfort V15.1 native caption/layout edits, entry add/remove, translation fill/clear, screen import, event function clone/remove, folder creation, guards, compile and save/reopen passed on the user-supplied test project. See [native acceptance](NATIVE-ACCEPTANCE.md) for evidence boundaries and cleanup. Other resource kinds, binary sidecars, bulk import, PLC and Unified native writes still need their own trials. For Unified text lists, use an API exposing the paired-YAML methods and verify both files. Builds, API inspection and offline tests do not establish those remaining native paths.
 
 An API application can reuse these tools through an MCP client and route OpenAI function calls to it. This package does not include a model-calling application or a public HTTP endpoint.
