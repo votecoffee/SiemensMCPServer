@@ -13,6 +13,16 @@ public sealed class TextListStructureTests
     private static readonly string[] Active = { "en-US", "es-ES", "de-DE" };
     private static ClassicTextListChange Add(string entry = "8") => new ClassicTextListChange { Action = "addEntry", Entry = entry, TemplateEntry = "7", Translations = new[] {
         new ClassicTranslation { Culture = "en-US", Text = "New <entry> 🟢" }, new ClassicTranslation { Culture = "es-ES", Text = "Nuevo" } } };
+    [Fact] public void V151RejectsTranslationSlotRemovalBeforeNativeImport()
+    {
+        var remove = new[] { new ClassicTextListChange { Action = "removeTranslation", Entry = "7", Culture = "es-ES", ExpectedText = "Español intacto" } };
+        var error = Assert.Throws<NotSupportedException>(() => TextListDocument.RequireNativeStructureSupport(new Version(15, 1), remove));
+        Assert.Contains("clear the existing text", error.Message);
+        TextListDocument.RequireNativeStructureSupport(new Version(15, 1), new[] { Add() });
+        TextListDocument.RequireNativeStructureSupport(new Version(19, 0), remove); // Other profiles still require native readback.
+        var before = new TextListDocument(TextListTests.NativePlainFixture());
+        Assert.Equal("", before.Edit(new[] { new TextEdit { Entry = "7", Culture = "es-ES", ExpectedText = "Español intacto", NewText = "" } }).Read().Single(v => v.Entry == "7" && v.Culture == "es-ES").Text);
+    }
     [Fact] public void NewEntryPreservesOriginalCulturesAndUsesUniqueNativeIds()
     {
         var before = new TextListDocument(TextListTests.Fixture()); var after = before.ChangeStructure(new[] { Add() }, Active);

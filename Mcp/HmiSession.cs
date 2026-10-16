@@ -156,6 +156,7 @@ namespace SiemensTiaOpenness.Mcp
         public object PreviewClassicTextStructure(string hmiId, string listName, string expectedFingerprint, ClassicTextListChange[] changes)
         {
             FindClassicHmi(hmiId);
+            TextListDocument.RequireNativeStructureSupport(typeof(Project).Assembly.GetName().Version, changes);
             return workflow!.PreviewStructure(hmiId, listName, expectedFingerprint, changes, project!.LanguageSettings.ActiveLanguages.Select(l => l.Culture.Name).ToArray());
         }
 

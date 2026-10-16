@@ -28,6 +28,12 @@ namespace SiemensTiaOpenness
     }
     internal sealed partial class TextListDocument
     {
+        public static void RequireNativeStructureSupport(Version apiVersion, ClassicTextListChange[] changes)
+        {
+            if (apiVersion.Major == 15 && apiVersion.Minor == 1 && changes != null && changes.Any(c => c?.Action == "removeTranslation"))
+                throw new NotSupportedException("V15.1 XML import retains active language slots. removeTranslation cannot round-trip; clear the existing text with hmi_preview_text_edits instead.");
+        }
+
         public object Structure() => new { entries = Entries().Select(e => new {
             entry = EntryKey(e), fingerprint = EntryFingerprint(e), defaultEntry = EntryKey(e) == "Default", singleValue = IsSingle(e),
             canUseAsTemplate = EntryKey(e) != "Default" && Plain(e),

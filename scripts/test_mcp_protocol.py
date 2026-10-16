@@ -144,6 +144,7 @@ def run(executable, native=False):
                     assert profile["unifiedTextListEditing"] is False, profile
                 if profile["apiVersion"].startswith("15."):
                     assert profile["unifiedDiscovery"] is False, profile
+                    assert profile["classicTranslationSlotRemoval"]["available"] is False, profile
                 report["nativeApiCapabilities"] = profile
                 processes = call("tia_list_processes")
                 assert not processes.get("isError"), processes
