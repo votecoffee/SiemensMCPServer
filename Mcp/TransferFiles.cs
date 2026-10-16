@@ -71,9 +71,9 @@ namespace SiemensTiaOpenness.Mcp
                 var doc = Xml(File.ReadAllText(file));
                 if (doc.Root?.Name.LocalName == "Document")
                     foreach (var header in doc.Root.Elements().Where(e => e.Name.LocalName == "DocumentInfo").ToArray()) header.Remove();
+                NativeXmlIds.Normalize(doc);
                 foreach (var element in doc.Descendants())
                 {
-                    element.Attributes().Where(a => a.Name.LocalName == "ID").Remove();
                     // Formatting whitespace only, never strip whitespace from authored scalar elements.
                     if (element.HasElements) element.Nodes().OfType<XText>().Where(t => string.IsNullOrWhiteSpace(t.Value)).Remove();
                 }

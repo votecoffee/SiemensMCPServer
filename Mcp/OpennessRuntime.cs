@@ -23,6 +23,7 @@ namespace SiemensTiaOpenness.Mcp
         object ApplyEngineeringPlan(string planId, string candidateSha256);
         object ReadClassicXml(string hmiId, string path);
         object PreviewClassicXml(string hmiId, string path, string fingerprint, ClassicXmlEdit[] edits);
+        object PreviewClassicBehaviors(string hmiId, string path, string fingerprint, ClassicBehaviorChange[] changes);
         object ApplyClassicXml(string planId, string candidateSha256);
         object ListPlcs();
         object ReadPlcObject(string plcId, string path);

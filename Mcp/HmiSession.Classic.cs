@@ -11,6 +11,8 @@ namespace SiemensTiaOpenness.Mcp
         public object PreviewClassicXml(string hmiId, string path, string fingerprint, ClassicXmlEdit[] edits)
         { CheckProject(); return classicXmlWorkflow!.Preview(hmiId, path, fingerprint, edits); }
         public object ApplyClassicXml(string planId, string candidateSha256) { CheckProject(); return classicXmlWorkflow!.Apply(planId, candidateSha256); }
+        public object PreviewClassicBehaviors(string hmiId, string path, string fingerprint, ClassicBehaviorChange[] changes)
+        { CheckProject(); return classicXmlWorkflow!.PreviewBehaviors(hmiId, path, fingerprint, changes); }
         public ClassicResource ReadClassicResource(string hmiId, string path)
         {
             FindClassicHmi(hmiId);

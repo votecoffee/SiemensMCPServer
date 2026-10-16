@@ -24,6 +24,8 @@
     <Compile Include="../Mcp/TransferFiles.cs" Link="TransferFiles.cs" />
     <Compile Include="../Mcp/TransferBundle.cs" Link="TransferBundle.cs" />
     <Compile Include="../Mcp/ClassicXmlDocument.cs" Link="ClassicXmlDocument.cs" />
+    <Compile Include="../Mcp/ClassicXmlBehaviors.cs" Link="ClassicXmlBehaviors.cs" />
+    <Compile Include="../Mcp/NativeXmlIds.cs" Link="NativeXmlIds.cs" />
     <Compile Include="../Mcp/ClassicXmlWorkflow.cs" Link="ClassicXmlWorkflow.cs" />
     <Compile Include="../Mcp/ClassicExportBundle.cs" Link="ClassicExportBundle.cs" />
     <Compile Include="../Mcp/DirectoryTransferNative.cs" Link="DirectoryTransferNative.cs" />

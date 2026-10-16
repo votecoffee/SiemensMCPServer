@@ -22,14 +22,16 @@ namespace SiemensTiaOpenness.Mcp
         public bool Editable { get; set; }
         public string? ReadOnlyReason { get; set; }
     }
-    internal sealed class ClassicXmlDocument
+    internal sealed partial class ClassicXmlDocument
     {
         private readonly XDocument document;
         private readonly XElement resource;
+        private readonly bool preserveResourceIdentity;
         public string Name { get; }
         public string NativeType => resource.Name.LocalName;
-        public ClassicXmlDocument(string xml)
+        public ClassicXmlDocument(string xml, bool preserveResourceIdentity = true)
         {
+            this.preserveResourceIdentity = preserveResourceIdentity;
             document = TransferFiles.Xml(xml);
             if (document.Root?.Name != "Document") throw new ArgumentException("Expected a native classic HMI Document.");
             var resources = document.Root.Elements().Where(e => e.Name.LocalName.StartsWith("Hmi.", StringComparison.Ordinal)).ToArray();
@@ -60,7 +62,7 @@ namespace SiemensTiaOpenness.Mcp
         {
             if (node is XAttribute attribute && (attribute.IsNamespaceDeclaration || attribute.Name.LocalName == "ID" || attribute.Name.LocalName == "UId" || attribute.Name.LocalName == "CompositionName"))
                 return "Export identity, namespace and composition metadata cannot be changed by scalar edits.";
-            if (node == resource.Element("AttributeList")?.Element("Name")) return "Resource identity requires an explicit create/rename operation.";
+            if (preserveResourceIdentity && node == resource.Element("AttributeList")?.Element("Name")) return "Resource identity requires an explicit create/rename operation.";
             if (node is XElement element && (element == resource || element.Name.LocalName == "ObjectList" || element.Name.LocalName == "AttributeList" || element.Name.LocalName == "LinkList"))
                 return "Structural XML containers require a reviewed native resource import.";
             return null;

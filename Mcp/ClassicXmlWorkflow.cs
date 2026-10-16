@@ -33,7 +33,7 @@ namespace SiemensTiaOpenness.Mcp
             string xml = File.ReadAllText(System.IO.Path.Combine(resource.Directory, resource.XmlFile), Encoding.UTF8);
             if (xml.Length > 16 * 1024 * 1024) throw new InvalidOperationException("Resource XML exceeds the 16 MiB read limit; use native export files.");
             var document = new ClassicXmlDocument(xml);
-            return new { hmiId, path, fingerprint = resource.Fingerprint, document.Name, document.NativeType, resource.Editable, xml, scalarCatalog = document.Catalog(resource.Editable),
+            return new { hmiId, path, fingerprint = resource.Fingerprint, document.Name, document.NativeType, resource.Editable, xml, scalarCatalog = document.Catalog(resource.Editable), behaviorCatalog = document.BehaviorCatalog(resource.Editable),
                 artifactDirectory = resource.Directory, files = TransferFiles.Inventory(resource.Directory) };
         }
         public object Preview(string hmiId, string path, string fingerprint, ClassicXmlEdit[] edits)
@@ -44,14 +44,27 @@ namespace SiemensTiaOpenness.Mcp
             if (before.Fingerprint != fingerprint) throw new InvalidOperationException("Classic resource changed; read it again.");
             var document = new ClassicXmlDocument(File.ReadAllText(System.IO.Path.Combine(before.Directory, before.XmlFile), Encoding.UTF8));
             string candidate = document.Edit(edits);
+            return Stage(before, fingerprint, candidate, edits);
+        }
+        public object PreviewBehaviors(string hmiId, string path, string fingerprint, ClassicBehaviorChange[] changes)
+        {
+            if (plans.Count >= 100) throw new InvalidOperationException("Too many previews; reattach to clear them.");
+            var before = backend.ReadClassicResource(hmiId, path);
+            if (!before.Editable || before.Fingerprint != fingerprint) throw new InvalidOperationException("Classic resource changed or is inspection-only.");
+            var document = new ClassicXmlDocument(File.ReadAllText(System.IO.Path.Combine(before.Directory, before.XmlFile), Encoding.UTF8));
+            string candidate = document.ChangeBehaviors(changes);
+            return Stage(before, fingerprint, candidate, changes);
+        }
+        private object Stage(ClassicResource before, string fingerprint, string candidate, object changes)
+        {
             string id = Guid.NewGuid().ToString("N"), directory = System.IO.Path.Combine(root, id);
             string files = System.IO.Path.Combine(directory, "candidate-files");
             TransferFiles.Copy(before.Directory, files);
             File.WriteAllText(System.IO.Path.Combine(files, before.XmlFile), candidate, new UTF8Encoding(false));
             var plan = new Plan { Before = before, BeforeFingerprint = fingerprint, Directory = directory, Created = DateTime.UtcNow,
                 CandidateFingerprint = TransferFiles.SemanticHash(files), Hash = TransferFiles.Hash(TransferFiles.Inventory(files)) };
-            var report = new { planId = id, hmiId, path, candidateSha256 = plan.Hash, beforeFingerprint = fingerprint,
-                candidateFingerprint = plan.CandidateFingerprint, changes = edits, artifactDirectory = directory,
+            var report = new { planId = id, hmiId = before.HmiId, path = before.Path, candidateSha256 = plan.Hash, beforeFingerprint = fingerprint,
+                candidateFingerprint = plan.CandidateFingerprint, changes, artifactDirectory = directory,
                 beforeArtifactDirectory = before.Directory, expiresUtc = plan.Created.AddMinutes(30), projectSaved = false };
             File.WriteAllText(System.IO.Path.Combine(directory, "preview.json"), JsonSerializer.Serialize(report, JsonDefaults.Options), new UTF8Encoding(false));
             plans.Add(id, plan); return report;

@@ -70,7 +70,7 @@ def run(executable, native=False):
                         "plc_list_targets", "plc_read_object", "plc_read_resource", "plc_export_objects", "plc_preview_object_edits",
                         "plc_preview_create_object", "plc_preview_delete_object", "plc_preview_import", "plc_preview_xml_import",
                         "plc_preview_import_bundle", "plc_preview_generate_source", "plc_apply_object_plan", "plc_compile",
-                        "hmi_prepare_classic_export_bundle", "hmi_preview_classic_text_list_changes"}
+                        "hmi_prepare_classic_export_bundle", "hmi_preview_classic_text_list_changes", "hmi_preview_classic_behavior_changes"}
             assert set(tools) == expected, set(tools)
             for tool in tools.values():
                 assert "result" in tool["outputSchema"]["properties"], tool
@@ -81,6 +81,8 @@ def run(executable, native=False):
             assert {"entry", "culture", "expectedText", "newText"} <= set(edit_schema["required"]), edit_schema
             structure_change = tools["hmi_preview_classic_text_list_changes"]["inputSchema"]["properties"]["changes"]["items"]
             assert {"action", "entry"} <= set(structure_change["required"]), structure_change
+            behavior_change = tools["hmi_preview_classic_behavior_changes"]["inputSchema"]["properties"]["changes"]["items"]
+            assert {"action", "xPath", "expectedFingerprint"} <= set(behavior_change["required"]), behavior_change
             assert "token" not in preview_schema.get("properties", {}), "Cancellation token leaked into tool arguments"
             converter_schema = tools["hmi_prepare_classic_export_bundle"]["inputSchema"]
             assert {"sourceDirectory", "categories", "folderNames"} <= set(converter_schema["required"]), converter_schema

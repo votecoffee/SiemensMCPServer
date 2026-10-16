@@ -154,6 +154,11 @@ namespace SiemensTiaOpenness.Mcp
         public Task<CallToolResult> ReadClassicResource(string hmiId, string path, CancellationToken token)
             => Result(() => runtime.Invoke(s => s.ReadClassicXml(hmiId, path), token));
 
+        [McpServerTool(Name = "hmi_preview_classic_behavior_changes", ReadOnly = false, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
+        [Description("Preview clone/remove operations on native exported Comfort event/animation/binding objects. Read hmi_read_classic_resource.behaviorCatalog first. Each change requires action (clone/remove), xPath and expectedFingerprint. Clone additionally requires destinationXPath selecting the exact Hmi.* owner in this resource, plus optional scalar edits addressed within a Document-wrapped clone. Retains the native composition/type and assigns fresh IDs while preserving local references. Removal rejects inbound references. No TIA mutation during preview; apply with hmi_apply_classic_xml_edits. Missing native prototypes and unexported objects require native engineering.")]
+        public Task<CallToolResult> PreviewClassicBehaviors(string hmiId, string path, string expectedFingerprint, ClassicBehaviorChange[] changes, CancellationToken token)
+            => Result(() => runtime.Invoke(s => s.PreviewClassicBehaviors(hmiId, path, expectedFingerprint, changes), token));
+
         [McpServerTool(Name = "hmi_preview_classic_xml_edits", ReadOnly = false, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
         [Description("Preview Comfort/classic XML changes to existing scalar elements or attributes, including screen captions/layout and resource configuration. Each edit supplies xPath, expectedValue and newValue. XPath must select exactly one node inside the resource; use structural/name selectors, not volatile IDs. Preserves resource identity, other fields/languages and sidecars. Existing cycles are inspection-only. Complex XML structure changes require a reviewed resource import. Does not change TIA.")]
         public Task<CallToolResult> PreviewClassicResource(string hmiId, string path, string expectedFingerprint, ClassicXmlEdit[] edits, CancellationToken token)

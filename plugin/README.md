@@ -24,6 +24,12 @@ The bundled MCP configuration enables writes because this plugin provides editin
 
 `hmi_read_text_list` now includes per-entry fingerprints, template eligibility and active project cultures. Preview ordinary SingleValue entry creation/removal and translation creation/removal with `hmi_preview_classic_text_list_changes`, then use `hmi_apply_text_edits` with the returned plan/hash. `addEntry` uses an existing plain `templateEntry` and explicit `translations` for every template culture; fresh native XML IDs avoid collisions. `removeEntry` requires its `expectedEntryFingerprint`. `addTranslation` requires an already active project `culture`, an existing `templateCulture` and `text`. `removeTranslation` requires exact `expectedText` and retains at least one translation. Default/range/formatted/linked entries remain protected. New project languages must first be activated in TIA. This route changes an existing list and keeps other entries, locales and metadata; native import/readback acceptance remains pending.
 
+## Comfort event and binding structure
+
+Classic resource reads also return a bounded `behaviorCatalog` for native exported event/animation/binding objects and their Hmi children. Use scalar previews for existing fields. `hmi_preview_classic_behavior_changes` supports `clone` from an exact catalog `xPath`/`expectedFingerprint` into a `destinationXPath` selecting the native Hmi owner in the same resource, or `remove` of the exact object. Clone edits use paths within a temporary Document-wrapped clone, for example `/Document/Hmi.Event.Event/AttributeList/Name`, with exact old values. The native type/composition is retained; IDs are reassigned and local references remapped. Inbound references block removal, overlapping changes are rejected, and sidecars remain with the resource. Apply with `hmi_apply_classic_xml_edits`. This uses actual exported prototypes; absent/unexported native objects require native engineering or reviewed resource import. It never executes HMI events/scripts.
+
+The inspected V15.1 classic HmiTarget API has no dedicated alarm-definition endpoint. API capabilities explicitly report that limit. The native alarm editor's XLSX workflow is separate; this plugin does not invent alarm XML or represent alarm-view controls missing from Openness exports as supported objects.
+
 ## First use
 
 Open a backed-up or disposable TIA project first. Ask the chat to list compatible versions and running projects, then identify the exact project and HMI. Example request:
