@@ -1,0 +1,149 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using Siemens.Engineering;
+
+namespace SiemensTiaOpenness.Mcp
+{
+    // Reflection is restricted to documented public Openness members, so classic builds
+    // do not acquire a static reference to Unified types absent from older Siemens APIs.
+    internal static class UnifiedNative
+    {
+        private const string SoftwareType = "Siemens.Engineering.HmiUnified.HmiSoftware";
+        private const string ScreenType = "Siemens.Engineering.HmiUnified.UI.Screens.HmiScreen";
+        private const string ButtonType = "Siemens.Engineering.HmiUnified.UI.Widgets.HmiButton";
+
+        public static object ApiCapabilities()
+        {
+            Assembly assembly = typeof(Siemens.Engineering.HW.Software).Assembly;
+            Type? software = ResolveType(SoftwareType);
+            Type? screen = ResolveType(ScreenType);
+            Type? button = ResolveType(ButtonType);
+            bool screens = Has(software, "Screens") && Has(software, "ScreenGroups") && Has(screen, "ScreenItems");
+            bool edits = screens && Has(button, "Text") && Has(button, "Left") && Has(button, "Top") && Has(button, "Width") && Has(button, "Height") && Has(button, "Dynamizations");
+            return new {
+                apiAssembly = assembly.GetName().Name, apiVersion = assembly.GetName().Version!.ToString(),
+                classicTextLists = true, unifiedDiscovery = software != null, unifiedScreenInspection = screens,
+                comfortXmlResourceEdits = true, primaryEngineeringProfile = "Comfort/classic V15.1",
+                plcEngineering = new { available = ResolveType("Siemens.Engineering.SW.PlcSoftware") != null,
+                    scope = "Offline blocks, PLC data types, tag tables/groups, native XML import/export, SCL/STL source generation and compile diagnostics. Native trials pending.",
+                    downloadOrRuntimeControl = false },
+                unifiedScreenEdits = edits,
+                unifiedTextListNativeApiPresent = Has(software, "HmiTextLists"), unifiedTextListEditing = UnifiedTextListNative.Supports(software),
+                engineeringObjectTools = new { browse = true, typedScalarEdits = true, nativeCreationAndDeletion = "per-object self-description", nativeImportExport = "per-object method presence", bulkImport = "native resources and supported folder hierarchy only" },
+                unifiedRootNavigators = software == null ? Array.Empty<string>() : software.GetProperties().Where(p => p.Name != "Parent").Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray(),
+                scope = "Comfort/classic and Unified API-visible objects, supported scalar properties, advertised creation/deletion, native resource and bulk transfers. Complex values require native resource import or a specialized adapter. Native acceptance pending."
+            };
+        }
+
+        public static bool CanInspect(object software) => Has(software.GetType(), "Screens") && Has(software.GetType(), "ScreenGroups");
+        private static Type? ResolveType(string name) => AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType(name)).FirstOrDefault(t => t != null);
+        private static bool Has(Type? type, string name) => type?.GetProperty(name, BindingFlags.Public | BindingFlags.Instance) != null;
+        private static PropertyInfo Property(object target, string name) => target.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.Instance)
+            ?? throw new NotSupportedException("Installed Unified API does not expose " + target.GetType().FullName + "." + name);
+        private static object Get(object target, string name) => Property(target, name).GetValue(target, null)!;
+        private static IEnumerable<object> Each(object composition) => ((IEnumerable)composition).Cast<object>();
+
+        internal sealed class NamedObject
+        {
+            public string Path = "";
+            public object Native = null!;
+            public string Name => (string)Get(Native, "Name");
+        }
+
+        public static IList<NamedObject> Screens(object software)
+        {
+            if (!CanInspect(software)) throw new NotSupportedException("This installed Unified API does not expose screen discovery.");
+            var result = new List<NamedObject>();
+            AddScreens(software, "", result);
+            foreach (object group in Each(Get(software, "ScreenGroups"))) AddGroup(group, "groups", result, 0);
+            if (result.GroupBy(s => s.Path, StringComparer.Ordinal).Any(g => g.Count() > 1)) throw new InvalidOperationException("Ambiguous Unified screen paths.");
+            return result;
+        }
+        private static void AddScreens(object owner, string prefix, List<NamedObject> result)
+        {
+            foreach (object screen in Each(Get(owner, "Screens")))
+                result.Add(new NamedObject { Path = prefix + "screens/" + Uri.EscapeDataString((string)Get(screen, "Name")), Native = screen });
+        }
+        private static void AddGroup(object group, string prefix, List<NamedObject> result, int depth)
+        {
+            if (depth >= 32) throw new InvalidOperationException("Unified screen group nesting exceeds 32 levels.");
+            string path = prefix + "/" + Uri.EscapeDataString((string)Get(group, "Name")) + "/";
+            AddScreens(group, path, result);
+            foreach (object child in Each(Get(group, "Groups"))) AddGroup(child, path + "groups", result, depth + 1);
+        }
+        public static object FindScreen(object software, string path) => Screens(software).SingleOrDefault(s => s.Path == path)?.Native
+            ?? throw new InvalidOperationException("Unified screen path does not exist. Use hmi_list_screens.");
+
+        public static IList<NamedObject> Items(object screen)
+        {
+            var items = Each(Get(screen, "ScreenItems")).Select(item => new NamedObject {
+                Path = "items/" + Uri.EscapeDataString((string)Get(item, "Name")), Native = item }).ToList();
+            if (items.GroupBy(i => i.Path, StringComparer.Ordinal).Any(g => g.Count() > 1)) throw new InvalidOperationException("Ambiguous Unified screen item paths.");
+            return items;
+        }
+        public static object FindObject(object software, string screenPath, string itemPath)
+        {
+            object screen = FindScreen(software, screenPath);
+            return itemPath.Length == 0 ? screen : Items(screen).SingleOrDefault(i => i.Path == itemPath)?.Native
+                ?? throw new InvalidOperationException("Unified item path does not exist. Use hmi_list_screen_items.");
+        }
+
+        public static UnifiedObjectState Read(object target, string hmiId, string screenPath, string itemPath)
+        {
+            var state = new UnifiedObjectState { HmiId = hmiId, ScreenPath = screenPath, ItemPath = itemPath, NativeType = target.GetType().FullName! };
+            // Failure to read bindings is an error, never permission to overwrite them.
+            state.DynamizedProperties = Each(Get(target, "Dynamizations")).Select(d => (string)Get(d, "PropertyName")).OrderBy(p => p, StringComparer.Ordinal).ToArray();
+            var scalars = new List<UnifiedScalar>();
+            foreach (string name in UnifiedScalarCodec.Allowed.OrderBy(n => n, StringComparer.Ordinal))
+            {
+                PropertyInfo? property = target.GetType().GetProperty(name);
+                if (property == null || !UnifiedScalarCodec.Types.Contains(property.PropertyType.FullName!)) continue;
+                scalars.Add(new UnifiedScalar { Property = name, Type = property.PropertyType.FullName!, Value = UnifiedScalarCodec.Format(property.GetValue(target, null)!),
+                    Editable = property.CanWrite && !state.IsDynamic(name) });
+            }
+            state.Scalars = scalars.ToArray();
+            var texts = new List<UnifiedText>();
+            foreach (string name in UnifiedTextCodec.Allowed.OrderBy(n => n, StringComparer.Ordinal))
+            {
+                PropertyInfo? property = target.GetType().GetProperty(name);
+                if (property == null || property.PropertyType != typeof(MultilingualText)) continue;
+                var multilingual = (MultilingualText)property.GetValue(target, null)!;
+                foreach (MultilingualTextItem item in multilingual.Items)
+                {
+                    string native = item.Text ?? "";
+                    string? text;
+                    bool simple = UnifiedTextCodec.TryRead(native, out text);
+                    texts.Add(new UnifiedText { Property = name, Culture = item.Language.Culture.Name, NativeText = native, Text = text,
+                        Editable = simple && !state.IsDynamic(name) });
+                }
+            }
+            if (texts.GroupBy(t => t.Property + "\0" + t.Culture.ToLowerInvariant(), StringComparer.Ordinal).Any(g => g.Count() > 1))
+                throw new InvalidOperationException("Duplicate native Unified text languages.");
+            state.Texts = texts.OrderBy(t => t.Property, StringComparer.Ordinal).ThenBy(t => t.Culture, StringComparer.Ordinal).ToArray();
+            return state;
+        }
+
+        public static void WriteChanged(object target, UnifiedObjectState before, UnifiedObjectState candidate)
+        {
+            foreach (var scalar in candidate.Scalars)
+            {
+                var old = before.Scalars.Single(s => s.Property == scalar.Property);
+                if (old.Value == scalar.Value) continue;
+                if (!old.Editable || before.IsDynamic(scalar.Property)) throw new InvalidOperationException("Native scalar is not editable.");
+                Property(target, scalar.Property).SetValue(target, UnifiedScalarCodec.Parse(scalar.Value, scalar.Type), null);
+            }
+            foreach (var text in candidate.Texts)
+            {
+                var old = before.Texts.Single(t => t.Property == text.Property && t.Culture == text.Culture);
+                if (old.NativeText == text.NativeText) continue;
+                if (!old.Editable || before.IsDynamic(text.Property)) throw new InvalidOperationException("Native text is not editable.");
+                var multilingual = (MultilingualText)Get(target, text.Property);
+                var item = multilingual.Items.Cast<MultilingualTextItem>().Single(t => string.Equals(t.Language.Culture.Name, text.Culture, StringComparison.Ordinal));
+                item.Text = text.NativeText;
+            }
+        }
+    }
+}

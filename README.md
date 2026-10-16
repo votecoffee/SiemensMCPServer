@@ -2,6 +2,12 @@
 
 WinForms utility for classic WinCC Comfort / Advanced projects through the Siemens TIA Portal Openness API.
 
+## Codex / MCP integration
+
+The repository also contains a local .NET Framework 4.8 MCP server with 41 tools. Comfort/classic V15.1 is the primary profile, with dedicated native XML scalar editing, text-list editing, object/resource tools and bulk transfers. Unified retains version-specific capabilities. Siemens PLC tools add offline blocks/data types/tags, native XML import/export, SCL/STL generation and compile diagnostics. Mutations use hash-bound previews and Siemens transactions; saving remains explicit. See [feature coverage](plugin/FEATURE-COVERAGE.md) for implemented routes and native-validation limits. Native write acceptance is pending. The WinForms desktop UI remains classic-only.
+
+See [the plugin guide](plugin/README.md) for supported scope, build and installation commands, and the native acceptance boundary. Build a distributable plugin with `powershell -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1`. The server is an additional executable; the existing desktop workflow remains available.
+
 The source is version-neutral across the classic monolithic Openness API used by TIA Portal V15.1 through V20. The build selects the API version to compile against, and the application resolves that API at runtime from an installed TIA Portal version.
 
 ## Supported TIA Portal versions
@@ -23,30 +29,30 @@ The Siemens DLL references use `Copy Local = False`; Siemens DLLs are not redist
 
 ## Build
 
-Open `SiemensTiaOpenness.sln` and build x64.
+Open `SiemensTiaOpenness.sln`, restore NuGet packages, and build. Both application executables target x64. The MCP project also requires a .NET 8 or newer SDK; building the original `SiemensTiaOpenness.csproj` alone does not require the MCP SDK packages.
 
 The default compile-time API is V15.1. To build against another installed Openness API, set `TiaPortalVersion`:
 
 ```bat
-msbuild SiemensTiaOpenness.sln /p:Configuration=Release /p:TiaPortalVersion=V17
+msbuild SiemensTiaOpenness.sln /restore /p:Configuration=Release /p:TiaPortalVersion=V17
 ```
 
 TIA Portal V21 uses its modular net48 assemblies automatically:
 
 ```bat
-msbuild SiemensTiaOpenness.sln /p:Configuration=Release /p:TiaPortalVersion=V21
+msbuild SiemensTiaOpenness.sln /restore /p:Configuration=Release /p:TiaPortalVersion=V21
 ```
 
 If the API DLL comes from a newer installed TIA version, also set `TiaPortalInstallVersion`. For example, TIA Portal V20 can provide its retained V17 API:
 
 ```bat
-msbuild SiemensTiaOpenness.sln /p:Configuration=Release /p:TiaPortalVersion=V17 /p:TiaPortalInstallVersion=V20
+msbuild SiemensTiaOpenness.sln /restore /p:Configuration=Release /p:TiaPortalVersion=V17 /p:TiaPortalInstallVersion=V20
 ```
 
 You can also point directly at a PublicAPI directory:
 
 ```bat
-msbuild SiemensTiaOpenness.sln /p:Configuration=Release /p:TiaPublicApiDir="C:\Program Files\Siemens\Automation\Portal V20\PublicAPI\V17"
+msbuild SiemensTiaOpenness.sln /restore /p:Configuration=Release /p:TiaPublicApiDir="C:\Program Files\Siemens\Automation\Portal V20\PublicAPI\V17"
 ```
 
 The build fails with a clear message if the requested `Siemens.Engineering.dll` or `Siemens.Engineering.Hmi.dll` cannot be found.
@@ -168,7 +174,7 @@ For that reason, Complete HMI import uses dependency order rather than alphabeti
 
 ## Important limitations
 
-- This tool targets classic WinCC HMI (`Siemens.Engineering.Hmi.HmiTarget`), not WinCC Unified.
+- The desktop UI targets classic WinCC (`Siemens.Engineering.Hmi.HmiTarget`). The MCP server additionally discovers Unified `HmiSoftware` and exposes only the operations supported by its loaded API; see the plugin guide for version and native-validation limits.
 - Pre-V21 and V21 builds use different Siemens assembly families and are not interchangeable at runtime.
 - Screen imports require a compatible HMI device type and valid screen dimensions/numbers.
 - Integrated HMI connections are not exportable through this classic connection export mechanism.

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "siemens-tia-openness": {
+      "command": "${PLUGIN_ROOT}/server/SiemensTiaOpenness.Mcp.exe",
+      "args": ["--allow-writes"],
+      "cwd": "${PLUGIN_ROOT}"
+    }
+  }
+}
