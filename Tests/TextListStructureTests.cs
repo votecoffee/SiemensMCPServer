@@ -23,6 +23,17 @@ public sealed class TextListStructureTests
         Assert.Equal(ids.Length, ids.Distinct(StringComparer.OrdinalIgnoreCase).Count());
         Assert.Contains("Fallback", after.ToXml());
     }
+    [Fact] public void NativeParagraphEntriesAndTranslationsRetainMarkup()
+    {
+        var before = new TextListDocument(TextListTests.NativePlainFixture());
+        var added = before.ChangeStructure(new[] { Add() }, Active);
+        Assert.Equal("New <entry> 🟢", added.Read().Single(v => v.Entry == "8" && v.Culture == "en-US").Text);
+        Assert.All(XDocument.Parse(added.ToXml()).Descendants("Text"), text => Assert.NotNull(text.Element("body")?.Element("p")));
+        var translated = added.ChangeStructure(new[] { new ClassicTextListChange { Action = "addTranslation", Entry = "8", Culture = "de-DE", TemplateCulture = "en-US", Text = "Neu & ä" } }, Active);
+        Assert.Equal("Neu & ä", translated.Read().Single(v => v.Entry == "8" && v.Culture == "de-DE").Text);
+        var removed = translated.ChangeStructure(new[] { new ClassicTextListChange { Action = "removeTranslation", Entry = "8", Culture = "de-DE", ExpectedText = "Neu & ä" } }, Active);
+        Assert.Equal(added.Fingerprint, removed.Fingerprint);
+    }
     [Fact] public void EntryRemovalRequiresExactFingerprintAndPreservesDefault()
     {
         var before = new TextListDocument(TextListTests.Fixture());

@@ -66,7 +66,7 @@ namespace SiemensTiaOpenness
                         var added = ClonePlain(template, candidate.document);
                         added.Element("AttributeList")!.Element("From")!.Value = change.Entry;
                         added.Element("AttributeList")!.Element("To")!.Value = change.Entry;
-                        foreach (var item in Items(added)) item.Element("Text")!.Value = translations[(string)item.Element("Culture")!];
+                        foreach (var item in Items(added)) PlainTextLeaf(item.Element("Text"))!.Value = translations[(string)item.Element("Culture")!];
                         template.Parent!.Add(added); break;
                     case "removeEntry":
                         if (entry == null) throw new InvalidOperationException("Entry does not exist.");
@@ -88,12 +88,12 @@ namespace SiemensTiaOpenness
                             VerifyText(change.Text);
                             var item = ClonePlain(source.Parent!, candidate.document);
                             item.Element("AttributeList")!.Element("Culture")!.Value = culture.Name;
-                            item.Element("AttributeList")!.Element("Text")!.Value = change.Text;
+                            PlainTextLeaf(item.Element("AttributeList")!.Element("Text"))!.Value = change.Text;
                             source.Parent!.Parent!.Add(item);
                         }
                         else
                         {
-                            if (existing == null || existing.Element("Text")!.Value != change.ExpectedText) throw new InvalidOperationException("Translation is missing or its expected text differs.");
+                            if (existing == null || PlainTextLeaf(existing.Element("Text"))!.Value != change.ExpectedText) throw new InvalidOperationException("Translation is missing or its expected text differs.");
                             if (Items(entry).Count() <= 1) throw new InvalidOperationException("Cannot remove the last translation from an entry.");
                             existing.Parent!.Remove();
                         }
@@ -111,7 +111,7 @@ namespace SiemensTiaOpenness
             return translations.ToDictionary(t => t.Culture, t => t.Text, StringComparer.OrdinalIgnoreCase);
         }
         private static bool Plain(XElement entry) => IsSingle(entry) && !entry.Descendants("LinkList").Any() && !entry.DescendantsAndSelf().Attributes().Any(a => a.Name.LocalName == "TargetID" || a.Name.LocalName == "UId")
-            && Items(entry).Any() && Items(entry).All(i => i.Element("Text") != null && !i.Element("Text")!.HasElements);
+            && Items(entry).Any() && Items(entry).All(i => PlainTextLeaf(i.Element("Text")) != null);
         private static void RequirePlain(XElement entry)
         {
             if (EntryKey(entry) == "Default" || !Plain(entry)) throw new NotSupportedException("Structure changes require an ordinary plain SingleValue entry. Default, range, formatted and linked entries are protected.");

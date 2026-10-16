@@ -77,7 +77,7 @@ public sealed class TextListTests
     public void RejectsFormattedTextAndRangesWithoutChangingSource()
     {
         var xml = XDocument.Parse(Fixture());
-        xml.Descendants("Text").First().ReplaceNodes(new XElement("body", new XElement("p", "styled")));
+        xml.Descendants("Text").First().ReplaceNodes(new XElement("body", new XElement("p", new XElement("span", "styled"))));
         var rich = new TextListDocument(xml.ToString());
         Assert.False(rich.Read().First().Editable);
         Assert.Throws<InvalidOperationException>(() => rich.Edit(new[] { Edit() }));
@@ -86,6 +86,43 @@ public sealed class TextListTests
         var range = new TextListDocument(xml.ToString());
         var edit = Edit(); edit.Entry = "7..8";
         Assert.Throws<InvalidOperationException>(() => range.Edit(new[] { edit }));
+    }
+
+    internal static string NativePlainFixture()
+    {
+        var xml = XDocument.Parse(Fixture());
+        foreach (var text in xml.Descendants("Text")) text.ReplaceNodes(new XElement("body", new XElement("p", text.Value)));
+        return xml.ToString();
+    }
+
+    [Fact]
+    public void NativeV151PlainParagraphEditsPreserveWrapperAndOtherLanguages()
+    {
+        var source = new TextListDocument(NativePlainFixture());
+        Assert.True(source.Read().First().Editable);
+        Assert.Equal("Old & ready", source.Read().First().Text);
+        var edited = source.Edit(new[] { Edit("New “ready” & café") });
+        Assert.Equal("New “ready” & café", edited.Read().First().Text);
+        var expected = XDocument.Parse(source.ToXml());
+        expected.Descendants("p").First().Value = "New “ready” & café";
+        Assert.True(XNode.DeepEquals(expected, XDocument.Parse(edited.ToXml())));
+        Assert.Equal(source.Fingerprint, edited.Edit(new[] { new TextEdit { Entry = "7", Culture = "en-US", ExpectedText = "New “ready” & café", NewText = "Old & ready" } }).Fingerprint);
+    }
+
+    [Theory]
+    [InlineData("<body><p style='color:red'>styled</p></body>")]
+    [InlineData("<body><p><span>run</span></p></body>")]
+    [InlineData("<body><p>one</p><p>two</p></body>")]
+    [InlineData("<body><p>caption<field>dynamic</field></p></body>")]
+    [InlineData("<body><p>caption</p></body><unknown />")]
+    [InlineData("<body><!-- annotation --><p>caption</p></body>")]
+    public void UnsupportedNativeMarkupRemainsReadOnly(string markup)
+    {
+        var xml = XDocument.Parse(Fixture());
+        xml.Descendants("Text").First().ReplaceNodes(XElement.Parse("<Text>" + markup + "</Text>").Nodes());
+        var source = new TextListDocument(xml.ToString());
+        Assert.False(source.Read().First().Editable);
+        Assert.Throws<InvalidOperationException>(() => source.Edit(new[] { Edit() }));
     }
 
     [Fact]

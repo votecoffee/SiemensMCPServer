@@ -76,8 +76,8 @@ namespace SiemensTiaOpenness
         {
             return Entries().SelectMany(entry => Items(entry).Select(item => new TextValue {
                 Entry = EntryKey(entry), Culture = (string)item.Element("Culture"),
-                Text = item.Element("Text").HasElements ? item.Element("Text").ToString(SaveOptions.DisableFormatting) : item.Element("Text").Value,
-                Editable = IsSingle(entry) && !item.Element("Text").HasElements
+                Text = PlainTextLeaf(item.Element("Text"))?.Value ?? item.Element("Text").ToString(SaveOptions.DisableFormatting),
+                Editable = IsSingle(entry) && PlainTextLeaf(item.Element("Text")) != null
             })).ToArray();
         }
 
@@ -97,8 +97,8 @@ namespace SiemensTiaOpenness
                 if (entry == null || !IsSingle(entry))
                     throw new InvalidOperationException("Entry does not exist or is not SingleValue: " + edit.Entry);
                 var item = Items(entry).SingleOrDefault(a => string.Equals((string)a.Element("Culture"), edit.Culture, StringComparison.OrdinalIgnoreCase));
-                var text = item?.Element("Text");
-                if (text == null || text.HasElements)
+                var text = PlainTextLeaf(item?.Element("Text"));
+                if (text == null)
                     throw new InvalidOperationException("Culture does not exist or contains formatted/dynamic text; native handling is required.");
                 if (text.Value != edit.ExpectedText)
                     throw new InvalidOperationException("Expected text does not match entry " + edit.Entry + ", culture " + edit.Culture);
@@ -115,6 +115,22 @@ namespace SiemensTiaOpenness
         {
             return entry.Elements("ObjectList").Elements("MultilingualText").Where(e => (string)e.Attribute("CompositionName") == "Text")
                 .Elements("ObjectList").Elements("MultilingualTextItem").Elements("AttributeList");
+        }
+        // Native V15.1 plain captions have a body/p wrapper. Edit its text leaf
+        // without flattening markup; styled, multi-paragraph and dynamic runs stay protected.
+        private static XElement PlainTextLeaf(XElement text)
+        {
+            if (text == null || text.HasAttributes) return null;
+            if (!text.HasElements) return text.Nodes().All(n => n is XText) ? text : null;
+            var body = SinglePlainChild(text, "body");
+            var paragraph = body == null ? null : SinglePlainChild(body, "p");
+            return paragraph != null && !paragraph.HasAttributes && paragraph.Nodes().All(n => n is XText) ? paragraph : null;
+        }
+        private static XElement SinglePlainChild(XElement parent, string name)
+        {
+            if (parent.HasAttributes) return null;
+            var children = parent.Elements().ToArray();
+            return children.Length == 1 && children[0].Name == name && parent.Nodes().All(n => n is XElement || n is XText t && string.IsNullOrWhiteSpace(t.Value)) ? children[0] : null;
         }
         private static bool IsSingle(XElement entry)
         {
