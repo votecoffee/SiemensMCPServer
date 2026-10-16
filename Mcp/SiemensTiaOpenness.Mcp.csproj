@@ -26,4 +26,10 @@
     <Compile Include="../TiaPortalAssemblyResolver.cs" Link="Shared/TiaPortalAssemblyResolver.cs" />
     <Compile Include="../Shared/*.cs" Link="Shared/%(Filename)%(Extension)" />
   </ItemGroup>
+  <Target Name="BuildFeatureExtensions" AfterTargets="Build" Condition="'$(StageFeatureExtensions)' != 'false'">
+    <Exec Command="powershell.exe -NoProfile -File &quot;$(MSBuildProjectDirectory)\..\build\Build-Extensions.ps1&quot; -Destination &quot;$(TargetDir)extensions&quot; -Configuration &quot;$(Configuration)&quot;" />
+  </Target>
+  <Target Name="PublishFeatureExtensions" AfterTargets="Publish" Condition="'$(StageFeatureExtensions)' != 'false'">
+    <Exec Command="powershell.exe -NoProfile -File &quot;$(MSBuildProjectDirectory)\..\build\Build-Extensions.ps1&quot; -Destination &quot;$(PublishDir)extensions&quot; -Configuration &quot;$(Configuration)&quot;" />
+  </Target>
 </Project>

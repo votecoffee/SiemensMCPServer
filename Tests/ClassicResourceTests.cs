@@ -97,6 +97,18 @@ public sealed class ClassicResourceTests
         workflow.Apply(id, hash); Assert.Equal(1, fixture.Attempts);
         Assert.Throws<InvalidOperationException>(() => workflow.Apply(id, hash));
     }
+    [Fact] public void BrokerRejectsExtensionIdentityAndSlideinEdgeChanges()
+    {
+        using var fixture = new Fixture(); var workflow = new ClassicXmlWorkflow(fixture, fixture.Plans);
+        var before = fixture.ReadClassicResource("hmi", "screen");
+        Assert.Throws<InvalidOperationException>(() => workflow.PreviewTransformed("hmi", "screen", before.Fingerprint,
+            xml => xml.Replace("<Name>Screen1</Name>", "<Name>Renamed</Name>"), new { }));
+        File.WriteAllText(Path.Combine(before.Directory, before.XmlFile), "<Document><Hmi.Screen.ScreenSlidein><AttributeList><SlideinType>Left</SlideinType><GridColor>0</GridColor></AttributeList></Hmi.Screen.ScreenSlidein></Document>");
+        before = fixture.ReadClassicResource("hmi", "screen");
+        Assert.Throws<InvalidOperationException>(() => workflow.PreviewTransformed("hmi", "screen", before.Fingerprint,
+            xml => xml.Replace("<SlideinType>Left</SlideinType>", "<SlideinType>Right</SlideinType>"), new { }));
+        Assert.Equal(0, fixture.Attempts);
+    }
     [Fact] public void ChangedCandidateOrSidecarCannotReachNativeBackend()
     {
         using var fixture = new Fixture(); var workflow = new ClassicXmlWorkflow(fixture, fixture.Plans);

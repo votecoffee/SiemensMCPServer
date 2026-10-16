@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using SiemensTiaOpenness.Extensions;
 
 namespace SiemensTiaOpenness.Mcp
 {
@@ -17,8 +18,9 @@ namespace SiemensTiaOpenness.Mcp
     {
         private readonly ITextListBackend backend;
         private readonly string root;
+        private readonly IFeatureEngine features;
         private readonly Dictionary<string, Plan> pending = new Dictionary<string, Plan>();
-        public TextListWorkflow(ITextListBackend backend, string root) { this.backend = backend; this.root = root; }
+        public TextListWorkflow(ITextListBackend backend, string root, IFeatureEngine? features = null) { this.backend = backend; this.root = root; this.features = features ?? new LocalFeatureEngine(); }
 
         public object Preview(string hmiId, string listName, string expectedFingerprint, TextEdit[] edits)
         {
@@ -26,7 +28,8 @@ namespace SiemensTiaOpenness.Mcp
             string originalXml = backend.ReadTextList(hmiId, listName);
             var before = TextListDocuments.Parse(originalXml);
             RequireFingerprint(before, expectedFingerprint);
-            var after = before.Edit(edits);
+            var reply = features.Execute(before is TextListDocument ? "comfort" : "unified", "edit_text_list", new { snapshot = originalXml, arguments = new { edits } });
+            var after = TextListDocuments.Parse(reply.GetProperty("candidate").GetString()!);
             var diff = edits.Select(e => new { entry = e.Entry, culture = e.Culture, before = e.ExpectedText, after = e.NewText }).ToArray();
             return Stage(hmiId, listName, originalXml, before, after, diff);
         }
@@ -37,12 +40,14 @@ namespace SiemensTiaOpenness.Mcp
             string originalXml = backend.ReadTextList(hmiId, listName);
             if (!(TextListDocuments.Parse(originalXml) is TextListDocument before)) throw new NotSupportedException("Structured entry/translation operations require a classic HMI text list.");
             RequireFingerprint(before, expectedFingerprint);
-            var after = before.ChangeStructure(changes, activeCultures);
+            var reply = features.Execute("comfort", "change_text_list", new { snapshot = originalXml, arguments = new { changes, activeCultures } });
+            var after = new TextListDocument(reply.GetProperty("candidate").GetString()!);
             return Stage(hmiId, listName, originalXml, before, after, new { operations = changes, before = before.Structure(), after = after.Structure(), beforeValues = before.Read(), afterValues = after.Read(), activeProjectCultures = activeCultures });
         }
 
         private object Stage(string hmiId, string listName, string originalXml, ITextListDocument before, ITextListDocument after, object diff)
         {
+            if (before.Name != after.Name || before.ArtifactExtension != after.ArtifactExtension) throw new InvalidOperationException("Extension cannot change text-list identity or format.");
             if (after.Fingerprint == before.Fingerprint) throw new ArgumentException("The preview contains no changes.");
             string id = Guid.NewGuid().ToString("N");
             string directory = Path.Combine(root, id);

@@ -5,11 +5,16 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json;
+using SiemensTiaOpenness.Extensions;
 
 namespace SiemensTiaOpenness.Mcp
 {
     internal interface IHmiSession : IDisposable
     {
+        void InvalidatePreviews();
+        object PreviewExtension(string module, string operation, string targetId, string path, string fingerprint, JsonElement arguments);
+        object ApplyExtension(string id, string hash);
         object ListProcesses();
         object ApiCapabilities();
         object ListScreens(string hmiId);
@@ -55,14 +60,34 @@ namespace SiemensTiaOpenness.Mcp
         private IHmiSession? session;
         private string? requestedVersion;
         private int disposed;
+        private readonly ExtensionManager extensions;
 
-        public OpennessRuntime(string? version, string artifactRoot, bool allowWrites)
+        public OpennessRuntime(string? version, string artifactRoot, bool allowWrites, string? extensionsRoot = null)
         {
             requestedVersion = version; this.artifactRoot = Path.GetFullPath(artifactRoot); this.allowWrites = allowWrites;
+            extensions = new ExtensionManager(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "extensions"),
+                extensionsRoot ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SiemensTiaOpenness", "Extensions"),
+                Path.Combine(this.artifactRoot, "extension-workers"));
             thread = new Thread(Run) { IsBackground = true, Name = "TIA Openness STA" };
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
         }
+
+        public Task<object> ListExtensions(CancellationToken token) => Enqueue(() => extensions.List(), token);
+        public Task<object> ReloadExtensions(string module, CancellationToken token) => Enqueue(() => extensions.Reload(module, () => session?.InvalidatePreviews()), token);
+        private static JsonElement Arguments(string json)
+        {
+            if (json == null || json.Length > 16 * 1024 * 1024) throw new ArgumentException("Supply a bounded JSON arguments object.");
+            using (var doc = JsonDocument.Parse(json)) { if (doc.RootElement.ValueKind != JsonValueKind.Object) throw new ArgumentException("Extension arguments must be a JSON object."); return doc.RootElement.Clone(); }
+        }
+        public Task<object> ReadExtension(string module, string operation, string argumentsJson, CancellationToken token) => Enqueue(() => {
+            var descriptor = extensions.Operation(module, operation);
+            if (descriptor.Preview || descriptor.Route != "local") throw new ArgumentException("Use a preview for this extension operation.");
+            var data = extensions.Execute(module, operation, Arguments(argumentsJson));
+            return (object)new { extension = extensions.Identity(module), data };
+        }, token);
+        public Task<object> PreviewExtension(string module, string operation, string targetId, string path, string fingerprint, string argumentsJson, CancellationToken token)
+            => Enqueue(() => EnsureSession().PreviewExtension(module, operation, targetId, path, fingerprint, Arguments(argumentsJson)), token);
 
         public Task<object> Versions(CancellationToken token) => Enqueue(() => (object)new {
             referencedApi = TiaPortalAssemblyResolver.ReferencedApiVersion,
@@ -96,12 +121,12 @@ namespace SiemensTiaOpenness.Mcp
             string? selected = string.IsNullOrWhiteSpace(requestedVersion) ? (versions.Count == 1 ? versions[0] : null) : Normalize(requestedVersion!);
             if (selected == null) throw new InvalidOperationException("Select a compatible engineering version with tia_select_version first.");
             TiaPortalAssemblyResolver.Initialize(selected);
-            session = CreateSession(artifactRoot);
+            session = CreateSession(artifactRoot, extensions);
             return session;
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static IHmiSession CreateSession(string root) => new HmiSession(root);
+        private static IHmiSession CreateSession(string root, IFeatureEngine features) => new HmiSession(root, features);
 
         private Task<object> Enqueue(Func<object> operation, CancellationToken token)
         {
@@ -118,7 +143,7 @@ namespace SiemensTiaOpenness.Mcp
         private void Run()
         {
             try { foreach (Action action in queue.GetConsumingEnumerable()) action(); }
-            finally { session?.Dispose(); }
+            finally { try { session?.Dispose(); } finally { extensions.Dispose(); } }
         }
 
         private static string Normalize(string version)

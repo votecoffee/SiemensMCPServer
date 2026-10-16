@@ -20,6 +20,28 @@ namespace SiemensTiaOpenness.Mcp
         private readonly OpennessRuntime runtime;
         public McpTools(OpennessRuntime runtime) { this.runtime = runtime; }
 
+        [McpServerTool(Name = "tia_list_extensions", ReadOnly = true, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
+        [Description("List trusted feature extensions, loaded versions, worker/host process IDs, generation IDs and operation input schemas. Starts pure workers as needed; does not load Siemens APIs or attach to TIA. Existing dedicated tools use these same workers.")]
+        public Task<CallToolResult> Extensions(CancellationToken token) => Result(() => runtime.ListExtensions(token));
+
+        [McpServerTool(Name = "tia_reload_extensions", ReadOnly = false, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
+        [Description("Reload a staged trusted extension by module name; empty module reloads all. Waits behind active broker operations, verifies payload hashes/protocol and stages replacement workers before an atomic switch. Successful reload invalidates ALL outstanding previews; failed reload keeps existing workers/previews. Preserves TIA attachment and unsaved engineering changes. Does not save or change the project. External versions are selected by active.json under the configured extension root.")]
+        public Task<CallToolResult> ReloadExtensions(string module, CancellationToken token) => Result(() => runtime.ReloadExtensions(module, token));
+
+        [McpServerTool(Name = "tia_read_extension", ReadOnly = true, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
+        [Description("Run an extension's advertised local inspection operation using argumentsJson as a JSON object matching its input schema. No native project access or arbitrary command execution route. Use tia_list_extensions to discover operations.")]
+        public Task<CallToolResult> ReadExtension(string module, string operation, string argumentsJson, CancellationToken token) => Result(() => runtime.ReadExtension(module, operation, argumentsJson, token));
+
+        [McpServerTool(Name = "tia_preview_extension", ReadOnly = false, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
+        [Description("Preview an advertised extension operation against an exact attached target and read fingerprint. argumentsJson must match its schema. Classic XML uses targetId=hmiId and resource path. Unified uses path=arguments.screenPath plus arguments.itemPath. PLC source uses targetId=plcId and empty path. Host retains identity/offline checks, candidate files, hashes and native transactions; workers receive serialized snapshots only. Does not change TIA. Returns a generation-bound plan for tia_apply_extension_plan.")]
+        public Task<CallToolResult> PreviewExtension(string module, string operation, string targetId, string path, string expectedFingerprint, string argumentsJson, CancellationToken token)
+            => Result(() => runtime.PreviewExtension(module, operation, targetId, path, expectedFingerprint, argumentsJson, token));
+
+        [McpServerTool(Name = "tia_apply_extension_plan", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
+        [Description("Apply an authorized extension preview once with its plan ID and candidate hash. Rejects reloaded generations and delegates to the broker's existing native transaction/readback guards. Requires --allow-writes. Does not save; compile/save remain separate.")]
+        public Task<CallToolResult> ApplyExtension(string planId, string candidateSha256, CancellationToken token)
+            => Result(() => runtime.Invoke(s => s.ApplyExtension(planId, candidateSha256), token, writes: true));
+
         [McpServerTool(Name = "tia_list_versions", ReadOnly = true, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
         [Description("List installed TIA versions compatible with this server build, the selected API, and whether writes are enabled.")]
         public Task<CallToolResult> Versions(CancellationToken token) => Result(() => runtime.Versions(token));

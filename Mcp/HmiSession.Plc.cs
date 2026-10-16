@@ -74,8 +74,10 @@ namespace SiemensTiaOpenness.Mcp
         public object PreviewPlcSource(string plcId, string fingerprint, string name, string language, string code, bool allowBlockReplacement)
         {
             FindPlcReference(plcId);
+            var reply = features.Execute("plc", "prepare_source", new { arguments = new { name, language, code, allowBlockReplacement } });
+            var source = SiemensTiaOpenness.Extensions.ExtensionWire.Parse<PlcSourceInput>(reply.GetProperty("source"));
             string directory = Path.Combine(artifactRoot, "plc-source-candidates", Guid.NewGuid().ToString("N"));
-            PlcSourceFiles.Write(directory, new PlcSourceInput { Name = name, Language = language, Code = code, AllowBlockReplacement = allowBlockReplacement });
+            PlcSourceFiles.Write(directory, source);
             return PreviewPlc("source", plcId, "", fingerprint, null, "", null, directory, true);
         }
         private object ValidatePlcSource(EngineeringPlan plan, string directory)

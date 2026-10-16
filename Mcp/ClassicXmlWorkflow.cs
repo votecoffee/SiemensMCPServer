@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using SiemensTiaOpenness.Extensions;
 
 namespace SiemensTiaOpenness.Mcp
 {
@@ -25,36 +26,40 @@ namespace SiemensTiaOpenness.Mcp
     {
         private readonly IClassicResourceBackend backend;
         private readonly string root;
+        private readonly IFeatureEngine features;
         private readonly Dictionary<string, Plan> plans = new Dictionary<string, Plan>();
-        public ClassicXmlWorkflow(IClassicResourceBackend backend, string root) { this.backend = backend; this.root = root; }
+        public ClassicXmlWorkflow(IClassicResourceBackend backend, string root, IFeatureEngine? features = null) { this.backend = backend; this.root = root; this.features = features ?? new LocalFeatureEngine(); }
         public object Read(string hmiId, string path)
         {
             var resource = backend.ReadClassicResource(hmiId, path);
             string xml = File.ReadAllText(System.IO.Path.Combine(resource.Directory, resource.XmlFile), Encoding.UTF8);
             if (xml.Length > 16 * 1024 * 1024) throw new InvalidOperationException("Resource XML exceeds the 16 MiB read limit; use native export files.");
-            var document = new ClassicXmlDocument(xml);
-            return new { hmiId, path, fingerprint = resource.Fingerprint, document.Name, document.NativeType, resource.Editable, xml, scalarCatalog = document.Catalog(resource.Editable), behaviorCatalog = document.BehaviorCatalog(resource.Editable),
+            var document = ExtensionWire.Parse<ClassicInspection>(features.Execute("comfort", "inspect_xml", new { xml, editable = resource.Editable }));
+            return new { hmiId, path, fingerprint = resource.Fingerprint, document.Name, document.NativeType, resource.Editable, xml, scalarCatalog = document.ScalarCatalog, behaviorCatalog = document.BehaviorCatalog,
                 artifactDirectory = resource.Directory, files = TransferFiles.Inventory(resource.Directory) };
         }
         public object Preview(string hmiId, string path, string fingerprint, ClassicXmlEdit[] edits)
+            => PreviewTransformed(hmiId, path, fingerprint, xml => features.Execute("comfort", "edit_xml", new { snapshot = xml, arguments = new { edits } }).GetProperty("candidateXml").GetString()!, edits);
+
+        public object PreviewTransformed(string hmiId, string path, string fingerprint, Func<string, string> transform, object changes)
         {
             if (plans.Count >= 100) throw new InvalidOperationException("Too many previews; reattach to clear them.");
             var before = backend.ReadClassicResource(hmiId, path);
             if (!before.Editable) throw new InvalidOperationException("This classic resource is inspection-only.");
             if (before.Fingerprint != fingerprint) throw new InvalidOperationException("Classic resource changed; read it again.");
-            var document = new ClassicXmlDocument(File.ReadAllText(System.IO.Path.Combine(before.Directory, before.XmlFile), Encoding.UTF8));
-            string candidate = document.Edit(edits);
-            return Stage(before, fingerprint, candidate, edits);
-        }
-        public object PreviewBehaviors(string hmiId, string path, string fingerprint, ClassicBehaviorChange[] changes)
-        {
-            if (plans.Count >= 100) throw new InvalidOperationException("Too many previews; reattach to clear them.");
-            var before = backend.ReadClassicResource(hmiId, path);
-            if (!before.Editable || before.Fingerprint != fingerprint) throw new InvalidOperationException("Classic resource changed or is inspection-only.");
-            var document = new ClassicXmlDocument(File.ReadAllText(System.IO.Path.Combine(before.Directory, before.XmlFile), Encoding.UTF8));
-            string candidate = document.ChangeBehaviors(changes);
+            string original = File.ReadAllText(System.IO.Path.Combine(before.Directory, before.XmlFile), Encoding.UTF8);
+            string candidate = transform(original);
+            if (candidate == null || candidate.Length > 16 * 1024 * 1024) throw new ArgumentException("Extension candidate XML exceeds the resource limit.");
+            var baseline = new ClassicXmlDocument(original); var updated = new ClassicXmlDocument(candidate);
+            if (baseline.Name != updated.Name || baseline.NativeType != updated.NativeType) throw new InvalidOperationException("Extension cannot change resource identity.");
+            if (baseline.NativeType == "Hmi.Screen.ScreenSlidein"
+                && TransferFiles.Xml(original).Root!.Element(baseline.NativeType)?.Element("AttributeList")?.Element("SlideinType")?.Value
+                    != TransferFiles.Xml(candidate).Root!.Element(updated.NativeType)?.Element("AttributeList")?.Element("SlideinType")?.Value)
+                throw new InvalidOperationException("Extension cannot change slide-in edge identity.");
             return Stage(before, fingerprint, candidate, changes);
         }
+        public object PreviewBehaviors(string hmiId, string path, string fingerprint, ClassicBehaviorChange[] changes)
+            => PreviewTransformed(hmiId, path, fingerprint, xml => features.Execute("comfort", "change_behaviors", new { snapshot = xml, arguments = new { changes } }).GetProperty("candidateXml").GetString()!, changes);
         private object Stage(ClassicResource before, string fingerprint, string candidate, object changes)
         {
             string id = Guid.NewGuid().ToString("N"), directory = System.IO.Path.Combine(root, id);
@@ -62,6 +67,7 @@ namespace SiemensTiaOpenness.Mcp
             TransferFiles.Copy(before.Directory, files);
             File.WriteAllText(System.IO.Path.Combine(files, before.XmlFile), candidate, new UTF8Encoding(false));
             TransferFiles.ValidateXmlCompanions(files);
+            if (TransferFiles.SemanticHash(files) == fingerprint) throw new ArgumentException("The extension preview contains no changes.");
             var plan = new Plan { Before = before, BeforeFingerprint = fingerprint, Directory = directory, Created = DateTime.UtcNow,
                 CandidateFingerprint = TransferFiles.SemanticHash(files), Hash = TransferFiles.Hash(TransferFiles.Inventory(files)) };
             var report = new { planId = id, hmiId = before.HmiId, path = before.Path, candidateSha256 = plan.Hash, beforeFingerprint = fingerprint,

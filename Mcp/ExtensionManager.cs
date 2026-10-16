@@ -160,20 +160,23 @@ namespace SiemensTiaOpenness.Mcp
         private readonly Dictionary<string, Active> active = new Dictionary<string, Active>(StringComparer.Ordinal);
         public ExtensionManager(string bundledRoot, string externalRoot, string cacheRoot, Func<ExtensionBundle, IExtensionWorker>? factory = null)
         { this.bundledRoot = Path.GetFullPath(bundledRoot); this.externalRoot = Path.GetFullPath(externalRoot); this.cacheRoot = Path.GetFullPath(cacheRoot); this.factory = factory ?? (b => new ExtensionWorker(b)); }
-        private Dictionary<string, string> Registry()
+        private Dictionary<string, string> Registry(string? root = null)
         {
-            string file = ExtensionBundle.SafePath(externalRoot, "active.json");
+            root = root ?? externalRoot;
+            string file = ExtensionBundle.SafePath(root, "active.json");
             if (!File.Exists(file)) return new Dictionary<string, string>(StringComparer.Ordinal);
             if ((File.GetAttributes(file) & FileAttributes.ReparsePoint) != 0 || new FileInfo(file).Length > 65536) throw new ArgumentException("Invalid extension registry.");
             var registry = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(file, Encoding.UTF8), JsonDefaults.Options) ?? throw new ArgumentException("Missing extension registry.");
             if (registry.Count > 16) throw new ArgumentException("At most 16 extension modules may be configured.");
-            foreach (var item in registry) { ExtensionBundle.ModuleName(item.Key); ExtensionBundle.SafePath(externalRoot, item.Value); }
+            foreach (var item in registry) { ExtensionBundle.ModuleName(item.Key); ExtensionBundle.SafePath(root, item.Value); }
             return registry;
         }
         private Active Load(string module, IDictionary<string, string> registry)
         {
             ExtensionBundle.ModuleName(module);
-            string source = registry.TryGetValue(module, out var relative) ? ExtensionBundle.SafePath(externalRoot, relative) : ExtensionBundle.SafePath(bundledRoot, module);
+            var bundled = Registry(bundledRoot);
+            string source = registry.TryGetValue(module, out var relative) ? ExtensionBundle.SafePath(externalRoot, relative)
+                : ExtensionBundle.SafePath(bundledRoot, bundled.TryGetValue(module, out var fallback) ? fallback : module);
             var original = ExtensionBundle.Read(source, module);
             string staged = ExtensionBundle.SafePath(cacheRoot, module + "/" + Guid.NewGuid().ToString("N"));
             TransferFiles.Copy(source, staged);

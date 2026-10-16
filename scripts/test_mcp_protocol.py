@@ -11,7 +11,7 @@ import threading
 def run(executable, native=False):
     with tempfile.TemporaryDirectory(prefix="tia-mcp-protocol-") as scratch:
         process = subprocess.Popen(
-            [str(Path(executable).resolve()), "--artifact-root=" + scratch],
+            [str(Path(executable).resolve()), "--artifact-root=" + scratch, "--extensions-root=" + str(Path(scratch)/"extensions")],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, encoding="utf-8", bufsize=1,
         )
@@ -70,12 +70,30 @@ def run(executable, native=False):
                         "plc_list_targets", "plc_read_object", "plc_read_resource", "plc_export_objects", "plc_preview_object_edits",
                         "plc_preview_create_object", "plc_preview_delete_object", "plc_preview_import", "plc_preview_xml_import",
                         "plc_preview_import_bundle", "plc_preview_generate_source", "plc_apply_object_plan", "plc_compile",
-                        "hmi_prepare_classic_export_bundle", "hmi_preview_classic_text_list_changes", "hmi_preview_classic_behavior_changes"}
+                        "hmi_prepare_classic_export_bundle", "hmi_preview_classic_text_list_changes", "hmi_preview_classic_behavior_changes",
+                        "tia_list_extensions", "tia_reload_extensions", "tia_read_extension", "tia_preview_extension", "tia_apply_extension_plan"}
             assert set(tools) == expected, set(tools)
             for tool in tools.values():
                 assert "result" in tool["outputSchema"]["properties"], tool
             assert tools["hmi_apply_text_edits"]["annotations"]["destructiveHint"] is True
             assert tools["tia_save_project"]["annotations"]["readOnlyHint"] is False
+            extensions = call("tia_list_extensions")
+            assert not extensions.get("isError"), extensions
+            extension_data = extensions["structuredContent"]["result"]
+            assert extension_data["hostProcessId"] == process.pid
+            modules = {m["module"]:m for m in extension_data["modules"]}
+            assert set(modules)=={"comfort","unified","plc"}
+            probe = call("tia_read_extension", module="comfort", operation="inspect_xml", argumentsJson=json.dumps({"xml":"<Document><Hmi.Screen.Screen><AttributeList><Name>Café — テスト</Name></AttributeList></Hmi.Screen.Screen></Document>", "editable":True},ensure_ascii=False))
+            assert not probe.get("isError"), probe
+            assert probe["structuredContent"]["result"]["data"]["name"] == "Café — テスト"
+            reloaded = call("tia_reload_extensions", module="comfort")
+            assert not reloaded.get("isError"), reloaded
+            reload_data = reloaded["structuredContent"]["result"]
+            assert reload_data["hostProcessId"] == process.pid and reload_data["previewsInvalidated"] and not reload_data["projectChanged"]
+            assert reload_data["modules"][0]["generation"] != modules["comfort"]["generation"]
+            assert reload_data["modules"][0]["workerProcessId"] != modules["comfort"]["workerProcessId"]
+            assert call("tia_reload_extensions", module="../escape").get("isError")
+            assert call("tia_read_extension", module="comfort", operation="edit_xml", argumentsJson="{}").get("isError")
             preview_schema = tools["hmi_preview_text_edits"]["inputSchema"]
             edit_schema = preview_schema["properties"]["edits"]["items"]
             assert {"entry", "culture", "expectedText", "newText"} <= set(edit_schema["required"]), edit_schema
@@ -118,6 +136,8 @@ def run(executable, native=False):
             assert unified_blocked.get("isError") is True and "Writes are disabled" in unified_blocked["content"][0]["text"]
             object_blocked = call("hmi_apply_object_plan", planId="unapproved", candidateSha256="wrong")
             assert object_blocked.get("isError") is True and "Writes are disabled" in object_blocked["content"][0]["text"]
+            extension_blocked = call("tia_apply_extension_plan", planId="unapproved", candidateSha256="wrong")
+            assert extension_blocked.get("isError") and "Writes are disabled" in extension_blocked["content"][0]["text"]
             object_edit_schema = tools["hmi_preview_object_edits"]["inputSchema"]["properties"]["edits"]["items"]
             assert {"attribute", "expectedValue", "newValue"} <= set(object_edit_schema["required"]), object_edit_schema
             create_schema = tools["hmi_preview_create_object"]["inputSchema"]["properties"]["arguments"]["items"]
@@ -132,7 +152,7 @@ def run(executable, native=False):
                 rejected = call(name, **arguments)
                 assert rejected.get("isError") and "Writes are disabled" in rejected["content"][0]["text"], rejected
             report = {"protocol": initialized["protocolVersion"], "toolCount": len(tools), "compatibleVersions": data["compatibleEngineeringVersions"],
-                      "writeGuards": "passed", "schema": "passed", "classicBundleConversion": "passed", "nativeProcessEnumeration": "not requested"}
+                      "writeGuards": "passed", "schema": "passed", "classicBundleConversion": "passed", "extensionReload": "passed; same host PID, new worker/generation, Unicode preserved", "nativeProcessEnumeration": "not requested"}
             if native:
                 capabilities = call("tia_get_api_capabilities")
                 assert not capabilities.get("isError"), capabilities

@@ -6,6 +6,7 @@ using System.Text;
 using Siemens.Engineering;
 using Siemens.Engineering.Compiler;
 using Siemens.Engineering.Hmi;
+using SiemensTiaOpenness.Extensions;
 
 namespace SiemensTiaOpenness.Mcp
 {
@@ -21,9 +22,10 @@ namespace SiemensTiaOpenness.Mcp
         private EngineeringWorkflow? engineeringWorkflow;
         private ClassicXmlWorkflow? classicXmlWorkflow;
         private readonly string artifactRoot;
+        private readonly IFeatureEngine features;
         private int? processId;
 
-        public HmiSession(string artifactRoot) { this.artifactRoot = artifactRoot; }
+        public HmiSession(string artifactRoot, IFeatureEngine features) { this.artifactRoot = artifactRoot; this.features = features; }
 
         public object ListProcesses()
         {
@@ -351,11 +353,14 @@ namespace SiemensTiaOpenness.Mcp
         private void ResetWorkflows()
         {
             string sessionRoot = Path.Combine(artifactRoot, Guid.NewGuid().ToString("N"));
-            workflow = new TextListWorkflow(this, Path.Combine(sessionRoot, "classic"));
-            unifiedWorkflow = new UnifiedEditWorkflow(this, Path.Combine(sessionRoot, "unified"));
+            workflow = new TextListWorkflow(this, Path.Combine(sessionRoot, "classic"), features);
+            unifiedWorkflow = new UnifiedEditWorkflow(this, Path.Combine(sessionRoot, "unified"), features);
             engineeringWorkflow = new EngineeringWorkflow(this, Path.Combine(sessionRoot, "engineering"));
-            classicXmlWorkflow = new ClassicXmlWorkflow(this, Path.Combine(sessionRoot, "comfort-xml"));
+            classicXmlWorkflow = new ClassicXmlWorkflow(this, Path.Combine(sessionRoot, "comfort-xml"), features);
+            extensionPlans.Clear();
         }
+
+        public void InvalidatePreviews() { if (project != null) ResetWorkflows(); else extensionPlans.Clear(); }
 
         private HmiReference FindReference(string hmiId)
         {

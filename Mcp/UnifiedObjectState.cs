@@ -87,6 +87,25 @@ namespace SiemensTiaOpenness.Mcp
         }
 
         internal bool IsDynamic(string property) => DynamizedProperties.Any(p => p == property || p.StartsWith(property + ".", StringComparison.Ordinal) || property.StartsWith(p + ".", StringComparison.Ordinal));
+
+        internal void RequireAllowedCandidate(UnifiedObjectState candidate)
+        {
+            if (candidate.Scalars.Length != Scalars.Length || candidate.Texts.Length != Texts.Length) throw new InvalidOperationException("Extension cannot change Unified field membership.");
+            var edits = new List<UnifiedEdit>();
+            foreach (var scalar in Scalars)
+            {
+                var changed = candidate.Scalars.Single(s => s.Property == scalar.Property);
+                if (changed.Value != scalar.Value) edits.Add(new UnifiedEdit { Property = scalar.Property, Culture = "", ExpectedValue = scalar.Value, NewValue = changed.Value });
+            }
+            foreach (var text in Texts)
+            {
+                var changed = candidate.Texts.Single(t => t.Property == text.Property && t.Culture == text.Culture);
+                if (UnifiedTextCodec.Canonical(changed.NativeText) != UnifiedTextCodec.Canonical(text.NativeText))
+                    edits.Add(new UnifiedEdit { Property = text.Property, Culture = text.Culture, ExpectedValue = text.Text!, NewValue = changed.Text! });
+            }
+            string expected = edits.Count == 0 ? Fingerprint : Edit(edits.ToArray()).Fingerprint;
+            if (candidate.Fingerprint != expected) throw new InvalidOperationException("Extension candidate changes protected Unified identity, metadata or unsupported content.");
+        }
     }
 
     internal static class UnifiedScalarCodec

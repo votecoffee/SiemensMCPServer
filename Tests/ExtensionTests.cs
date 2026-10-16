@@ -9,6 +9,17 @@ using Xunit;
 
 public sealed class ExtensionTests
 {
+    [Fact] public void GenerationBoundPlansCannotReplayOrSurviveReload()
+    {
+        var plans = new ExtensionPlanStore();
+        plans.Add("one", new ExtensionPlanBinding { Module = "comfort", Generation = "first", Hash = "hash", Route = "classicXml" });
+        Assert.Throws<InvalidOperationException>(() => plans.Take("one", "wrong", _ => "first"));
+        Assert.Throws<InvalidOperationException>(() => plans.Take("one", "hash", _ => "second"));
+        Assert.Equal("classicXml", plans.Take("one", "hash", _ => "first").Route);
+        Assert.Throws<InvalidOperationException>(() => plans.Take("one", "hash", _ => "first"));
+        plans.Add("two", new ExtensionPlanBinding { Generation = "first", Hash = "hash" }); plans.Clear();
+        Assert.Throws<InvalidOperationException>(() => plans.Take("two", "hash", _ => "first"));
+    }
     [Fact] public void ReloadSwapsWorkersAndKeepsPreviousOnInvalidUpdate()
     {
         using var fixture = new Fixture(); using var manager = fixture.Manager();

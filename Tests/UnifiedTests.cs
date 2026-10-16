@@ -119,6 +119,17 @@ public sealed class UnifiedTests
         Assert.Equal(Caption().NewValue, backend.Current.Texts[0].Text);
         Assert.Throws<InvalidOperationException>(() => workflow.Apply(preview.GetProperty("planId").GetString(), preview.GetProperty("candidateSha256").GetString()));
     }
+    [Fact]
+    public void ExtensionCannotBypassBrokerFieldAndIdentityPolicy()
+    {
+        var before = State(); var candidate = State(); candidate.HmiId = "other";
+        Assert.Throws<InvalidOperationException>(() => before.RequireAllowedCandidate(candidate));
+        candidate = State(); candidate.Scalars[0].Editable = false;
+        Assert.Throws<InvalidOperationException>(() => before.RequireAllowedCandidate(candidate));
+        before.Scalars[0].Editable = false; candidate = State(); candidate.Scalars[0].Value = "999";
+        Assert.Throws<InvalidOperationException>(() => before.RequireAllowedCandidate(candidate));
+        before = State(); candidate = before.Edit(new[] { Caption() }); before.RequireAllowedCandidate(candidate);
+    }
 
     [Fact]
     public void StaleNativeSnapshotAndTamperedCandidateCannotWrite()
