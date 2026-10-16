@@ -10,6 +10,7 @@ $api = [Reflection.Assembly]::LoadFrom((Join-Path $apiDirectory 'Siemens.Enginee
 $server = [Reflection.Assembly]::LoadFrom((Join-Path (Resolve-Path $ServerDirectory) 'SiemensTiaOpenness.Mcp.exe'))
 $adapter = $server.GetType('SiemensTiaOpenness.Mcp.TransferNative', $true)
 $export = $adapter.GetMethod('ExportMethod', [Reflection.BindingFlags]'NonPublic,Static', $null, [Type[]]@([Type]), $null)
+$import = $adapter.GetMethod('ImportMethod', [Reflection.BindingFlags]'NonPublic,Static', $null, [Type[]]@([Type]), $null)
 $checked = [Collections.Generic.List[string]]::new()
 function Assert-Contract([bool]$Condition, [string]$Description) {
     if (-not $Condition) { throw "Native contract failed: $Description" }
@@ -30,10 +31,22 @@ $compositions = @('Hmi.Globalization.MultiLingualGraphicComposition', 'Hmi.Commu
 $importOptions = $api.GetType('Siemens.Engineering.ImportOptions', $true)
 foreach ($name in $compositions) {
     $type = $api.GetType("Siemens.Engineering.$name", $true)
-    Assert-Contract ($null -ne $type.GetMethod('Import', [Type[]]@([IO.FileInfo], $importOptions))) "$name supports XML import"
+    $method = $import.Invoke($null, [object[]]@($type))
+    Assert-Contract ($null -ne $method -and $method.GetParameters()[0].ParameterType -eq [IO.FileInfo]) "$name uses native XML import dispatch"
 }
 $hmi = $api.GetType('Siemens.Engineering.Hmi.HmiTarget', $true)
 Assert-Contract ($null -ne $hmi.GetMethod('ImportScreenOverview', [Type[]]@([IO.FileInfo], $importOptions))) 'HmiTarget imports the permanent-area singleton'
 $slidein = $api.GetType('Siemens.Engineering.Hmi.Screen.ScreenSlidein', $true)
 Assert-Contract ($null -ne $slidein.GetProperty('SlideinType') -and $null -eq $slidein.GetProperty('Name')) 'Slide-in identity is its side/type, not a name'
+if ($Version -eq 'V19') {
+    foreach ($name in @('HmiUnified.HmiTags.HmiTagComposition', 'HmiUnified.Scripts.HmiScriptModule', 'HmiUnified.Scripts.HmiScriptModuleComposition')) {
+        $type = $api.GetType("Siemens.Engineering.$name", $true)
+        $method = $export.Invoke($null, [object[]]@($type))
+        Assert-Contract ($null -ne $method -and $method.GetParameters().Length -eq 1 -and $method.GetParameters()[0].ParameterType -eq [IO.DirectoryInfo]) "$name exports using native directory/default names"
+        if ($name.EndsWith('Composition')) {
+            $method = $import.Invoke($null, [object[]]@($type))
+            Assert-Contract ($null -ne $method -and $method.GetParameters().Length -eq 1 -and $method.GetParameters()[0].ParameterType -eq [IO.DirectoryInfo]) "$name imports using native directory/default names"
+        }
+    }
+}
 @{ version = $Version; contracts = $checked.Count; checks = $checked.ToArray(); tiaPortalCreated = $false; projectAttached = $false; nativeWriteAcceptance = 'pending' } | ConvertTo-Json -Depth 5

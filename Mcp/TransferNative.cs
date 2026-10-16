@@ -16,9 +16,10 @@ namespace SiemensTiaOpenness.Mcp
         private static string? SingletonImport(object node) => node.GetType().FullName == "Siemens.Engineering.Hmi.Screen.ScreenOverview" ? "ImportScreenOverview"
             : node.GetType().FullName == "Siemens.Engineering.Hmi.Screen.ScreenGlobalElements" ? "ImportScreenGlobalElements" : null;
         internal static MethodInfo? ImportMethod(object node) => SingletonImport(node) != null ? ((IEngineeringObject)node).Parent.GetType().GetMethod(SingletonImport(node)!, new[] { typeof(FileInfo), typeof(ImportOptions) })
-            : node.GetType().GetMethod("Import", new[] { typeof(FileInfo), typeof(ImportOptions) })
-            ?? node.GetType().GetMethod("Import", new[] { typeof(DirectoryInfo) })
-            ?? node.GetType().GetMethod("Import", new[] { typeof(DirectoryInfo), typeof(string) });
+            : ImportMethod(node.GetType());
+        internal static MethodInfo? ImportMethod(Type type) => type.GetMethod("Import", new[] { typeof(FileInfo), typeof(ImportOptions) })
+            ?? type.GetMethod("Import", new[] { typeof(DirectoryInfo) })
+            ?? type.GetMethod("Import", new[] { typeof(DirectoryInfo), typeof(string) });
         internal static void Export(object node, string directory)
         {
             Directory.CreateDirectory(directory);
@@ -27,9 +28,9 @@ namespace SiemensTiaOpenness.Mcp
             if (types[0].ParameterType == typeof(FileInfo))
             {
                 bool script = node.GetType().FullName!.StartsWith("Siemens.Engineering.Hmi.RuntimeScripting.", StringComparison.Ordinal);
-                method.Invoke(node, new object[] { new FileInfo(Path.Combine(directory, "payload.xml")), script ? ExportOptions.None : ExportOptions.WithDefaults });
+                DirectoryTransferNative.Complete(method.Invoke(node, new object[] { new FileInfo(Path.Combine(directory, "payload.xml")), script ? ExportOptions.None : ExportOptions.WithDefaults }));
             }
-            else method.Invoke(node, types.Length == 1 ? new object[] { new DirectoryInfo(directory) } : new object[] { new DirectoryInfo(directory), "payload" });
+            else DirectoryTransferNative.Export(node, method, directory);
         }
         internal static object? Import(object node, string directory, bool overwrite, bool allowMissingReferences = false)
         {
@@ -53,13 +54,12 @@ namespace SiemensTiaOpenness.Mcp
                 var batchMethod = allowMissingReferences ? node.GetType().GetMethod("Import", new[] { typeof(FileInfo), typeof(ImportOptions), typeof(SWImportOptions) }) : null;
                 result = batchMethod != null ? batchMethod.Invoke(target, new object[] { new FileInfo(xml[0]), overwrite ? ImportOptions.Override : ImportOptions.None, SWImportOptions.IgnoreMissingReferencedObjects })
                     : method.Invoke(target, new object[] { new FileInfo(xml[0]), overwrite ? ImportOptions.Override : ImportOptions.None });
+                DirectoryTransferNative.Complete(result);
             }
             else
             {
-                if (!overwrite) throw new ArgumentException("Unified directory imports have native replacement semantics. Preview with overwrite=true to acknowledge that scope.");
-                result = method.Invoke(node, parameters.Length == 1 ? new object[] { new DirectoryInfo(directory) } : new object[] { new DirectoryInfo(directory), "payload" });
+                result = DirectoryTransferNative.Import(node, method, directory, overwrite);
             }
-            if (result is bool accepted && !accepted) throw new InvalidOperationException("Native import returned false; transaction was not committed.");
             return result;
         }
         internal static void ValidateImport(object node, string directory, bool overwrite, bool skipExistingCycles = false)
@@ -68,7 +68,7 @@ namespace SiemensTiaOpenness.Mcp
             if (method.GetParameters()[0].ParameterType == typeof(DirectoryInfo))
             {
                 if (!overwrite) throw new ArgumentException("Unified directory imports require overwrite=true to acknowledge native replacement scope.");
-                if (Directory.GetFiles(directory, "*.yml", SearchOption.TopDirectoryOnly).Length == 0) throw new ArgumentException("Unified import requires its native YML configuration and companions.");
+                DirectoryTransferNative.Validate(node.GetType().FullName!, directory, method.GetParameters().Length == 2);
             }
             else
             {
