@@ -20,8 +20,10 @@ namespace SiemensTiaOpenness.Mcp
             switch (descriptor.Route)
             {
                 case "classicXml":
+                    JsonElement generated = default;
                     preview = classicXmlWorkflow!.PreviewTransformed(targetId, path, fingerprint,
-                        xml => manager.Execute(module, operation, new { snapshot = xml, arguments }).GetProperty("candidateXml").GetString()!, new { module, operation, arguments });
+                        xml => { generated = manager.Execute(module, operation, new { snapshot = xml, arguments }); return generated.GetProperty("candidateXml").GetString()!; },
+                        new Func<object>(() => new { module, operation, arguments, changes = generated.GetProperty("changes") }));
                     break;
                 case "unifiedObject":
                     string screen = arguments.GetProperty("screenPath").GetString()!, item = arguments.GetProperty("itemPath").GetString()!;

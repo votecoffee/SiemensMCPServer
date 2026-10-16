@@ -56,7 +56,7 @@ namespace SiemensTiaOpenness.Mcp
                 && TransferFiles.Xml(original).Root!.Element(baseline.NativeType)?.Element("AttributeList")?.Element("SlideinType")?.Value
                     != TransferFiles.Xml(candidate).Root!.Element(updated.NativeType)?.Element("AttributeList")?.Element("SlideinType")?.Value)
                 throw new InvalidOperationException("Extension cannot change slide-in edge identity.");
-            return Stage(before, fingerprint, candidate, changes);
+            return Stage(before, fingerprint, candidate, changes is Func<object> resolve ? resolve() : changes);
         }
         public object PreviewBehaviors(string hmiId, string path, string fingerprint, ClassicBehaviorChange[] changes)
             => PreviewTransformed(hmiId, path, fingerprint, xml => features.Execute("comfort", "change_behaviors", new { snapshot = xml, arguments = new { changes } }).GetProperty("candidateXml").GetString()!, changes);

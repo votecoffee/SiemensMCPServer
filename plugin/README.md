@@ -1,8 +1,10 @@
-# Siemens TIA Openness MCP plugin 0.6.3
+# Siemens TIA Openness MCP plugin 0.7.0
 
 This local Windows plugin provides Comfort/classic and Unified engineering object tools, native resource import/export, bulk transfers, and specialized text-list and screen-caption workflows. It uses the official C# MCP SDK and .NET Framework 4.8. No OpenAI API key is needed to connect it to Codex. The desktop WinForms application retains its classic HMI workflow; expanded object tools and Unified support are in the MCP server. See [feature coverage](FEATURE-COVERAGE.md) for implemented routes and remaining boundaries.
 
 ## Install the built package
+
+0.7.0 adds a stable host with reloadable Comfort, Unified and PLC feature workers. After the initial host upgrade, stage an extension update and call `tia_reload_extensions` while keeping Codex and TIA open. Reload retains the native attachment and invalidates outstanding previews; failed replacements retain previous workers. See [extension updates and development](EXTENSIONS.md) for commands and scope.
 
 Comfort on the V15 generation is the primary development target; V15.1 is installed and build-tested here. Unified follows with its existing version gates. PLC support shares the V15.1-first offline stack. Exact V15.0 needs its own installed API build and native trial.
 

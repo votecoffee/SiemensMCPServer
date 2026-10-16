@@ -79,6 +79,7 @@ namespace SiemensTiaOpenness.Mcp
         private readonly int timeoutMs;
         private long nextId;
         private bool faulted;
+        private bool stopped;
         private readonly StringBuilder errors = new StringBuilder();
         public ExtensionHello Hello { get; private set; } = null!;
         public int ProcessId { get; private set; }
@@ -89,13 +90,13 @@ namespace SiemensTiaOpenness.Mcp
                 FileName = Path.Combine(bundle.Directory, bundle.Manifest.EntryPoint), Arguments = "--module=" + bundle.Manifest.Module,
                 WorkingDirectory = bundle.Directory, UseShellExecute = false, CreateNoWindow = true,
                 RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
-                StandardOutputEncoding = new UTF8Encoding(false), StandardErrorEncoding = new UTF8Encoding(false)
+                StandardOutputEncoding = new UTF8Encoding(false, true), StandardErrorEncoding = new UTF8Encoding(false)
             } };
             try
             {
                 process.Start();
                 ProcessId = process.Id;
-                input = new StreamWriter(process.StandardInput.BaseStream, new UTF8Encoding(false)) { AutoFlush = true };
+                input = new StreamWriter(process.StandardInput.BaseStream, new UTF8Encoding(false, true)) { AutoFlush = true };
                 // Drain stderr continuously with bounded retained diagnostics.
                 Task.Run(() => {
                     try { int c; while ((c = process.StandardError.Read()) >= 0) lock (errors) { if (errors.Length >= 4096) errors.Remove(0, 2048); errors.Append((char)c); } }
@@ -124,13 +125,14 @@ namespace SiemensTiaOpenness.Mcp
                     string line = ExtensionWire.ReadLine(process.StandardOutput) ?? throw new IOException("Extension worker ended.");
                     return JsonSerializer.Deserialize<ExtensionResponse>(line, ExtensionWire.Options) ?? throw new IOException("Missing extension response.");
                 });
+                io.ContinueWith(t => { var ignored = t.Exception; }, TaskContinuationOptions.OnlyOnFaulted);
                 if (!io.Wait(timeoutMs)) throw new TimeoutException("Extension worker exceeded its response deadline.");
                 response = io.GetAwaiter().GetResult();
                 if (response.Id != id) throw new InvalidDataException("Extension response ID mismatch.");
             }
             catch (Exception ex)
             {
-                faulted = true; Dispose();
+                faulted = true; Stop(true);
                 string stderr; lock (errors) stderr = errors.ToString();
                 throw new InvalidOperationException("Extension worker failed; no TIA operation was dispatched by the worker. " + ex.GetBaseException().Message + " " + stderr, ex);
             }
@@ -138,10 +140,16 @@ namespace SiemensTiaOpenness.Mcp
             return response.Result.Clone();
         }
         public void Dispose()
+            => Stop(false);
+        private void Stop(bool force)
         {
+            if (stopped) return;
+            stopped = true;
             faulted = true;
+            // A timed-out pure worker may be blocked on stdin. Kill it before flushing/closing pipes.
+            if (force) try { if (!process.HasExited) process.Kill(); } catch (InvalidOperationException) { } catch (System.ComponentModel.Win32Exception) { }
             try { input?.Close(); } catch (InvalidOperationException) { } catch (IOException) { }
-            try { if (!process.WaitForExit(2000)) { process.Kill(); process.WaitForExit(2000); } } catch (InvalidOperationException) { }
+            try { if (!process.WaitForExit(2000)) { process.Kill(); process.WaitForExit(2000); } } catch (InvalidOperationException) { } catch (System.ComponentModel.Win32Exception) { }
             process.Dispose();
         }
     }

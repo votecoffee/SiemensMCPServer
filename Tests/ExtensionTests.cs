@@ -9,6 +9,16 @@ using Xunit;
 
 public sealed class ExtensionTests
 {
+    [Fact] public void NewRecipeAddsOperationWithoutChangingHostToolSchema()
+    {
+        var recipes = new FeatureRecipes("comfort", "[{\"name\":\"grid_preset\",\"description\":\"Set editor grid\",\"xPath\":\"//GridColor\",\"newValue\":\"1, 2, 3\"}]");
+        Assert.Equal("classicXml", recipes.Operations.Single().Route);
+        string xml = "<Document><Hmi.Screen.Screen><AttributeList><Name>S</Name><GridColor>0, 0, 0</GridColor></AttributeList></Hmi.Screen.Screen></Document>";
+        Assert.True(recipes.TryExecute("grid_preset", ExtensionWire.Json(new { snapshot = xml, arguments = new { expectedValue = "0, 0, 0" } }), out var result));
+        Assert.Contains("<GridColor>1, 2, 3</GridColor>", result.GetProperty("candidateXml").GetString());
+        Assert.Throws<InvalidOperationException>(() => recipes.TryExecute("grid_preset", ExtensionWire.Json(new { snapshot = xml, arguments = new { expectedValue = "stale" } }), out _));
+        Assert.Throws<ArgumentException>(() => new FeatureRecipes("unified", "[{\"name\":\"preset\",\"xPath\":\"//Name\",\"newValue\":\"x\"}]"));
+    }
     [Fact] public void GenerationBoundPlansCannotReplayOrSurviveReload()
     {
         var plans = new ExtensionPlanStore();

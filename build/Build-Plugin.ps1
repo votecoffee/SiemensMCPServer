@@ -16,13 +16,15 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $
 $helperDirectory = Join-Path $packageRoot 'scripts'
 New-Item -ItemType Directory -Path $helperDirectory -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Install-CodexPlugin.ps1') -Destination $helperDirectory
+Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Install-Extension.ps1') -Destination $helperDirectory
 Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\test_codex_integration.py') -Destination $helperDirectory
 $buildArgs = @('publish', (Join-Path $repoRoot 'Mcp\SiemensTiaOpenness.Mcp.csproj'), '-c', 'Release', '--nologo', '-v', 'minimal',
-    '-p:RestoreLockedMode=true', ('-p:TiaPortalVersion=' + $TiaPortalVersion), '-o', (Join-Path $packageRoot 'server'))
+    '-p:RestoreLockedMode=true', '-p:StageFeatureExtensions=false', ('-p:TiaPortalVersion=' + $TiaPortalVersion), '-o', (Join-Path $packageRoot 'server'))
 if ($TiaPortalInstallVersion) { $buildArgs += '-p:TiaPortalInstallVersion=' + $TiaPortalInstallVersion }
 if ($TiaPublicApiDir) { $buildArgs += '-p:TiaPublicApiDir=' + $TiaPublicApiDir }
 & dotnet @buildArgs
 if ($LASTEXITCODE -ne 0) { throw 'MCP publish failed; the incomplete package was retained for diagnostics.' }
+& (Join-Path $repoRoot 'build\Build-Extensions.ps1') -Destination (Join-Path $packageRoot 'server\extensions')
 if (Get-ChildItem -LiteralPath (Join-Path $packageRoot 'server') -Filter 'Siemens.Engineering*' -Recurse) {
     throw 'A Siemens engineering assembly was copied into the package. Packaging stopped.'
 }

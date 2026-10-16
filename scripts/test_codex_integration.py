@@ -77,7 +77,7 @@ def main():
         assert initialized["serverInfo"]["version"] == manifest["version"]
         send("notifications/initialized", {}, notification=True)
         tools = {t["name"]: t for t in send("tools/list", {})["tools"]}
-        assert len(tools) == 46 and {"tia_archive_project", "tia_reopen_project", "hmi_preview_classic_text_list_changes", "hmi_preview_classic_behavior_changes", "plc_list_targets"} <= set(tools)
+        assert len(tools) == 51 and {"tia_reload_extensions", "tia_list_extensions", "tia_preview_extension", "tia_apply_extension_plan", "tia_archive_project", "tia_reopen_project", "hmi_preview_classic_text_list_changes", "hmi_preview_classic_behavior_changes", "plc_list_targets"} <= set(tools)
         versions = call("tia_list_versions")
         assert versions["writesEnabled"] == ("--allow-writes" in transport["args"])
         capabilities = call("tia_get_api_capabilities")
