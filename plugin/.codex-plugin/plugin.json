@@ -1,7 +1,7 @@
 {
   "name": "siemens-mcp-server",
   "version": "0.7.1",
-  "description": "Comfort V15.1-first HMI and offline Siemens PLC engineering through local TIA Portal Openness, with capability-checked Unified support.",
+  "description": "Local MCP server for Siemens HMI and offline PLC engineering through TIA Portal Openness.",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "requires_local_executor": true

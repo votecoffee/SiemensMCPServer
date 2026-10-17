@@ -1,6 +1,6 @@
-# Engineering feature coverage — 0.7.0
+# Engineering feature coverage
 
-The MCP server has 51 tools. Five fixed extension tools provide discovery/read/preview/apply/reload while feature workers change independently of the host; see [extensions](EXTENSIONS.md). Comfort/classic on V15.1 is the primary profile; Unified follows with version limits. Selected earlier Comfort native edit/import/compile/save/reopen tests passed on the supplied project; see [native acceptance](NATIVE-ACCEPTANCE.md) for binary boundaries. PLC and Unified native writes remain pending. V15.1/V19 builds and offline reload tests do not extend that native scope. Exact V15.0 is not installed/tested here. The WinForms UI remains classic-only.
+The MCP server has 51 tools. Five fixed extension tools provide discovery/read/preview/apply/reload while workers change independently of the host; see [extensions](EXTENSIONS.md). Comfort/classic V15.1 is the primary profile; Unified follows with version limits. See [validation status](NATIVE-ACCEPTANCE.md) for native boundaries. PLC and Unified native writes require separate acceptance. V15.1/V19 builds and offline reload tests do not establish every native operation or exact V15.0 compatibility. The WinForms UI remains classic-only.
 
 | Feature | Comfort / classic | Unified | Route and limit |
 | --- | --- | --- | --- |

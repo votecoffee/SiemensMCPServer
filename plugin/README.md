@@ -8,7 +8,7 @@ This local Windows plugin provides Comfort/classic and Unified engineering objec
 
 0.7.0 adds a stable host with reloadable Comfort, Unified and PLC feature workers. After the initial host upgrade, stage an extension update and call `tia_reload_extensions` while keeping Codex and TIA open. Reload retains the native attachment and invalidates outstanding previews; failed replacements retain previous workers. See [extension updates and development](EXTENSIONS.md) for commands and scope.
 
-Comfort on the V15 generation is the primary development target; V15.1 is installed and build-tested here. Unified follows with its existing version gates. PLC support shares the V15.1-first offline stack. Exact V15.0 needs its own installed API build and native trial.
+Comfort/classic V15.1 is the primary development profile. Unified follows with version-specific capability gates. PLC support shares the V15.1-first offline stack. Exact V15.0 compatibility requires separate API build and native validation.
 
 Extract the ZIP to a permanent directory. It includes `server/SiemensMCPServer.Mcp.exe`, its runtime dependencies, workflow skills, MCP descriptions and a Codex compatibility manifest. The Windows Codex profile uses a relative `cmd.exe` launcher and compatibility manifest dispatch, verified against the installed client; no unexpanded plugin-root variable is passed as an executable or working directory. Siemens DLLs are not included. Install TIA Portal, the matching Openness API, and the appropriate WinCC engineering components; use a Windows user in the local `Siemens TIA Openness` group. Use the V19 package for the Unified screen workflow on the installed V19 API.
 
@@ -144,7 +144,7 @@ The installed V19 API cannot use that YAML route. It is never redirected through
 
 The build's API is fixed. Use `tia_list_versions` to discover compatible installed engineering versions. If multiple versions provide that API, call `tia_select_version` before other Openness operations. Restart the server to change engineering versions after loading Siemens assemblies. You can also pass `--tia-version=V19` or set `TIA_PORTAL_VERSION`.
 
-V15.1–V20 use the classic assembly family. The V21 MCP build also requires its modular STEP 7 assembly for PLC support, alongside the existing Base/WinCC references; that separately built profile remains unvalidated here. Compilation and process discovery do not prove native import/generation/compile/save or runtime success.
+V15.1–V20 use the classic assembly family. The V21 MCP build also requires its modular STEP 7 assembly for PLC support, alongside Base/WinCC references; that profile requires separate validation. Compilation and process discovery do not prove native import/generation/compile/save or runtime success.
 
 ## Build from this repository
 
@@ -164,6 +164,6 @@ The packaging script emits a fresh ZIP and SHA-256 file under `artifacts/`, with
 
 ## Native acceptance scope
 
-Selected Comfort V15.1 native caption/layout edits, entry add/remove, translation fill/clear, screen import, event function clone/remove, folder creation, guards, compile and save/reopen passed on the user-supplied test project. See [native acceptance](NATIVE-ACCEPTANCE.md) for evidence boundaries and cleanup. Other resource kinds, binary sidecars, bulk import, PLC and Unified native writes still need their own trials. For Unified text lists, use an API exposing the paired-YAML methods and verify both files. Builds, API inspection and offline tests do not establish those remaining native paths.
+See [validation status](NATIVE-ACCEPTANCE.md) for public native-testing scope and outstanding boundaries. Support must be verified for the selected operation, API and device; earlier checks do not certify every release or project. Unified text lists require an API exposing the paired-YAML methods and verification of both files. Builds, API inspection and offline tests do not establish native project or runtime acceptance. Keep project-specific evidence outside the public repository or under the ignored `.local/` directory.
 
 An API application can reuse these tools through an MCP client and route OpenAI function calls to it. This package does not include a model-calling application or a public HTTP endpoint.
