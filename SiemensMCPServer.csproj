@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -8,9 +7,18 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>SiemensMCPServer</RootNamespace>
     <AssemblyName>SiemensMCPServer</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <FileAlignment>512</FileAlignment>
-    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <LangVersion>latest</LangVersion>
+    <Nullable>annotations</Nullable>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <TiaIncludePlcApi>true</TiaIncludePlcApi>
   </PropertyGroup>
 
   <Import Project="build\TiaPortal.props" />
@@ -42,17 +50,35 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Xml.Linq" />
+    <PackageReference Include="System.Text.Json" Version="10.0.10" />
+    <PackageReference Include="YamlDotNet" Version="18.1.0" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="TiaPortalAssemblyResolver.cs" />
     <Compile Include="Shared\HmiCatalog.cs" />
+    <Compile Include="Shared\SoftwareCatalog.cs" />
+    <Compile Include="Shared\ITextListDocument.cs" />
+    <Compile Include="Shared\TextListDocument.cs" />
+    <Compile Include="Shared\TextListStructure.cs" />
+    <Compile Include="Shared\DesktopTransferSelection.cs" />
+    <!-- Share the native transfer adapters with MCP without starting or referencing its host. -->
+    <Compile Include="Mcp\EngineeringNative.cs" />
+    <Compile Include="Mcp\EngineeringModel.cs" />
+    <Compile Include="Mcp\TransferNative.cs" />
+    <Compile Include="Mcp\DirectoryTransferNative.cs" />
+    <Compile Include="Mcp\TransferFiles.cs" />
+    <Compile Include="Mcp\TransferBundle.cs" />
+    <Compile Include="Mcp\NativeXmlIds.cs" />
+    <Compile Include="Mcp\JsonDefaults.cs" />
+    <Compile Include="Mcp\PlcPolicy.cs" />
+    <Compile Include="Desktop\EngineeringTransferSession.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <None Include="App.config" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

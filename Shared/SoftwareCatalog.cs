@@ -16,7 +16,7 @@ namespace SiemensMCPServer
         public string Family { get; set; }
         public DeviceItem Owner { get; set; }
     }
-    // Includes PLCs without changing the desktop's classic-only HmiCatalog contract or IDs.
+    // Shared target identities for the desktop and MCP engineering browsers.
     internal static class SoftwareCatalog
     {
         public static IList<SoftwareReference> Discover(Project project)
