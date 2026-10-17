@@ -1,6 +1,8 @@
 # Classic desktop utility
 
-The WinForms executable handles classic WinCC Comfort / Advanced projects. Build and launch it using the instructions in [the root README](../README.md#usage) and [build configuration](BUILDING.md). Unified and PLC engineering tools are provided by the MCP server.
+The WinForms executable, `SiemensMCPServer.exe`, handles **classic WinCC Comfort / Advanced HMI import/export only**. Unified HMI and Siemens PLC import/export are not implemented in the GUI; those tools are provided by the MCP server with API-specific limits.
+
+Build and launch the GUI using [the root README](../README.md#desktop-gui) and [build configuration](BUILDING.md). It is a separate executable from `SiemensMCPServer.Mcp.exe` and is built separately from the MCP plugin ZIP.
 
 ## Typical use
 

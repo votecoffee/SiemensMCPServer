@@ -2,7 +2,16 @@
 
 Local MCP server for Siemens HMI and offline PLC engineering through TIA Portal Openness.
 
-SiemensMCPServer connects MCP clients such as Codex to a local TIA Portal engineering project. It provides Comfort/classic HMI editing, capability-checked Unified operations, offline PLC tools and reloadable feature workers. A separate WinForms utility supports classic HMI export and import.
+Two Windows applications are included:
+
+- **Desktop GUI — `SiemensMCPServer.exe`:** a WinForms application for importing and exporting classic WinCC Comfort / Advanced HMI screens and resources.
+- **MCP server — `SiemensMCPServer.Mcp.exe`:** connects clients such as Codex to Comfort/classic HMIs, capability-checked Unified operations and offline PLC tools, with reloadable feature workers.
+
+| Target | Desktop GUI import/export | MCP server import/export |
+| --- | --- | --- |
+| Comfort / classic WinCC Comfort / Advanced | Supported | Supported |
+| WinCC Unified | Not implemented | Supported where the installed API exposes native transfer methods |
+| Siemens PLC software | Not implemented | Supported offline for supported blocks, types and tag resources |
 
 The repository and .NET solution use `SiemensMCPServer`; the plugin and MCP registration use the package ID `siemens-mcp-server`.
 
@@ -61,6 +70,19 @@ Use `-PrepareOnly` to verify and stage a package without changing Codex settings
 
 ## Usage
 
+### Desktop GUI
+
+Build and launch the WinForms application independently of the MCP server:
+
+```powershell
+dotnet build SiemensMCPServer.csproj -c Release -p:TiaPortalVersion=V15.1
+& .\bin\Release\SiemensMCPServer.exe --tia-version=V15.1
+```
+
+Open the project in TIA Portal, attach to its process and select a classic HMI. The GUI provides selected-screen/folder export, all-screen export, screen XML import, screens-only import and complete-HMI export/import. Imports leave the project unsaved; inspect and compile before saving explicitly.
+
+**The GUI handles Comfort/classic HMI resources only. Unified HMI and PLC import/export use the MCP server.** See [desktop usage](docs/CLASSIC-DESKTOP.md) for details. The plugin ZIP packages the MCP server and workers; build the desktop executable separately with the command above.
+
 ### CLI
 
 Launch the server from a built package or its build output. It communicates over stdio and requires an MCP client:
@@ -70,14 +92,6 @@ Launch the server from a built package or its build output. It communicates over
 ```
 
 Writes are disabled by default. Add `--allow-writes` when applying changes, compiling, archiving or saving is intended. Optional `--artifact-root` and `--extensions-root` arguments choose local output directories. `TIA_PORTAL_VERSION` can also select the engineering version.
-
-For the classic desktop utility:
-
-```powershell
-& .\bin\Release\SiemensMCPServer.exe --tia-version=V15.1
-```
-
-See [desktop usage](docs/CLASSIC-DESKTOP.md) for its screen and complete-HMI export/import workflows.
 
 ### Engineering workflow
 
