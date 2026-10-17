@@ -1,13 +1,14 @@
 param(
     [Parameter(Mandatory = $true)][ValidateSet('V15.1', 'V19')][string]$Version,
-    [Parameter(Mandatory = $true)][string]$ServerDirectory
+    [Parameter(Mandatory = $true)][string]$ServerDirectory,
+    [ValidateSet('SiemensMCPServer.Mcp.exe', 'SiemensMCPServer.exe')][string]$ExecutableName = 'SiemensMCPServer.Mcp.exe'
 )
 $ErrorActionPreference = 'Stop'
 # Run with Windows PowerShell/.NET Framework. Loads API metadata only; creates no TiaPortal instance.
 $installVersion = $Version.Replace('.', '_')
 $apiDirectory = Join-Path ${env:ProgramFiles} "Siemens\Automation\Portal $installVersion\PublicAPI\$Version"
 $api = [Reflection.Assembly]::LoadFrom((Join-Path $apiDirectory 'Siemens.Engineering.dll'))
-$server = [Reflection.Assembly]::LoadFrom((Join-Path (Resolve-Path $ServerDirectory) 'SiemensMCPServer.Mcp.exe'))
+$server = [Reflection.Assembly]::LoadFrom((Join-Path (Resolve-Path $ServerDirectory) $ExecutableName))
 $adapter = $server.GetType('SiemensMCPServer.Mcp.TransferNative', $true)
 $export = $adapter.GetMethod('ExportMethod', [Reflection.BindingFlags]'NonPublic,Static', $null, [Type[]]@([Type]), $null)
 $import = $adapter.GetMethod('ImportMethod', [Reflection.BindingFlags]'NonPublic,Static', $null, [Type[]]@([Type]), $null)

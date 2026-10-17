@@ -33,19 +33,24 @@ namespace SiemensMCPServer
         private IList<TiaPortalProcess> _processes = new List<TiaPortalProcess>();
         private TiaPortal _portal;
         private Project _project;
-        private readonly List<HmiEntry> _hmis = new List<HmiEntry>();
+        private FlowLayoutPanel _actions;
+        private EngineeringTransferPanel _engineeringPanel;
+        private SoftwareReference _activeTarget;
         private HmiTarget _activeHmi;
 
-        public MainForm()
+        public MainForm() : this(true) { }
+
+        // Allows layout checks without enumerating processes or opening an Openness connection.
+        internal MainForm(bool discoverProcesses)
         {
-            Text = "SiemensMCPServer - TIA Portal " + TiaPortalAssemblyResolver.SelectedEngineeringVersion + " - HMI Export / Import Tool";
+            Text = "SiemensMCPServer - TIA Portal " + TiaPortalAssemblyResolver.SelectedEngineeringVersion + " - HMI / PLC Import and Export";
             Width = 1220;
             Height = 760;
             MinimumSize = new Size(1050, 620);
             StartPosition = FormStartPosition.CenterScreen;
 
             BuildUi();
-            RefreshProcesses();
+            if (discoverProcesses) RefreshProcesses();
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
@@ -92,7 +97,7 @@ namespace SiemensMCPServer
             _hmiCombo.SelectedIndexChanged += (s, e) => SelectHmi();
             _refreshScreensButton.Text = "Refresh";
             _refreshScreensButton.Dock = DockStyle.Fill;
-            _refreshScreensButton.Click += (s, e) => LoadScreenTree();
+            _refreshScreensButton.Click += (s, e) => { if (_activeHmi != null) LoadScreenTree(); else _engineeringPanel.RefreshResources(); };
 
             _projectLabel.Dock = DockStyle.Fill;
             _projectLabel.AutoEllipsis = true;
@@ -104,7 +109,7 @@ namespace SiemensMCPServer
             top.Controls.Add(_refreshProcessesButton, 4, 0);
             top.Controls.Add(_attachButton, 5, 0);
 
-            top.Controls.Add(new Label { Text = "HMI target:", TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, 0, 1);
+            top.Controls.Add(new Label { Text = "HMI / PLC:", TextAlign = ContentAlignment.MiddleLeft, Dock = DockStyle.Fill }, 0, 1);
             top.Controls.Add(_hmiCombo, 1, 1);
             top.SetColumnSpan(_hmiCombo, 4);
             top.Controls.Add(_refreshScreensButton, 5, 1);
@@ -122,6 +127,7 @@ namespace SiemensMCPServer
                 WrapContents = true,
                 AutoScroll = true
             };
+            _actions = actions;
             _exportSelectedButton.Text = "Export selected";
             _exportSelectedButton.AutoSize = true;
             _exportSelectedButton.Click += (s, e) => ExportSelected();
@@ -178,6 +184,8 @@ namespace SiemensMCPServer
             _screenTree.HideSelection = false;
             _screenTree.AfterSelect += (s, e) => UpdateActionState();
             split.Panel1.Controls.Add(_screenTree);
+            _engineeringPanel = new EngineeringTransferPanel(Log, ShowError) { Dock = DockStyle.Fill, Visible = false };
+            split.Panel1.Controls.Add(_engineeringPanel);
 
             _log.Dock = DockStyle.Fill;
             _log.Multiline = true;
@@ -231,6 +239,7 @@ namespace SiemensMCPServer
 
                 if (_portal != null)
                 {
+                    ClearAttachment();
                     _portal.Dispose();
                     _portal = null;
                 }
@@ -249,20 +258,19 @@ namespace SiemensMCPServer
             }
             catch (Exception ex)
             {
+                ClearAttachment();
                 ShowError("Could not attach to TIA Portal.", ex);
             }
         }
 
         private void DiscoverHmis()
         {
-            _hmis.Clear();
+            _activeTarget = null;
+            _activeHmi = null;
             _hmiCombo.Items.Clear();
 
-            foreach (HmiReference entry in HmiCatalog.Discover(_project))
-                _hmis.Add(new HmiEntry(entry.Target, entry.Label));
-
-            foreach (HmiEntry hmi in _hmis)
-                _hmiCombo.Items.Add(hmi);
+            foreach (SoftwareReference entry in SoftwareCatalog.Discover(_project))
+                _hmiCombo.Items.Add(new TargetEntry(entry));
 
             if (_hmiCombo.Items.Count > 0)
                 _hmiCombo.SelectedIndex = 0;
@@ -270,7 +278,8 @@ namespace SiemensMCPServer
             {
                 _activeHmi = null;
                 _screenTree.Nodes.Clear();
-                Log("No classic HmiTarget was found in the project.");
+                _engineeringPanel.SelectSession(null);
+                Log("No supported HMI or PLC software was found in the project.");
             }
 
             UpdateActionState();
@@ -278,9 +287,27 @@ namespace SiemensMCPServer
 
         private void SelectHmi()
         {
-            var selected = _hmiCombo.SelectedItem as HmiEntry;
-            _activeHmi = selected == null ? null : selected.Target;
-            LoadScreenTree();
+            var selected = _hmiCombo.SelectedItem as TargetEntry;
+            _activeTarget = selected == null ? null : selected.Reference;
+            _activeHmi = _activeTarget == null ? null : _activeTarget.Software as HmiTarget;
+            bool engineering = _activeTarget != null && _activeHmi == null;
+            _engineeringPanel.Visible = engineering;
+            _screenTree.Visible = !engineering;
+            if (engineering)
+            {
+                _engineeringPanel.BringToFront();
+                _engineeringPanel.SelectSession(new EngineeringTransferSession(_portal, _project, _activeTarget));
+            }
+            else { _engineeringPanel.SelectSession(null); LoadScreenTree(); }
+            UpdateActionState();
+        }
+
+        private void ClearAttachment()
+        {
+            _project = null; _activeTarget = null; _activeHmi = null;
+            _hmiCombo.Items.Clear(); _screenTree.Nodes.Clear(); _projectLabel.Text = "";
+            _engineeringPanel.SelectSession(null);
+            UpdateActionState();
         }
 
         private void LoadScreenTree()
@@ -753,9 +780,9 @@ namespace SiemensMCPServer
 
         private string GetActiveHmiName()
         {
-            HmiEntry entry = _hmiCombo.SelectedItem as HmiEntry;
+            TargetEntry entry = _hmiCombo.SelectedItem as TargetEntry;
             if (entry != null)
-                return entry.Label;
+                return entry.Reference.Label;
             return "HMI";
         }
 
@@ -1426,7 +1453,13 @@ namespace SiemensMCPServer
         private void UpdateActionState()
         {
             bool connected = _project != null && _activeHmi != null;
-            _refreshScreensButton.Enabled = connected;
+            _refreshScreensButton.Enabled = _project != null && _activeTarget != null;
+            bool classic = _activeTarget == null || _activeHmi != null;
+            _engineeringPanel.Visible = !classic;
+            _screenTree.Visible = classic;
+            foreach (Control control in new Control[] { _exportSelectedButton, _exportAllButton, _exportCompleteButton, _importCompleteButton, _importScreensOnlyButton, _importButton, _overwriteCheck })
+                control.Visible = classic;
+            _actions.Height = classic ? 82 : 40;
             _exportAllButton.Enabled = connected;
             _exportCompleteButton.Enabled = connected;
             _importCompleteButton.Enabled = connected;
@@ -1468,16 +1501,11 @@ namespace SiemensMCPServer
             public override string ToString() { return Label; }
         }
 
-        private sealed class HmiEntry
+        private sealed class TargetEntry
         {
-            public HmiEntry(HmiTarget target, string label)
-            {
-                Target = target;
-                Label = label;
-            }
-            public HmiTarget Target { get; private set; }
-            public string Label { get; private set; }
-            public override string ToString() { return Label; }
+            public TargetEntry(SoftwareReference reference) { Reference = reference; }
+            public SoftwareReference Reference { get; private set; }
+            public override string ToString() { return "[" + (Reference.Family == "classic" ? "Comfort / Advanced" : Reference.Family == "plc" ? "PLC" : "Unified") + "] " + Reference.Label; }
         }
     }
 }
