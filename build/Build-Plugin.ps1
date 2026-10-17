@@ -5,13 +5,21 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$sourcePaths = @(& git -C $repoRoot -c core.quotepath=false ls-files --cached | Sort-Object -Unique)
+if ($LASTEXITCODE -ne 0 -or $sourcePaths.Count -eq 0) { throw 'Cannot read the tracked public source inventory.' }
+$privatePaths = @($sourcePaths | Where-Object { $_ -match '(^|/)(\.local|\.vs|bin|obj|__pycache__|TestResults|artifacts)/' })
+if ($privatePaths.Count) { throw ('Private or generated paths are tracked; remove them from the index before packaging: ' + ($privatePaths -join ', ')) }
 $artifactRoot = Join-Path $repoRoot 'artifacts'
 $versionSlug = $TiaPortalVersion.Replace('.', '_')
 $pluginVersion = (Get-Content -LiteralPath (Join-Path $repoRoot 'plugin\plugin.json') -Raw | ConvertFrom-Json).version
 $packageName = 'siemens-mcp-server-' + $pluginVersion + '-' + $versionSlug + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
 $packageRoot = Join-Path $artifactRoot $packageName
 New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
-Get-ChildItem -LiteralPath (Join-Path $repoRoot 'plugin') -Force | Copy-Item -Destination $packageRoot -Recurse -Force
+foreach ($sourcePath in $sourcePaths | Where-Object { $_.StartsWith('plugin/', [StringComparison]::Ordinal) }) {
+    $destination = Join-Path $packageRoot $sourcePath.Substring(7)
+    New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $repoRoot $sourcePath) -Destination $destination
+}
 Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $packageRoot 'LICENSE')
 $helperDirectory = Join-Path $packageRoot 'scripts'
 New-Item -ItemType Directory -Path $helperDirectory -Force | Out-Null
@@ -53,7 +61,7 @@ $metadata = [ordered]@{
     nativeWriteAcceptance = 'Selected Comfort V15.1 workflows tested; see NATIVE-ACCEPTANCE.md. Other profiles/workflows pending.'; builtUtc = [DateTime]::UtcNow.ToString('o')
 }
 $metadata | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $packageRoot 'build-info.json') -Encoding UTF8
-$sourceFiles = @(& git -C $repoRoot -c core.quotepath=false ls-files --cached --others --exclude-standard | Sort-Object | ForEach-Object {
+$sourceFiles = @($sourcePaths | ForEach-Object {
     $sourcePath = Join-Path $repoRoot $_
     if (Test-Path -LiteralPath $sourcePath -PathType Leaf) {
         [ordered]@{ path = $_; sha256 = (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash.ToLowerInvariant() }
