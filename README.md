@@ -1,6 +1,6 @@
-# Siemens TIA Portal Openness HMI Export / Import Tool
+# SiemensMCPServer
 
-WinForms utility for classic WinCC Comfort / Advanced projects through the Siemens TIA Portal Openness API.
+Local MCP server for Siemens HMI and offline PLC engineering through TIA Portal Openness, with reloadable feature workers and a classic WinCC Comfort / Advanced WinForms utility.
 
 ## Codex / MCP integration
 
@@ -29,30 +29,30 @@ The Siemens DLL references use `Copy Local = False`; Siemens DLLs are not redist
 
 ## Build
 
-Open `SiemensTiaOpenness.sln`, restore NuGet packages, and build. Both application executables target x64. The MCP project also requires a .NET 8 or newer SDK; building the original `SiemensTiaOpenness.csproj` alone does not require the MCP SDK packages.
+Open `SiemensMCPServer.sln`, restore NuGet packages, and build. Both application executables target x64. The MCP project also requires a .NET 8 or newer SDK; building the original `SiemensMCPServer.csproj` alone does not require the MCP SDK packages.
 
 The default compile-time API is V15.1. To build against another installed Openness API, set `TiaPortalVersion`:
 
 ```bat
-msbuild SiemensTiaOpenness.sln /restore /p:Configuration=Release /p:TiaPortalVersion=V17
+msbuild SiemensMCPServer.sln /restore /p:Configuration=Release /p:TiaPortalVersion=V17
 ```
 
 TIA Portal V21 uses its modular net48 assemblies automatically:
 
 ```bat
-msbuild SiemensTiaOpenness.sln /restore /p:Configuration=Release /p:TiaPortalVersion=V21
+msbuild SiemensMCPServer.sln /restore /p:Configuration=Release /p:TiaPortalVersion=V21
 ```
 
 If the API DLL comes from a newer installed TIA version, also set `TiaPortalInstallVersion`. For example, TIA Portal V20 can provide its retained V17 API:
 
 ```bat
-msbuild SiemensTiaOpenness.sln /restore /p:Configuration=Release /p:TiaPortalVersion=V17 /p:TiaPortalInstallVersion=V20
+msbuild SiemensMCPServer.sln /restore /p:Configuration=Release /p:TiaPortalVersion=V17 /p:TiaPortalInstallVersion=V20
 ```
 
 You can also point directly at a PublicAPI directory:
 
 ```bat
-msbuild SiemensTiaOpenness.sln /restore /p:Configuration=Release /p:TiaPublicApiDir="C:\Program Files\Siemens\Automation\Portal V20\PublicAPI\V17"
+msbuild SiemensMCPServer.sln /restore /p:Configuration=Release /p:TiaPublicApiDir="C:\Program Files\Siemens\Automation\Portal V20\PublicAPI\V17"
 ```
 
 The build fails with a clear message if the requested `Siemens.Engineering.dll` or `Siemens.Engineering.Hmi.dll` cannot be found.
@@ -74,7 +74,7 @@ The registry uses technical version keys such as `20.0` and API-version subkeys 
 For unattended launch, select the engineering version explicitly:
 
 ```bat
-SiemensTiaOpenness.exe --tia-version=V18
+SiemensMCPServer.exe --tia-version=V18
 ```
 
 or set:

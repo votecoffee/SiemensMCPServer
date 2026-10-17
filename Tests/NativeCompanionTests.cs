@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Text;
 using System.Xml.Linq;
-using SiemensTiaOpenness.Mcp;
+using SiemensMCPServer.Mcp;
 using Xunit;
 
 public sealed class NativeCompanionTests : IDisposable

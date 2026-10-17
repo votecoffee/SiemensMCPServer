@@ -5,7 +5,7 @@ using Siemens.Engineering.Hmi;
 using Siemens.Engineering.HW;
 using Siemens.Engineering.HW.Features;
 
-namespace SiemensTiaOpenness
+namespace SiemensMCPServer
 {
     internal sealed class HmiReference
     {

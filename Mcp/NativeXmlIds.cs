@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Xml.Linq;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     internal static class NativeXmlIds
     {

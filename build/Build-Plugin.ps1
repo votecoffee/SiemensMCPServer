@@ -8,7 +8,7 @@ $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $artifactRoot = Join-Path $repoRoot 'artifacts'
 $versionSlug = $TiaPortalVersion.Replace('.', '_')
 $pluginVersion = (Get-Content -LiteralPath (Join-Path $repoRoot 'plugin\plugin.json') -Raw | ConvertFrom-Json).version
-$packageName = 'siemens-tia-openness-' + $pluginVersion + '-' + $versionSlug + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
+$packageName = 'siemens-mcp-server-' + $pluginVersion + '-' + $versionSlug + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
 $packageRoot = Join-Path $artifactRoot $packageName
 New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
 Get-ChildItem -LiteralPath (Join-Path $repoRoot 'plugin') -Force | Copy-Item -Destination $packageRoot -Recurse -Force
@@ -18,7 +18,7 @@ New-Item -ItemType Directory -Path $helperDirectory -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Install-CodexPlugin.ps1') -Destination $helperDirectory
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Install-Extension.ps1') -Destination $helperDirectory
 Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\test_codex_integration.py') -Destination $helperDirectory
-$buildArgs = @('publish', (Join-Path $repoRoot 'Mcp\SiemensTiaOpenness.Mcp.csproj'), '-c', 'Release', '--nologo', '-v', 'minimal',
+$buildArgs = @('publish', (Join-Path $repoRoot 'Mcp\SiemensMCPServer.Mcp.csproj'), '-c', 'Release', '--nologo', '-v', 'minimal',
     '-p:RestoreLockedMode=true', '-p:StageFeatureExtensions=false', ('-p:TiaPortalVersion=' + $TiaPortalVersion), '-o', (Join-Path $packageRoot 'server'))
 if ($TiaPortalInstallVersion) { $buildArgs += '-p:TiaPortalInstallVersion=' + $TiaPortalInstallVersion }
 if ($TiaPublicApiDir) { $buildArgs += '-p:TiaPublicApiDir=' + $TiaPublicApiDir }

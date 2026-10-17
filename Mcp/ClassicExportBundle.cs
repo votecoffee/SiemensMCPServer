@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     public sealed class ClassicFolderName
     {

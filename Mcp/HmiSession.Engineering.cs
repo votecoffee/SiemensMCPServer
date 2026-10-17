@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.Json;
 using Siemens.Engineering;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     internal sealed partial class HmiSession
     {

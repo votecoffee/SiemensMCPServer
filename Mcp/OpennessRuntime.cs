@@ -6,9 +6,9 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text.Json;
-using SiemensTiaOpenness.Extensions;
+using SiemensMCPServer.Extensions;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     internal interface IHmiSession : IDisposable
     {
@@ -66,7 +66,7 @@ namespace SiemensTiaOpenness.Mcp
         {
             requestedVersion = version; this.artifactRoot = Path.GetFullPath(artifactRoot); this.allowWrites = allowWrites;
             extensions = new ExtensionManager(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "extensions"),
-                extensionsRoot ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SiemensTiaOpenness", "Extensions"),
+                extensionsRoot ?? ExtensionPaths.DefaultRoot(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)),
                 Path.Combine(this.artifactRoot, "extension-workers"));
             thread = new Thread(Run) { IsBackground = true, Name = "TIA Openness STA" };
             thread.SetApartmentState(ApartmentState.STA);

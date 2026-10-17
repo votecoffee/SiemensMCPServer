@@ -3,9 +3,9 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using SiemensTiaOpenness.Mcp;
+using SiemensMCPServer.Mcp;
 
-namespace SiemensTiaOpenness.Extensions
+namespace SiemensMCPServer.Extensions
 {
     internal sealed class FeatureRecipe
     {

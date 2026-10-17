@@ -10,8 +10,8 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <AssemblyName>SiemensTiaOpenness.Mcp</AssemblyName>
-    <Version>0.7.0</Version>
+    <AssemblyName>SiemensMCPServer.Mcp</AssemblyName>
+    <Version>0.7.1</Version>
     <OutputPath>bin/$(Configuration)/$(TiaPortalVersion)/</OutputPath>
     <IntermediateOutputPath>obj/$(TiaPortalVersion)/$(Configuration)/</IntermediateOutputPath>
   </PropertyGroup>

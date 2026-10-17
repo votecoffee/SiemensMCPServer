@@ -1,4 +1,6 @@
-# Siemens TIA Openness MCP plugin 0.7.0
+# SiemensMCPServer plugin 0.7.1
+
+The project and GitHub repository are now **SiemensMCPServer**. The plugin/MCP ID is `siemens-mcp-server`, the local marketplace is `siemens-mcp-server-local`, and the host is `SiemensMCPServer.Mcp.exe`. Remove the old `siemens-tia-openness` plugin or direct MCP registration through Codex before installing the renamed plugin. The installer refuses to register a second copy while the old server is enabled. Do not remove its cache manually while it is running. This rename needs a host upgrade; feature-worker reload remains available afterward.
 
 This local Windows plugin provides Comfort/classic and Unified engineering object tools, native resource import/export, bulk transfers, and specialized text-list and screen-caption workflows. It uses the official C# MCP SDK and .NET Framework 4.8. No OpenAI API key is needed to connect it to Codex. The desktop WinForms application retains its classic HMI workflow; expanded object tools and Unified support are in the MCP server. See [feature coverage](FEATURE-COVERAGE.md) for implemented routes and remaining boundaries.
 
@@ -8,7 +10,7 @@ This local Windows plugin provides Comfort/classic and Unified engineering objec
 
 Comfort on the V15 generation is the primary development target; V15.1 is installed and build-tested here. Unified follows with its existing version gates. PLC support shares the V15.1-first offline stack. Exact V15.0 needs its own installed API build and native trial.
 
-Extract the ZIP to a permanent directory. It includes `server/SiemensTiaOpenness.Mcp.exe`, its runtime dependencies, workflow skills, MCP descriptions and a Codex compatibility manifest. The Windows Codex profile uses a relative `cmd.exe` launcher and compatibility manifest dispatch, verified against the installed client; no unexpanded plugin-root variable is passed as an executable or working directory. Siemens DLLs are not included. Install TIA Portal, the matching Openness API, and the appropriate WinCC engineering components; use a Windows user in the local `Siemens TIA Openness` group. Use the V19 package for the Unified screen workflow on the installed V19 API.
+Extract the ZIP to a permanent directory. It includes `server/SiemensMCPServer.Mcp.exe`, its runtime dependencies, workflow skills, MCP descriptions and a Codex compatibility manifest. The Windows Codex profile uses a relative `cmd.exe` launcher and compatibility manifest dispatch, verified against the installed client; no unexpanded plugin-root variable is passed as an executable or working directory. Siemens DLLs are not included. Install TIA Portal, the matching Openness API, and the appropriate WinCC engineering components; use a Windows user in the local `Siemens TIA Openness` group. Use the V19 package for the Unified screen workflow on the installed V19 API.
 
 For installation with both skills and tools, run the bundled installer with the original ZIP beside its `.sha256` sidecar:
 
@@ -16,19 +18,19 @@ For installation with both skills and tools, run the bundled installer with the 
 powershell.exe -NoProfile -File 'C:\path\to\extracted-plugin\scripts\Install-CodexPlugin.ps1' -Package 'C:\path\to\plugin.zip'
 ```
 
-From this repository, the equivalent installer is `build/Install-CodexPlugin.ps1`. It checks ZIP/payload hashes, safe paths, member limits and plugin identity; keeps a versioned source under `%LOCALAPPDATA%\SiemensTiaOpenness\CodexMarketplace`; backs up affected settings; then uses `codex plugin marketplace add` and `codex plugin add`. Existing unrelated plugins/settings are preserved. `-PrepareOnly` verifies/stages a package without registering it. A direct Siemens MCP registration blocks plugin installation to prevent duplicate tools. Resolve that existing registration explicitly before switching installation methods. No TIA project is attached or changed.
+From this repository, the equivalent installer is `build/Install-CodexPlugin.ps1`. It checks ZIP/payload hashes, safe paths, member limits and plugin identity; keeps a versioned source under `%LOCALAPPDATA%\SiemensMCPServer\CodexMarketplace`; backs up affected settings; then uses `codex plugin marketplace add` and `codex plugin add`. Existing unrelated plugins/settings are preserved. `-PrepareOnly` verifies/stages a package without registering it. A direct Siemens MCP registration blocks plugin installation to prevent duplicate tools. Resolve that existing registration explicitly before switching installation methods. No TIA project is attached or changed.
 
 Verify the installed configuration using `py -3 -X utf8 scripts/test_codex_integration.py` from the extracted plugin or repository. The probe gets the actual registered command/arguments from Codex, starts that cached server, checks both skills and the tool list, and reads API capabilities/process metadata without attachment or model calls. Start a new Codex chat to load the installed tools and skills. This validates configuration and transport; it does not establish native project editing or a model-driven project trial.
 
 This follows the official [local plugin packaging/installation workflow](https://developers.openai.com/plugins/build/plugins); the installed Codex CLI's `plugin add --help` confirms its supported install command. Clients lacking plugin installation can use direct MCP registration:
 
 ```powershell
-codex mcp add siemens-tia-openness -- 'C:\path\to\extracted-plugin\server\SiemensTiaOpenness.Mcp.exe' --allow-writes
+codex mcp add siemens-mcp-server -- 'C:\path\to\extracted-plugin\server\SiemensMCPServer.Mcp.exe' --allow-writes
 ```
 
 Start a new chat or reconnect the server to load its tools. Direct registration loads tools; the packaged skill is loaded when installing the plugin through a local plugin marketplace. Do not register the same server both ways.
 
-For a repo-local plugin marketplace, put the extracted folder at `plugins/siemens-tia-openness` in your working repository and create `.agents/plugins/marketplace.json` using the format in the official [local plugin documentation](https://developers.openai.com/plugins/build/plugins). Then install the plugin from that local source in the desktop app. Availability of local marketplaces depends on the client. Direct MCP registration is the simpler fallback.
+For a repo-local plugin marketplace, put the extracted folder at `plugins/siemens-mcp-server` in your working repository and create `.agents/plugins/marketplace.json` using the format in the official [local plugin documentation](https://developers.openai.com/plugins/build/plugins). Then install the plugin from that local source in the desktop app. Availability of local marketplaces depends on the client. Direct MCP registration is the simpler fallback.
 
 The bundled MCP configuration enables writes because this plugin provides editing tools. Launch the executable without `--allow-writes` for inspection and previews only. Apply, compile, and save are then rejected by the server. Codex also applies its configured tool approval policy.
 
@@ -50,7 +52,7 @@ Open a backed-up or disposable TIA project first. Ask the chat to list compatibl
 
 Call `tia_get_api_capabilities` to inspect the loaded API, then attach to the exact process/project and use the target's family and capability flags. For text lists, use `hmi_list_text_lists`, `hmi_read_text_list`, `hmi_preview_text_edits`, and `hmi_apply_text_edits`. A preview returns a diff, a plan ID, the native import scope, and a candidate hash. Apply rechecks the snapshot under native exclusive access and commits only after native readback matches the candidate. A plan expires after 30 minutes and can be attempted once. A failed or interrupted operation requires inspecting the current HMI before retrying.
 
-Artifacts live under `%LOCALAPPDATA%\SiemensTiaOpenness\Mcp\Sessions` by default. Override with `--artifact-root=C:\some\directory`. Each preview retains original/candidate snapshots, hashes, a diff and an apply result. Classic snapshots are XML; Unified snapshots are JSON. Unified text-list snapshots contain both native YAML files and list identities. These are recovery artifacts for the selected workflow, not complete project archives. The project is never saved automatically.
+Artifacts live under `%LOCALAPPDATA%\SiemensMCPServer\Mcp\Sessions` by default. Override with `--artifact-root=C:\some\directory`. Each preview retains original/candidate snapshots, hashes, a diff and an apply result. Classic snapshots are XML; Unified snapshots are JSON. Unified text-list snapshots contain both native YAML files and list identities. These are recovery artifacts for the selected workflow, not complete project archives. The project is never saved automatically.
 
 `tia_archive_project(expectedProjectPath)` creates a native compressed project archive and returns its SHA-256. It requires a saved project and uses a short temporary path for the V15.1 archive path limit before retaining the result in the artifact directory. `tia_reopen_project(expectedProjectPath)` verifies saved changes by closing/reopening that exact project in its current TIA process. It refuses unsaved changes, never saves/discards them, and invalidates every preview. Use reopen only within the user's authorized scope; inspect TIA and reattach explicitly after a failure.
 
@@ -149,9 +151,9 @@ V15.1–V20 use the classic assembly family. The V21 MCP build also requires its
 Use a .NET 8 or newer SDK, .NET Framework 4.8 targeting support, and the installed Siemens API:
 
 ```powershell
-dotnet build Mcp/SiemensTiaOpenness.Mcp.csproj -c Release -p:TiaPortalVersion=V15.1
-dotnet test Tests/SiemensTiaOpenness.Tests.csproj -c Release
-py -3 -X utf8 scripts/test_mcp_protocol.py Mcp/bin/Release/V15.1/net48/SiemensTiaOpenness.Mcp.exe --native-read-only
+dotnet build Mcp/SiemensMCPServer.Mcp.csproj -c Release -p:TiaPortalVersion=V15.1
+dotnet test Tests/SiemensMCPServer.Tests.csproj -c Release
+py -3 -X utf8 scripts/test_mcp_protocol.py Mcp/bin/Release/V15.1/net48/SiemensMCPServer.Mcp.exe --native-read-only
 powershell.exe -NoProfile -File scripts/test_native_contracts.ps1 -Version V15.1 -ServerDirectory Mcp/bin/Release/V15.1/net48
 powershell -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1
 ```

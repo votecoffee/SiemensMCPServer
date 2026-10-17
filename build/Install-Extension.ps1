@@ -1,9 +1,14 @@
 param(
     [Parameter(Mandatory=$true)][string]$BundleDirectory,
-    [string]$ExtensionRoot=(Join-Path $env:LOCALAPPDATA 'SiemensTiaOpenness\Extensions'),
+    [string]$ExtensionRoot='',
     [string]$ExpectedManifestSha256=''
 )
 $ErrorActionPreference='Stop'
+if(-not $ExtensionRoot) {
+    $ExtensionRoot=Join-Path $env:LOCALAPPDATA 'SiemensMCPServer\Extensions'
+    $legacyRoot=Join-Path $env:LOCALAPPDATA 'SiemensTiaOpenness\Extensions'
+    if(-not (Test-Path -LiteralPath $ExtensionRoot -PathType Container) -and (Test-Path -LiteralPath (Join-Path $legacyRoot 'active.json') -PathType Leaf)) {$ExtensionRoot=$legacyRoot}
+}
 function Get-ExtensionHash([string]$Path) {
     $algorithm=[Security.Cryptography.SHA256]::Create();$stream=[IO.File]::OpenRead($Path)
     try{return [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-','').ToLowerInvariant()}finally{$stream.Dispose();$algorithm.Dispose()}
@@ -21,7 +26,7 @@ function Read-Bundle([string]$Root) {
     $manifestPath=Resolve-SafePath $Root 'extension.json'
     if((Get-Item -LiteralPath $manifestPath).Length -gt 1MB){throw 'Extension manifest exceeds size limit'}
     $manifest=Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    if($manifest.format -ne 'tia-extension-v1' -or $manifest.protocol -ne 1 -or $manifest.module -cnotmatch '^[a-z][a-z0-9_-]{0,31}$' -or $manifest.entryPoint -cne 'SiemensTiaOpenness.ExtensionWorker.exe' -or ([version]$manifest.version).ToString(3) -cne $manifest.version){throw 'Incompatible extension manifest'}
+    if($manifest.format -ne 'tia-extension-v1' -or $manifest.protocol -ne 1 -or $manifest.module -cnotmatch '^[a-z][a-z0-9_-]{0,31}$' -or $manifest.entryPoint -cnotin @('SiemensMCPServer.ExtensionWorker.exe','SiemensTiaOpenness.ExtensionWorker.exe') -or ([version]$manifest.version).ToString(3) -cne $manifest.version){throw 'Incompatible extension manifest'}
     $files=@($manifest.files)
     if($files.Count -eq 0 -or $files.Count -gt 256){throw 'Invalid extension inventory'}
     $seen=@{};$total=0L

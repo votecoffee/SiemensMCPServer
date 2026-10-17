@@ -7,7 +7,7 @@ using System.Text.Json;
 using YamlDotNet.Core;
 using YamlDotNet.RepresentationModel;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     internal static class TextListDocuments
     {

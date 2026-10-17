@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{8F1A4DB7-7CB2-4DFE-9472-164B53E636BA}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>SiemensTiaOpenness</RootNamespace>
-    <AssemblyName>SiemensTiaOpenness</AssemblyName>
+    <RootNamespace>SiemensMCPServer</RootNamespace>
+    <AssemblyName>SiemensMCPServer</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>

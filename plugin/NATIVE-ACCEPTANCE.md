@@ -1,5 +1,7 @@
 # Native acceptance — Comfort V15.1, 2026-10-16
 
+The project was renamed from SiemensTiaOpenness to SiemensMCPServer in package 0.7.1. The native trials below used the earlier product/executable identity and the exact source revisions stated here. Rename validation covers builds, transport, packaging and compatibility; no additional native project changes are implied.
+
 The user supplied an open classic test project for native testing. The session matched its exact `.ap15_1` path and process ID before attachment. One classic HMI and no PLC software were present. Tests used the actual STDIO MCP endpoint with writes enabled, through a local client recording requests, responses and artifacts. This is transport/API testing; a new Codex chat loading the installed tool set remains a separate integration trial.
 
 The original installed 0.6.1 build exposed the V15.1 caption-wrapper gap. A 0.6.2 development build at source commit `006cb65` performed the native trials below. The release adds a guard for the translation-slot limit found by that trial; it does not relax native readback checks. Release-package verification and any later installed-build smoke results are recorded separately in the delivery evidence.

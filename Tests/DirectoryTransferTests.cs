@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using SiemensTiaOpenness.Mcp;
+using SiemensMCPServer.Mcp;
 using Xunit;
 
 public sealed class DirectoryTransferTests

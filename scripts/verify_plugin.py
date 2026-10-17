@@ -28,13 +28,16 @@ def validate(files):
             raise ValueError("Manifest hash or length mismatch: " + item["path"])
     portable = json.loads(files["plugin.json"])
     assert portable["extensions"]["com.openai"]["requires_local_executor"] is True
-    assert portable["name"] == "siemens-tia-openness"
-    modern = json.loads(files["mcp.json"])["mcpServers"]["siemens-tia-openness"]
-    compat = json.loads(files[".mcp.json"])["mcpServers"]["siemens-tia-openness"]
+    assert portable["name"] == "siemens-mcp-server"
+    assert portable["repository"] == "https://github.com/votecoffee/SiemensMCPServer"
+    compatibility = json.loads(files[".codex-plugin/plugin.json"])
+    assert compatibility["name"] == portable["name"] and compatibility["version"] == portable["version"]
+    modern = json.loads(files["mcp.json"])["mcpServers"]["siemens-mcp-server"]
+    compat = json.loads(files[".mcp.json"])["mcpServers"]["siemens-mcp-server"]
     assert modern["type"] == "stdio"
     assert {k: v for k, v in modern.items() if k != "type"} == compat
     assert modern["command"] == "cmd.exe"
-    assert modern["args"] == ["/d", "/c", "server\\SiemensTiaOpenness.Mcp.exe", "--allow-writes"]
+    assert modern["args"] == ["/d", "/c", "server\\SiemensMCPServer.Mcp.exe", "--allow-writes"]
     assert modern["cwd"] == "."
     assert "skills/edit-hmi-text/SKILL.md" in files
     return len(manifest)
@@ -59,7 +62,7 @@ def main():
     file_count = validate(files)
     controls = {}
     for name, mutated in (
-        ("tampered_payload", {**files, "server/SiemensTiaOpenness.Mcp.exe": files["server/SiemensTiaOpenness.Mcp.exe"] + b"tamper"}),
+        ("tampered_payload", {**files, "server/SiemensMCPServer.Mcp.exe": files["server/SiemensMCPServer.Mcp.exe"] + b"tamper"}),
         ("extra_file", {**files, "extra.txt": b"extra"}),
         ("path_traversal", {**files, "../outside.txt": b"escape"}),
     ):
@@ -77,7 +80,7 @@ def main():
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
         command = [sys.executable, "-X", "utf8", str(Path(__file__).with_name("test_mcp_protocol.py")),
-                   str(root / "server/SiemensTiaOpenness.Mcp.exe")]
+                   str(root / "server/SiemensMCPServer.Mcp.exe")]
         if args.native_read_only:
             command.append("--native-read-only")
         result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", timeout=60)

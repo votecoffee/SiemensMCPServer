@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     internal static class PlcPolicy
     {

@@ -7,10 +7,20 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using SiemensTiaOpenness.Extensions;
+using SiemensMCPServer.Extensions;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
+    internal static class ExtensionPaths
+    {
+        public static string DefaultRoot(string localApplicationData)
+        {
+            string current = Path.Combine(localApplicationData, "SiemensMCPServer", "Extensions");
+            string legacy = Path.Combine(localApplicationData, "SiemensTiaOpenness", "Extensions");
+            return !Directory.Exists(current) && File.Exists(Path.Combine(legacy, "active.json")) ? legacy : current;
+        }
+    }
+
     internal sealed class ExtensionManifest
     {
         public string Format { get; set; } = "";
@@ -50,7 +60,7 @@ namespace SiemensTiaOpenness.Mcp
             var manifest = JsonSerializer.Deserialize<ExtensionManifest>(json, JsonDefaults.Options) ?? throw new ArgumentException("Missing extension manifest.");
             if (manifest.Format != "tia-extension-v1" || manifest.Protocol != ExtensionWire.Protocol || manifest.Module != module
                 || !Version.TryParse(manifest.Version, out var version) || version.ToString(3) != manifest.Version
-                || manifest.EntryPoint != "SiemensTiaOpenness.ExtensionWorker.exe") throw new ArgumentException("Incompatible extension manifest.");
+                || (manifest.EntryPoint != "SiemensMCPServer.ExtensionWorker.exe" && manifest.EntryPoint != "SiemensTiaOpenness.ExtensionWorker.exe")) throw new ArgumentException("Incompatible extension manifest.");
             if (manifest.Files == null || manifest.Files.Length == 0 || manifest.Files.Length > 256) throw new ArgumentException("Invalid extension file inventory.");
             var actual = inventory.Where(f => f.Path != "extension.json").ToDictionary(f => f.Path, StringComparer.OrdinalIgnoreCase);
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

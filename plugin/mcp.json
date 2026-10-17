@@ -1,10 +1,10 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
   "mcpServers": {
-    "siemens-tia-openness": {
+    "siemens-mcp-server": {
       "type": "stdio",
       "command": "cmd.exe",
-      "args": ["/d", "/c", "server\\SiemensTiaOpenness.Mcp.exe", "--allow-writes"],
+      "args": ["/d", "/c", "server\\SiemensMCPServer.Mcp.exe", "--allow-writes"],
       "cwd": "."
     }
   }

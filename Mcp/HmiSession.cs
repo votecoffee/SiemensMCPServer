@@ -6,9 +6,9 @@ using System.Text;
 using Siemens.Engineering;
 using Siemens.Engineering.Compiler;
 using Siemens.Engineering.Hmi;
-using SiemensTiaOpenness.Extensions;
+using SiemensMCPServer.Extensions;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     // All methods run on the runtime's single STA thread. No UI objects are required.
     internal sealed partial class HmiSession : IHmiSession, ITextListBackend, IUnifiedBackend, IEngineeringBackend, IClassicResourceBackend

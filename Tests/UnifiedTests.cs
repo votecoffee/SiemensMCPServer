@@ -3,10 +3,10 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Xml.Linq;
-using SiemensTiaOpenness.Mcp;
+using SiemensMCPServer.Mcp;
 using Xunit;
 
-namespace SiemensTiaOpenness.Tests;
+namespace SiemensMCPServer.Tests;
 
 public sealed class UnifiedTests
 {

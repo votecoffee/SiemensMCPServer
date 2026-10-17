@@ -4,9 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using SiemensTiaOpenness.Extensions;
+using SiemensMCPServer.Extensions;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     internal interface IUnifiedBackend
     {

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     internal sealed class ExtensionPlanBinding
     {

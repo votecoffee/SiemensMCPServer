@@ -1,4 +1,4 @@
-SiemensTiaOpenness is licensed under the repository's MIT LICENSE.
+SiemensMCPServer is licensed under the repository's MIT LICENSE.
 
 The MCP server redistributes the official ModelContextProtocol and
 ModelContextProtocol.Core libraries under Apache-2.0. Their license text is

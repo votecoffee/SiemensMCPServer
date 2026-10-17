@@ -3,7 +3,7 @@ name: edit-hmi-text
 description: Inspect and edit Comfort/classic or Unified HMI engineering objects, text lists and screens through local Siemens TIA Portal Openness, including supported object creation and native resource import/export. Use for an open TIA engineering project; excludes running-device control.
 ---
 
-Use the Siemens TIA Openness tools to work directly with the selected engineering project. Preserve the user's authorized scope across the workflow.
+Use the SiemensMCPServer tools to work directly with the selected engineering project. Preserve the user's authorized scope across the workflow.
 
 For feature updates, use `tia_list_extensions` to inspect module versions, generations and operation schemas. Stage trusted bundles with the packaged `Install-Extension.ps1`, then use `tia_reload_extensions` for the selected module (empty string reloads all). Successful reload preserves attachment and unsaved project edits but invalidates all previews; re-read before new previews. Failed reload retains the previous workers/previews. Existing tools use these same workers. New operations on supported broker routes use `tia_read_extension`, `tia_preview_extension` and `tia_apply_extension_plan` with advertised JSON arguments and exact target/fingerprint. Keep the user's existing authorization; reload never authorizes engineering edits. See [extension workflow](../../EXTENSIONS.md). A 0.6.x installation needs an initial 0.7.0 host upgrade before worker reload is available.
 

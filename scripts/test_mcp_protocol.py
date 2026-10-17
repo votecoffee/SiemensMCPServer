@@ -57,7 +57,7 @@ def run(executable, native=False):
         try:
             initialized = send("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
                                               "clientInfo": {"name": "tia-protocol-test", "version": "0.1.0"}})
-            assert initialized["serverInfo"]["name"] == "siemens-tia-openness"
+            assert initialized["serverInfo"]["name"] == "siemens-mcp-server"
             send("notifications/initialized", {}, notification=True)
             tools = {t["name"]: t for t in send("tools/list", {})["tools"]}
             expected = {"tia_list_versions", "tia_select_version", "tia_list_processes", "tia_attach", "tia_get_status",

@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.37411.7
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SiemensTiaOpenness", "SiemensTiaOpenness.csproj", "{8F1A4DB7-7CB2-4DFE-9472-164B53E636BA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SiemensMCPServer", "SiemensMCPServer.csproj", "{8F1A4DB7-7CB2-4DFE-9472-164B53E636BA}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Mcp", "Mcp", "{60D02A9B-BD8A-21E2-79E7-27A6B3D0EB49}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SiemensTiaOpenness.Mcp", "Mcp\SiemensTiaOpenness.Mcp.csproj", "{D56F6FF8-654F-4C45-A545-4A3BAF9B0CCD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SiemensMCPServer.Mcp", "Mcp\SiemensMCPServer.Mcp.csproj", "{D56F6FF8-654F-4C45-A545-4A3BAF9B0CCD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SiemensTiaOpenness.Tests", "Tests\SiemensTiaOpenness.Tests.csproj", "{128F7BE5-FA9B-4B24-B36C-E25A6C472E4A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SiemensMCPServer.Tests", "Tests\SiemensMCPServer.Tests.csproj", "{128F7BE5-FA9B-4B24-B36C-E25A6C472E4A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

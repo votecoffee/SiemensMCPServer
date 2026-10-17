@@ -6,7 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     internal static class Program
     {
@@ -15,7 +15,7 @@ namespace SiemensTiaOpenness.Mcp
             try
             {
                 string? version = Environment.GetEnvironmentVariable("TIA_PORTAL_VERSION");
-                string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SiemensTiaOpenness", "Mcp", "Sessions");
+                string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SiemensMCPServer", "Mcp", "Sessions");
                 bool writes = false;
                 string? extensionsRoot = null;
                 foreach (string arg in args)
@@ -32,7 +32,7 @@ namespace SiemensTiaOpenness.Mcp
                 builder.Logging.SetMinimumLevel(LogLevel.Warning);
                 builder.Services.AddSingleton(new OpennessRuntime(version, root, writes, extensionsRoot));
                 builder.Services.AddMcpServer(options => {
-                    options.ServerInfo = new ModelContextProtocol.Protocol.Implementation { Name = "siemens-tia-openness", Version = "0.7.0" };
+                    options.ServerInfo = new ModelContextProtocol.Protocol.Implementation { Name = "siemens-mcp-server", Version = "0.7.1" };
                     options.ServerInstructions = "Use explicit TIA process, project path, and HMI IDs. Read a text list, preview edits, and inspect the diff before applying authorized changes. Apply never saves; compile and save are separate tools. Classic and capability-checked Unified operations; use tia_get_api_capabilities and the target family. Do not retry an uncertain write; inspect current state first.";
                 }).WithStdioServerTransport().WithTools<McpTools>();
                 using (var host = builder.Build()) await host.RunAsync().ConfigureAwait(false);

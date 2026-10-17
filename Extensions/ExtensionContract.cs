@@ -2,9 +2,9 @@ using System;
 using System.IO;
 using System.Text;
 using System.Text.Json;
-using SiemensTiaOpenness.Mcp;
+using SiemensMCPServer.Mcp;
 
-namespace SiemensTiaOpenness.Extensions
+namespace SiemensMCPServer.Extensions
 {
     internal static class ExtensionWire
     {

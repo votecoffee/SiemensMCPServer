@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using YamlDotNet.Core;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     // Directory overloads are used by Unified. Keep filenames and companions native.
     internal static class DirectoryTransferNative

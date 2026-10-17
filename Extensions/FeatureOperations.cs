@@ -1,9 +1,9 @@
 using System;
 using System.Linq;
 using System.Text.Json;
-using SiemensTiaOpenness.Mcp;
+using SiemensMCPServer.Mcp;
 
-namespace SiemensTiaOpenness.Extensions
+namespace SiemensMCPServer.Extensions
 {
     internal static class FeatureOperations
     {

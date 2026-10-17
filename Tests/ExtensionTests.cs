@@ -3,12 +3,40 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using SiemensTiaOpenness.Extensions;
-using SiemensTiaOpenness.Mcp;
+using SiemensMCPServer.Extensions;
+using SiemensMCPServer.Mcp;
 using Xunit;
 
 public sealed class ExtensionTests
 {
+    [Fact] public void RenamedRootPreservesLegacySelectionUntilNewRootExists()
+    {
+        using var fixture = new Fixture();
+        string current = Path.Combine(fixture.Root, "SiemensMCPServer", "Extensions");
+        string legacy = Path.Combine(fixture.Root, "SiemensTiaOpenness", "Extensions");
+        Assert.Equal(current, ExtensionPaths.DefaultRoot(fixture.Root));
+        Directory.CreateDirectory(legacy);
+        Assert.Equal(current, ExtensionPaths.DefaultRoot(fixture.Root));
+        File.WriteAllText(Path.Combine(legacy, "active.json"), "{}");
+        Assert.Equal(legacy, ExtensionPaths.DefaultRoot(fixture.Root));
+        Directory.CreateDirectory(current);
+        Assert.Equal(current, ExtensionPaths.DefaultRoot(fixture.Root));
+        Assert.Equal("{}", File.ReadAllText(Path.Combine(legacy, "active.json")));
+    }
+    [Fact] public void LegacyWorkerNameRetainsPayloadAndReloadGuards()
+    {
+        using var fixture = new Fixture();
+        string directory = Path.Combine(fixture.Bundled, "comfort");
+        const string legacy = "SiemensTiaOpenness.ExtensionWorker.exe";
+        File.Move(Path.Combine(directory, "SiemensMCPServer.ExtensionWorker.exe"), Path.Combine(directory, legacy));
+        fixture.Manifest(directory, "comfort", "0.7.0", legacy);
+        using var manager = fixture.Manager();
+        string generation = manager.Generation("comfort");
+        File.AppendAllText(Path.Combine(directory, legacy), "tamper");
+        Assert.Throws<InvalidOperationException>(() => manager.Reload("comfort", () => throw new Exception("must not invalidate")));
+        Assert.Equal(generation, manager.Generation("comfort"));
+        Assert.False(fixture.Workers.Single().Disposed);
+    }
     [Fact] public void NewRecipeAddsOperationWithoutChangingHostToolSchema()
     {
         var recipes = new FeatureRecipes("comfort", "[{\"name\":\"grid_preset\",\"description\":\"Set editor grid\",\"xPath\":\"//GridColor\",\"newValue\":\"1, 2, 3\"}]");
@@ -37,7 +65,7 @@ public sealed class ExtensionTests
         int invalidations = 0;
         fixture.Bundle("comfort", "0.7.1"); manager.Reload("comfort", () => invalidations++);
         string second = manager.Generation("comfort"); Assert.NotEqual(first, second); Assert.True(old.Disposed); Assert.Equal(1, invalidations);
-        File.AppendAllText(Path.Combine(fixture.Bundled, "comfort", "SiemensTiaOpenness.ExtensionWorker.exe"), "tamper");
+        File.AppendAllText(Path.Combine(fixture.Bundled, "comfort", "SiemensMCPServer.ExtensionWorker.exe"), "tamper");
         Assert.Throws<InvalidOperationException>(() => manager.Reload("comfort", () => invalidations++));
         Assert.Equal(second, manager.Generation("comfort")); Assert.False(fixture.Workers.Last().Disposed); Assert.Equal(1, invalidations);
     }
@@ -67,7 +95,7 @@ public sealed class ExtensionTests
         using var manager = fixture.Manager(); manager.Generation("comfort");
         var worker = fixture.Workers.Single(); Assert.Equal("0.7.2", worker.Hello.Version); Assert.StartsWith(fixture.Cache, worker.Directory);
         Assert.NotEqual(Path.Combine(fixture.External, "releases", "comfort", "0.7.2"), worker.Directory);
-        File.WriteAllText(Path.Combine(fixture.External, "releases", "comfort", "0.7.2", "SiemensTiaOpenness.ExtensionWorker.exe"), "new source bits");
+        File.WriteAllText(Path.Combine(fixture.External, "releases", "comfort", "0.7.2", "SiemensMCPServer.ExtensionWorker.exe"), "new source bits");
         Assert.False(worker.Disposed);
     }
     [Fact] public void RejectsUnlistedFilesAndSiemensAssemblies()
@@ -94,10 +122,10 @@ public sealed class ExtensionTests
         public void Bundle(string module, string version, string? target = null)
         {
             string dir = target ?? Path.Combine(Bundled, module); Directory.CreateDirectory(dir);
-            File.WriteAllText(Path.Combine(dir, "SiemensTiaOpenness.ExtensionWorker.exe"), "fixture " + version); Manifest(dir, module, version);
+            File.WriteAllText(Path.Combine(dir, "SiemensMCPServer.ExtensionWorker.exe"), "fixture " + version); Manifest(dir, module, version);
         }
-        public void Manifest(string dir, string module, string version) => File.WriteAllText(Path.Combine(dir, "extension.json"), JsonSerializer.Serialize(new ExtensionManifest {
-            Format = "tia-extension-v1", Protocol = 1, Module = module, Version = version, EntryPoint = "SiemensTiaOpenness.ExtensionWorker.exe",
+        public void Manifest(string dir, string module, string version, string entryPoint = "SiemensMCPServer.ExtensionWorker.exe") => File.WriteAllText(Path.Combine(dir, "extension.json"), JsonSerializer.Serialize(new ExtensionManifest {
+            Format = "tia-extension-v1", Protocol = 1, Module = module, Version = version, EntryPoint = entryPoint,
             Files = TransferFiles.Inventory(dir).Where(f => f.Path != "extension.json").ToArray()
         }, JsonDefaults.Options));
         public ExtensionManager Manager() => new ExtensionManager(Bundled, External, Cache, b => {

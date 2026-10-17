@@ -7,7 +7,7 @@ using System.Reflection;
 using Siemens.Engineering;
 using Siemens.Engineering.SW;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     // Only navigates descendants of the selected HMI/PLC software. Parent/services are excluded.
     internal static class EngineeringNative

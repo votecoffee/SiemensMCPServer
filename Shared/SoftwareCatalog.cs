@@ -6,7 +6,7 @@ using Siemens.Engineering.HW;
 using Siemens.Engineering.HW.Features;
 using Siemens.Engineering.SW;
 
-namespace SiemensTiaOpenness
+namespace SiemensMCPServer
 {
     internal sealed class SoftwareReference
     {

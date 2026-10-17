@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "siemens-tia-openness": {
+    "siemens-mcp-server": {
       "command": "cmd.exe",
-      "args": ["/d", "/c", "server\\SiemensTiaOpenness.Mcp.exe", "--allow-writes"],
+      "args": ["/d", "/c", "server\\SiemensMCPServer.Mcp.exe", "--allow-writes"],
       "cwd": "."
     }
   }

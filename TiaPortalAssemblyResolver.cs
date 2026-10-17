@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.Win32;
 
-namespace SiemensTiaOpenness
+namespace SiemensMCPServer
 {
     internal static class TiaPortalAssemblyResolver
     {

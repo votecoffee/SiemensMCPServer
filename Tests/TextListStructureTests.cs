@@ -3,9 +3,9 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Xml.Linq;
-using SiemensTiaOpenness;
-using SiemensTiaOpenness.Mcp;
-using SiemensTiaOpenness.Tests;
+using SiemensMCPServer;
+using SiemensMCPServer.Mcp;
+using SiemensMCPServer.Tests;
 using Xunit;
 
 public sealed class TextListStructureTests

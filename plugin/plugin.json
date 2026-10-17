@@ -1,9 +1,9 @@
 {
-  "name": "siemens-tia-openness",
-  "version": "0.7.0",
+  "name": "siemens-mcp-server",
+  "version": "0.7.1",
   "description": "Comfort V15.1-first HMI and offline Siemens PLC engineering through local TIA Portal Openness, with capability-checked Unified support.",
   "author": { "name": "votecoffee" },
-  "repository": "https://github.com/votecoffee/SiemensTiaOpenness",
+  "repository": "https://github.com/votecoffee/SiemensMCPServer",
   "license": "MIT",
   "extensions": { "com.openai": { "requires_local_executor": true } }
 }

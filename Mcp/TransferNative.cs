@@ -5,7 +5,7 @@ using System.Reflection;
 using Siemens.Engineering;
 using Siemens.Engineering.SW;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     internal static class TransferNative
     {

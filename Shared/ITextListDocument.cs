@@ -1,4 +1,4 @@
-namespace SiemensTiaOpenness
+namespace SiemensMCPServer
 {
     internal interface ITextListDocument
     {

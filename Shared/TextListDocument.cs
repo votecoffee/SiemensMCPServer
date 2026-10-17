@@ -8,7 +8,7 @@ using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 
-namespace SiemensTiaOpenness
+namespace SiemensMCPServer
 {
     public sealed class TextEdit
     {

@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Xml.Linq;
-using SiemensTiaOpenness.Mcp;
+using SiemensMCPServer.Mcp;
 using Xunit;
 
 public sealed class ClassicBehaviorTests

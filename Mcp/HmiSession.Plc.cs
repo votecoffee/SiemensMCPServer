@@ -7,7 +7,7 @@ using Siemens.Engineering.Online;
 using Siemens.Engineering.SW;
 using Siemens.Engineering.SW.ExternalSources;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     internal sealed partial class HmiSession
     {
@@ -77,7 +77,7 @@ namespace SiemensTiaOpenness.Mcp
             var requested = new PlcSourceInput { Name = name, Language = language, Code = code, AllowBlockReplacement = allowBlockReplacement };
             requested.Validate();
             var reply = features.Execute("plc", "prepare_source", new { arguments = new { name, language, code, allowBlockReplacement } });
-            var source = SiemensTiaOpenness.Extensions.ExtensionWire.Parse<PlcSourceInput>(reply.GetProperty("source"));
+            var source = SiemensMCPServer.Extensions.ExtensionWire.Parse<PlcSourceInput>(reply.GetProperty("source"));
             requested.RequireExactCandidate(source);
             string directory = Path.Combine(artifactRoot, "plc-source-candidates", Guid.NewGuid().ToString("N"));
             PlcSourceFiles.Write(directory, source);

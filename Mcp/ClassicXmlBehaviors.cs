@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 using System.Xml.Linq;
 using System.Xml.XPath;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     public sealed class ClassicBehaviorChange
     {

@@ -1,4 +1,4 @@
-# Reloadable feature extensions — 0.7.0
+# Reloadable feature extensions — 0.7.1
 
 The MCP host retains its connection to Codex and owns the Siemens attachment, single STA queue, transactions, offline checks, preview stores, candidate hashes and native readback. Pure feature workers receive JSON snapshots, never Siemens CLR objects. The host copies complete, hash-checked bundles into private generation directories before starting workers, so they do not lock the source of the next update.
 
@@ -25,7 +25,7 @@ Reload uses the native engineering queue and waits for active operations to fini
 
 ## Stage an update
 
-The default external root is `%LOCALAPPDATA%\SiemensTiaOpenness\Extensions`; `--extensions-root=<absolute-path>` selects another. A module selected in external `active.json` overrides its bundled version. Staging does not activate a new version in running hosts: reload explicitly. Each chat's host reloads independently.
+The default external root is `%LOCALAPPDATA%\SiemensMCPServer\Extensions`; `--extensions-root=<absolute-path>` selects another. When that directory does not yet exist and `%LOCALAPPDATA%\SiemensTiaOpenness\Extensions\active.json` exists, the host and extension installer retain that legacy root. Creating the new root selects it on the next host start; old data is never moved or deleted. Explicit roots always take precedence. A module selected in external `active.json` overrides its bundled version. Staging does not activate a new version in running hosts: reload explicitly. Each chat's host reloads independently.
 
 Install a supplied, trusted extracted module bundle with the packaged script:
 
@@ -41,15 +41,15 @@ For development, rebuild only the worker and stage the selected module:
 
 ```powershell
 powershell.exe -NoProfile -File build\Build-Extensions.ps1 `
-  -Destination "$env:LOCALAPPDATA\SiemensTiaOpenness\Extensions" `
-  -WorkerVersion '0.7.1' -Modules comfort
+  -Destination "$env:LOCALAPPDATA\SiemensMCPServer\Extensions" `
+  -WorkerVersion '0.7.2' -Modules comfort
 ```
 
 Then call `tia_reload_extensions(module="comfort")`. This does not rebuild or replace the host. Use an isolated destination and matching host `--extensions-root` for test versions. Normal MCP builds automatically build bundled workers; `build\Build-Plugin.ps1` creates a complete release package with fresh bundled generations.
 
 ## Bundle and worker contract
 
-A bundle contains `extension.json`, `SiemensTiaOpenness.ExtensionWorker.exe`, dependencies and optional feature data. The manifest is `tia-extension-v1`, protocol `1`, with a module name, three-part version and exact relative file inventory (`path`, `bytes`, `sha256`). Its handshake must return the same module/version/protocol and a bounded operation catalog. Workers include no Siemens engineering DLLs.
+A bundle contains `extension.json`, `SiemensMCPServer.ExtensionWorker.exe`, dependencies and optional feature data. The host and installer also accept the former `SiemensTiaOpenness.ExtensionWorker.exe` entry point for existing protocol-1 bundles, with the same integrity and handshake checks. The manifest is `tia-extension-v1`, protocol `1`, with a module name, three-part version and exact relative file inventory (`path`, `bytes`, `sha256`). Its handshake must return the same module/version/protocol and a bounded operation catalog. Workers include no Siemens engineering DLLs.
 
 UTF-8 JSON-line requests contain `id`, `operation`, `input`; responses return the same `id` and `result` or `error`. `$hello` advertises operations. Supported routes are local inspection, internal transformations for existing tools, classic XML, Unified objects and PLC sources. The host controls native target selection and mutation scope. New routes require a host update; new operations on existing routes do not.
 

@@ -5,7 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
 using System.Xml.XPath;
-using SiemensTiaOpenness.Mcp;
+using SiemensMCPServer.Mcp;
 using Xunit;
 
 public sealed class ClassicResourceTests

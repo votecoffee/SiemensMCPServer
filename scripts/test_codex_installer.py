@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -28,9 +29,17 @@ def main():
             assert report["state"] == "prepared" and report["settingsChanged"] is False
         with zipfile.ZipFile(args.package) as archive:
             files = {info.filename: archive.read(info.filename) for info in archive.infolist() if not info.is_dir()}
+        # A renamed plugin must not register beside the enabled old identity.
+        mock_cli=root/'mock-cli';mock_cli.mkdir()
+        (mock_cli/'codex.cmd').write_text('@echo off\nif "%1"=="mcp" (\necho [{"name":"siemens-tia-openness","enabled":true,"transport":{}}]\nexit /b 0\n)\necho Unexpected Codex registration call\nexit /b 99\n',encoding='ascii')
+        mock_home=root/'mock-home';mock_home.mkdir()
+        blocked=subprocess.run(['powershell.exe','-NoProfile','-File',str(installer),'-Package',str(args.package.resolve()),'-InstallRoot',str(root/'legacy-guard')],
+            env={**os.environ,'PATH':str(mock_cli)+os.pathsep+os.environ['PATH'],'CODEX_HOME':str(mock_home)},capture_output=True,text=True,encoding='utf-8',timeout=60)
+        assert blocked.returncode!=0 and 'old siemens-tia-openness server is still enabled' in blocked.stderr,blocked.stdout+blocked.stderr
+        assert not (mock_home/'config.toml').exists()
         controls = {}
         for name, changed in [
-            ("tampered_payload", {**files, "server/SiemensTiaOpenness.Mcp.exe": files["server/SiemensTiaOpenness.Mcp.exe"] + b"tamper"}),
+            ("tampered_payload", {**files, "server/SiemensMCPServer.Mcp.exe": files["server/SiemensMCPServer.Mcp.exe"] + b"tamper"}),
             ("extra_file", {**files, "extra.txt": b"extra"}),
             ("path_traversal", {**files, "../outside.txt": b"escape"}),
             ("case_collision", {**files, "PLUGIN.JSON": files["plugin.json"]}),
@@ -45,7 +54,7 @@ def main():
             assert result.returncode != 0, name
             assert not (root / name).exists() and not (root / "outside.txt").exists(), name
             controls[name] = "rejected before extraction"
-    report = {"preparation": "passed", "repeatPreparation": "passed", "settingsChanged": False, "negativeControls": controls}
+    report = {"preparation": "passed", "repeatPreparation": "passed", "settingsChanged": False, "legacyDuplicateServer": "rejected before Codex registration", "negativeControls": controls}
     if args.report:
         args.report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2))

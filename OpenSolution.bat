@@ -1,2 +1,2 @@
 @echo off
-start "" "%~dp0SiemensTiaOpenness.sln"
+start "" "%~dp0SiemensMCPServer.sln"

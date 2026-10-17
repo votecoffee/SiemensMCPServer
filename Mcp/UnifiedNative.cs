@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using Siemens.Engineering;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     // Reflection is restricted to documented public Openness members, so classic builds
     // do not acquire a static reference to Unified types absent from older Siemens APIs.

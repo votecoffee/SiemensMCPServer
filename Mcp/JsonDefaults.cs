@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     internal static class JsonDefaults
     {

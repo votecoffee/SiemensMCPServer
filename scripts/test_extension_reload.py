@@ -86,22 +86,23 @@ def main():
                 result=client.call('tia_list_extensions');assert result['hostProcessId']==host_pid
                 for module in result['modules']:workers.add(module['workerProcessId'])
                 return {m['module']:m for m in result['modules']}
-            tools_before=client.send('tools/list',{})['tools'];initial=catalog();assert initial['comfort']['version']=='0.7.0'
-            completed=subprocess.run(['powershell.exe','-NoProfile','-File',str(repo/'build/Build-Extensions.ps1'),'-Destination',str(root/'built'),'-WorkerVersion','0.7.1','-Modules','comfort'],capture_output=True,text=True,encoding='utf-8',timeout=120)
+            tools_before=client.send('tools/list',{})['tools'];initial=catalog()
+            parts=[int(p) for p in initial['comfort']['version'].split('.')];parts[-1]+=1;next_version='.'.join(map(str,parts))
+            completed=subprocess.run(['powershell.exe','-NoProfile','-File',str(repo/'build/Build-Extensions.ps1'),'-Destination',str(root/'built'),'-WorkerVersion',next_version,'-Modules','comfort'],capture_output=True,text=True,encoding='utf-8',timeout=120)
             assert completed.returncode==0,completed.stdout+completed.stderr
             registry=json.loads((root/'built/active.json').read_text(encoding='utf-8-sig'));bundle=root/'built'/registry['comfort']
             (bundle/'recipes.json').write_text(json.dumps([{'name':'reload_grid_preset','description':'Added while the host stays connected','xPath':'//GridColor','newValue':'9, 8, 7'}]),encoding='utf-8');manifest(bundle)
             installed=install(bundle);good_registry=(root/'external/active.json').read_bytes()
             assert catalog()['comfort']['generation']==initial['comfort']['generation'],'Update must wait for explicit reload'
             reloaded=client.call('tia_reload_extensions',module='comfort');assert reloaded['hostProcessId']==host_pid
-            updated=catalog()['comfort'];assert updated['version']=='0.7.1' and updated['generation']!=initial['comfort']['generation']
+            updated=catalog()['comfort'];assert updated['version']==next_version and updated['generation']!=initial['comfort']['generation']
             assert updated['workerProcessId']!=initial['comfort']['workerProcessId']
             assert any(o['name']=='reload_grid_preset' for o in updated['operations'])
             assert tools_before==client.send('tools/list',{})['tools']
             probe={'xml':'<Document><Hmi.Screen.Screen><AttributeList><Name>Café — テスト</Name></AttributeList></Hmi.Screen.Screen></Document>','editable':True}
             assert client.call('tia_read_extension',module='comfort',operation='inspect_xml',argumentsJson=json.dumps(probe,ensure_ascii=False))['data']['name']=='Café — テスト'
             # Invoke the new transform through the identical worker protocol, without any native project.
-            peer=subprocess.Popen([str(Path(installed['bundleDirectory'])/'SiemensTiaOpenness.ExtensionWorker.exe'),'--module=comfort'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding='utf-8')
+            peer=subprocess.Popen([str(Path(installed['bundleDirectory'])/'SiemensMCPServer.ExtensionWorker.exe'),'--module=comfort'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding='utf-8')
             request={'id':1,'operation':'reload_grid_preset','input':{'snapshot':probe['xml'].replace('</AttributeList>','<GridColor>0, 0, 0</GridColor></AttributeList>'),'arguments':{'expectedValue':'0, 0, 0'}}}
             stdout,stderr=peer.communicate(json.dumps(request)+'\n',timeout=20);assert peer.returncode==0,stderr
             assert '<GridColor>9, 8, 7</GridColor>' in json.loads(stdout)['result']['candidateXml']
@@ -111,11 +112,11 @@ def main():
             failed=client.rejected('tia_reload_extensions',module='comfort')
             assert catalog()['comfort']['generation']==updated['generation']
             assert client.call('tia_read_extension',module='comfort',operation='inspect_xml',argumentsJson=json.dumps(probe))['data']['name']==probe['xml'].split('<Name>')[1].split('</Name>')[0]
-            (Path(bad['bundleDirectory'])/'SiemensTiaOpenness.ExtensionWorker.exe').write_bytes(b'bad hash')
+            (Path(bad['bundleDirectory'])/'SiemensMCPServer.ExtensionWorker.exe').write_bytes(b'bad hash')
             client.rejected('tia_reload_extensions',module='comfort');assert catalog()['comfort']['generation']==updated['generation']
             for control in ['tampered','unlisted','traversal','siemens_dll']:
                 changed=root/control;shutil.copytree(bundle,changed)
-                if control=='tampered':(changed/'SiemensTiaOpenness.ExtensionWorker.exe').write_bytes(b'tampered')
+                if control=='tampered':(changed/'SiemensMCPServer.ExtensionWorker.exe').write_bytes(b'tampered')
                 elif control=='unlisted':(changed/'extra.txt').write_text('unlisted')
                 elif control=='traversal':
                     value=json.loads((changed/'extension.json').read_text());value['files'][0]['path']='../outside';(changed/'extension.json').write_text(json.dumps(value))
@@ -132,10 +133,10 @@ def main():
             hello={'id':1,'result':{'protocol':1,'module':'comfort','version':'0.7.0','operations':[{'name':'inspect_xml','description':'timeout fixture','route':'local','preview':False,'inputSchema':{'type':'object'}}]}}
             literal=json.dumps(hello).replace('"','""')
             (hung/'Program.cs').write_text('using System; using System.Threading; class Program { static void Main() { Console.ReadLine(); Console.WriteLine(@"'+literal+'"); Console.ReadLine(); Thread.Sleep(60000); } }',encoding='utf-8')
-            (hung/'fixture.csproj').write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net48</TargetFramework><AssemblyName>SiemensTiaOpenness.ExtensionWorker</AssemblyName><Version>0.7.0</Version></PropertyGroup></Project>')
+            (hung/'fixture.csproj').write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net48</TargetFramework><AssemblyName>SiemensMCPServer.ExtensionWorker</AssemblyName><Version>0.7.0</Version></PropertyGroup></Project>')
             completed=subprocess.run(['dotnet','build',str(hung/'fixture.csproj'),'-c','Release','-o',str(hung/'payload'),'-v','quiet'],capture_output=True,text=True,encoding='utf-8',timeout=60)
             assert completed.returncode==0,completed.stdout+completed.stderr
-            (hung/'payload/extension.json').write_text(json.dumps({'format':'tia-extension-v1','protocol':1,'module':'comfort','version':'0.7.0','entryPoint':'SiemensTiaOpenness.ExtensionWorker.exe'}))
+            (hung/'payload/extension.json').write_text(json.dumps({'format':'tia-extension-v1','protocol':1,'module':'comfort','version':'0.7.0','entryPoint':'SiemensMCPServer.ExtensionWorker.exe'}))
             manifest(hung/'payload');install(hung/'payload');client.call('tia_reload_extensions',module='comfort');timed=catalog()['comfort']
             started=time.monotonic();timeout_error=client.rejected('tia_read_extension',module='comfort',operation='inspect_xml',argumentsJson='{}');elapsed=time.monotonic()-started
             assert 'deadline' in timeout_error and 25<elapsed<45,timeout_error

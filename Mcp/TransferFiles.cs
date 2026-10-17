@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
 
-namespace SiemensTiaOpenness.Mcp
+namespace SiemensMCPServer.Mcp
 {
     internal sealed class TransferFile
     {

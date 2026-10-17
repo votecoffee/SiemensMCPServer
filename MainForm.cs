@@ -9,7 +9,7 @@ using Siemens.Engineering.Hmi;
 using Siemens.Engineering.Hmi.Screen;
 using HmiScreen = Siemens.Engineering.Hmi.Screen.Screen;
 
-namespace SiemensTiaOpenness
+namespace SiemensMCPServer
 {
     public sealed class MainForm : Form
     {
@@ -38,7 +38,7 @@ namespace SiemensTiaOpenness
 
         public MainForm()
         {
-            Text = "TIA Portal " + TiaPortalAssemblyResolver.SelectedEngineeringVersion + " - HMI Export / Import Tool";
+            Text = "SiemensMCPServer - TIA Portal " + TiaPortalAssemblyResolver.SelectedEngineeringVersion + " - HMI Export / Import Tool";
             Width = 1220;
             Height = 760;
             MinimumSize = new Size(1050, 620);
