@@ -49,6 +49,38 @@ try {
     $formType.GetMethod('UpdateActionState', $privateInstance).Invoke($form, $null)
     Assert-Ui (Own-Visible (Field '_exportCompleteButton')) 'Classic controls remain available'
     Assert-Ui (-not (Own-Visible $panel)) 'Classic view hides the engineering resource panel'
+    # Exercise the desktop's actual net48 JSON/YAML dependencies and bundle rules.
+    $scratch = Join-Path ([IO.Path]::GetTempPath()) ('siemens-desktop-smoke-' + [Guid]::NewGuid().ToString('N'))
+    $native = Join-Path $scratch 'native'
+    [IO.Directory]::CreateDirectory($native) | Out-Null
+    try {
+        [IO.File]::WriteAllText((Join-Path $native 'payload.xml'), '<Document />')
+        $index = @{ format = 'tia-engineering-export-v1'; family = 'plc'; failures = @(); entries = @(@{
+            path = 'p:BlockGroup/p:Blocks/n:Synthetic'; importPath = 'p:BlockGroup/p:Blocks';
+            nativeType = 'Siemens.Engineering.SW.Blocks.FC'; sourceDirectory = 'native'
+        }) } | ConvertTo-Json -Depth 5
+        [IO.File]::WriteAllText((Join-Path $scratch 'export-index.json'), $index)
+        $static = [Reflection.BindingFlags]'NonPublic,Static'
+        $readBundle = $assembly.GetType('SiemensMCPServer.DesktopTransferSelection', $true).GetMethod('ReadBundle', $static)
+        $resources = $readBundle.Invoke($null, [object[]]@([string]$scratch, 'plc', '', $false))
+        Assert-Ui ($resources.Length -eq 1) 'Desktop net48 bundle preflight loads JSON dependencies'
+        $rejected = $false
+        try { $readBundle.Invoke($null, [object[]]@([string]$scratch, 'unified', '', $true)) | Out-Null }
+        catch { $rejected = $_.Exception.GetBaseException() -is [ArgumentException] }
+        Assert-Ui $rejected 'Desktop net48 bundle preflight rejects a different target family'
+        [IO.File]::WriteAllText((Join-Path $native 'Synthetic.hmi.yml'), 'Tags: []')
+        $validateYaml = $assembly.GetType('SiemensMCPServer.Mcp.DirectoryTransferNative', $true).GetMethod('Validate', $static)
+        $configurations = $validateYaml.Invoke($null, [object[]]@('native', [string]$native, $true))
+        Assert-Ui ($configurations.Length -eq 1) 'Desktop net48 native directory validation loads YAML dependencies'
+    }
+    finally {
+        # Remove only the exact synthetic files created above, then the empty directories.
+        foreach ($file in @((Join-Path $native 'payload.xml'), (Join-Path $native 'Synthetic.hmi.yml'), (Join-Path $scratch 'export-index.json'))) {
+            if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file }
+        }
+        [IO.Directory]::Delete($native)
+        [IO.Directory]::Delete($scratch)
+    }
     if ($ScreenshotPath) {
         # Render an invisible test window so child controls participate in layout/painting.
         $form.ShowInTaskbar = $false

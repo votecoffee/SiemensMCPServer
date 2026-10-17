@@ -39,7 +39,7 @@ namespace SiemensMCPServer
         {
             session = value; overwrite.Checked = false;
             scope.Text = value == null ? "Select a Unified HMI or PLC target."
-                : value.Family == "plc" ? "PLC: offline blocks, data types, tag tables and external sources. Transfers require a verified Offline state."
+                : value.Family == "plc" ? "PLC: offline XML blocks, data types and tag tables; external sources are browseable. Transfers require a verified Offline state."
                 : "Unified: native XML/YAML/JS transfers depend on the installed API. Objects without native transfer methods remain browseable; V19 has no screen or text-list transfer route.";
             RefreshResources();
         }

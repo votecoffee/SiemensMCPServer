@@ -27,7 +27,7 @@ An explicit API directory can be supplied instead:
 dotnet build Mcp/SiemensMCPServer.Mcp.csproj -c Release -p:TiaPortalVersion=V17 '-p:TiaPublicApiDir=C:\Program Files\Siemens\Automation\Portal V20\PublicAPI\V17'
 ```
 
-V15.1–V20 use the classic assembly family. V21 uses separate modular `net48` Base/WinCC assemblies and requires the STEP 7 module for the MCP PLC tools:
+V15.1–V20 use the classic assembly family. V21 uses separate modular `net48` Base/WinCC assemblies and requires the STEP 7 module for PLC support in both applications:
 
 ```powershell
 dotnet build Mcp/SiemensMCPServer.Mcp.csproj -c Release -p:TiaPortalVersion=V21
@@ -62,3 +62,23 @@ powershell.exe -NoProfile -File scripts/test_native_contracts.ps1 -Version V15.1
 ```
 
 Offline and metadata checks do not establish native project or runtime acceptance. See [validation status](../plugin/NATIVE-ACCEPTANCE.md). Keep machine-specific evidence outside the public tree or under `.local/`.
+
+## Desktop verification
+
+The desktop project uses SDK-style .NET Framework 4.8 builds and locked NuGet dependencies. Its native transfer adapter source is shared with MCP, without a reference to the MCP executable or host dependencies.
+
+```powershell
+dotnet build SiemensMCPServer.csproj -c Release -p:TiaPortalVersion=V15.1 -p:RestoreLockedMode=true
+powershell.exe -NoProfile -STA -File scripts/test_desktop_smoke.ps1 -DesktopDirectory bin/Release -Version V15.1
+powershell.exe -NoProfile -File scripts/test_native_contracts.ps1 -Version V15.1 -ServerDirectory bin/Release -ExecutableName SiemensMCPServer.exe
+```
+
+Use a separate output/intermediate directory when retaining a second GUI profile:
+
+```powershell
+dotnet build SiemensMCPServer.csproj -c Release -p:TiaPortalVersion=V19 -p:RestoreLockedMode=true -p:OutputPath=bin/Release/V19/ -p:IntermediateOutputPath=obj/V19/Release/
+powershell.exe -NoProfile -STA -File scripts/test_desktop_smoke.ps1 -DesktopDirectory bin/Release/V19 -Version V19
+powershell.exe -NoProfile -File scripts/test_native_contracts.ps1 -Version V19 -ServerDirectory bin/Release/V19 -ExecutableName SiemensMCPServer.exe
+```
+
+The smoke script constructs the form without process enumeration, uses synthetic target families to check view selection, and verifies disabled actions without an attachment. Native contract checks inspect installed method signatures only. Neither script attaches to a project or performs native imports/exports. The optional smoke `-ScreenshotPath` renders an invisible test form; keep output outside the public tree or under `.local/`.

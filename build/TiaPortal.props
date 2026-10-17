@@ -49,7 +49,7 @@
   </ItemGroup>
 
   <Target Name="ValidateTiaPortalReferences" BeforeTargets="ResolveReferences">
-    <Error Condition="'$(TiaPortalVersion)' == 'V21' and '$(TiaIncludePlcApi)' == 'true' and !Exists('$(TiaPublicApiDir)\Siemens.Engineering.Step7.dll')" Text="Siemens.Engineering.Step7.dll was not found in $(TiaPublicApiDir). The MCP PLC tools require the V21 STEP 7 module; this profile needs a separate native build/trial." />
+    <Error Condition="'$(TiaPortalVersion)' == 'V21' and '$(TiaIncludePlcApi)' == 'true' and !Exists('$(TiaPublicApiDir)\Siemens.Engineering.Step7.dll')" Text="Siemens.Engineering.Step7.dll was not found in $(TiaPublicApiDir). PLC support requires the V21 STEP 7 module; this profile needs a separate native build/trial." />
     <Error Condition="'$(TiaPortalVersion)' != 'V21' and !Exists('$(TiaPublicApiDir)\Siemens.Engineering.dll')" Text="Siemens.Engineering.dll was not found in $(TiaPublicApiDir). Set TiaPortalVersion/TiaPortalInstallVersion or override TiaPublicApiDir." />
     <Error Condition="'$(TiaPortalVersion)' != 'V21' and !Exists('$(TiaPublicApiDir)\Siemens.Engineering.Hmi.dll')" Text="Siemens.Engineering.Hmi.dll was not found in $(TiaPublicApiDir). Set TiaPortalVersion/TiaPortalInstallVersion or override TiaPublicApiDir." />
     <Error Condition="'$(TiaPortalVersion)' == 'V21' and !Exists('$(TiaPublicApiDir)\Siemens.Engineering.Base.dll')" Text="Siemens.Engineering.Base.dll was not found in $(TiaPublicApiDir). TIA Portal V21 requires the modular net48 Openness assemblies." />

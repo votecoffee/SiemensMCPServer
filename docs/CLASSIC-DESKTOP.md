@@ -1,6 +1,6 @@
 # Classic desktop utility
 
-The WinForms executable, `SiemensMCPServer.exe`, handles **classic WinCC Comfort / Advanced HMI import/export only**. Unified HMI and Siemens PLC import/export are not implemented in the GUI; those tools are provided by the MCP server with API-specific limits.
+This guide covers the **classic WinCC Comfort / Advanced HMI** view in `SiemensMCPServer.exe`. The same GUI also provides Unified and offline PLC resource transfers; see [desktop usage](DESKTOP.md) for those workflows and API limits.
 
 Build and launch the GUI using [the root README](../README.md#desktop-gui) and [build configuration](BUILDING.md). It is a separate executable from `SiemensMCPServer.Mcp.exe` and is built separately from the MCP plugin ZIP.
 
@@ -95,7 +95,7 @@ For that reason, Complete HMI import uses dependency order rather than alphabeti
 
 ## Important limitations
 
-- The desktop UI targets classic WinCC (`Siemens.Engineering.Hmi.HmiTarget`). The MCP server additionally discovers Unified `HmiSoftware` and exposes only the operations supported by its loaded API; see the plugin guide for version and native-validation limits.
+- These screen workflows target classic WinCC (`Siemens.Engineering.Hmi.HmiTarget`). Unified and PLC selections use the separate resource browser and native transfer methods exposed by the loaded API.
 - Pre-V21 and V21 builds use different Siemens assembly families and are not interchangeable at runtime.
 - Screen imports require a compatible HMI device type and valid screen dimensions/numbers.
 - Integrated HMI connections are not exportable through this classic connection export mechanism.

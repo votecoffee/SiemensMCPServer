@@ -35,11 +35,19 @@ foreach ($name in $compositions) {
     $method = $import.Invoke($null, [object[]]@($type))
     Assert-Contract ($null -ne $method -and $method.GetParameters()[0].ParameterType -eq [IO.FileInfo]) "$name uses native XML import dispatch"
 }
+foreach ($name in @('SW.ExternalSources.PlcExternalSource', 'SW.ExternalSources.PlcExternalSourceComposition')) {
+    $type = $api.GetType("Siemens.Engineering.$name", $true)
+    Assert-Contract ($null -eq $export.Invoke($null, [object[]]@($type)) -and $null -eq $import.Invoke($null, [object[]]@($type))) "$name has no generic native transfer route"
+}
 $hmi = $api.GetType('Siemens.Engineering.Hmi.HmiTarget', $true)
 Assert-Contract ($null -ne $hmi.GetMethod('ImportScreenOverview', [Type[]]@([IO.FileInfo], $importOptions))) 'HmiTarget imports the permanent-area singleton'
 $slidein = $api.GetType('Siemens.Engineering.Hmi.Screen.ScreenSlidein', $true)
 Assert-Contract ($null -ne $slidein.GetProperty('SlideinType') -and $null -eq $slidein.GetProperty('Name')) 'Slide-in identity is its side/type, not a name'
 if ($Version -eq 'V19') {
+    foreach ($name in @('HmiUnified.UI.Screens.HmiScreen', 'HmiUnified.UI.Screens.HmiScreenComposition')) {
+        $type = $api.GetType("Siemens.Engineering.$name", $true)
+        Assert-Contract ($null -eq $export.Invoke($null, [object[]]@($type)) -and $null -eq $import.Invoke($null, [object[]]@($type))) "$name has no generic native transfer route in V19"
+    }
     foreach ($name in @('HmiUnified.HmiTags.HmiTagComposition', 'HmiUnified.Scripts.HmiScriptModule', 'HmiUnified.Scripts.HmiScriptModuleComposition')) {
         $type = $api.GetType("Siemens.Engineering.$name", $true)
         $method = $export.Invoke($null, [object[]]@($type))

@@ -4,14 +4,14 @@ Local MCP server for Siemens HMI and offline PLC engineering through TIA Portal 
 
 Two Windows applications are included:
 
-- **Desktop GUI — `SiemensMCPServer.exe`:** a WinForms application for importing and exporting classic WinCC Comfort / Advanced HMI screens and resources.
+- **Desktop GUI — `SiemensMCPServer.exe`:** a WinForms application for Comfort / Advanced HMI import/export, API-supported Unified transfers and offline PLC resource import/export.
 - **MCP server — `SiemensMCPServer.Mcp.exe`:** connects clients such as Codex to Comfort/classic HMIs, capability-checked Unified operations and offline PLC tools, with reloadable feature workers.
 
 | Target | Desktop GUI import/export | MCP server import/export |
 | --- | --- | --- |
 | Comfort / classic WinCC Comfort / Advanced | Supported | Supported |
-| WinCC Unified | Not implemented | Supported where the installed API exposes native transfer methods |
-| Siemens PLC software | Not implemented | Supported offline for supported blocks, types and tag resources |
+| WinCC Unified | Supported where the installed API exposes native transfer methods | Supported where the installed API exposes native transfer methods |
+| Siemens PLC software | Supported offline for API-exportable blocks, data types and tag tables | Supported offline for supported blocks, types and tag resources |
 
 The repository and .NET solution use `SiemensMCPServer`; the plugin and MCP registration use the package ID `siemens-mcp-server`.
 
@@ -35,7 +35,7 @@ The server exposes engineering operations through the Model Context Protocol (MC
 | Comfort / classic HMI | Primary profile: V15.1. Text lists, native XML resources, scalar properties, supported object creation/deletion and bulk transfers. |
 | Unified HMI | API-visible objects and supported screen properties. Text lists require the native paired-YAML API; V19 does not expose that route. |
 | Siemens PLC | Offline blocks, data types, tags, native XML transfers, SCL/STL generation and compile diagnostics. |
-| Desktop utility | Classic WinCC Comfort / Advanced export and import. |
+| Desktop utility | Comfort / Advanced screens and resources; Unified native transfers where available; offline PLC XML resources. |
 
 The server does not provide device download, runtime control, watch or force operations. See [feature coverage](plugin/FEATURE-COVERAGE.md) and [validation status](plugin/NATIVE-ACCEPTANCE.md) for supported routes and their limits.
 
@@ -79,9 +79,9 @@ dotnet build SiemensMCPServer.csproj -c Release -p:TiaPortalVersion=V15.1
 & .\bin\Release\SiemensMCPServer.exe --tia-version=V15.1
 ```
 
-Open the project in TIA Portal, attach to its process and select a classic HMI. The GUI provides selected-screen/folder export, all-screen export, screen XML import, screens-only import and complete-HMI export/import. Imports leave the project unsaved; inspect and compile before saving explicitly.
+Open the project in TIA Portal, attach to its process and select a target labeled **Comfort / Advanced**, **Unified** or **PLC**. Classic targets retain selected-screen/folder export, all-screen export, screen XML import, screens-only import and complete-HMI export/import. Unified and PLC targets show a resource browser with selected/whole-target exports, native resource-folder imports and export-bundle imports. Imports leave the project unsaved; inspect and compile before saving explicitly.
 
-**The GUI handles Comfort/classic HMI resources only. Unified HMI and PLC import/export use the MCP server.** See [desktop usage](docs/CLASSIC-DESKTOP.md) for details. The plugin ZIP packages the MCP server and workers; build the desktop executable separately with the command above.
+**Unified transfers depend on the selected API. V19 supports native tag/script transfers, but has no native screen or text-list transfer route. PLC transfers require a verified Offline state.** See [desktop usage](docs/DESKTOP.md) and [classic screen workflows](docs/CLASSIC-DESKTOP.md). The plugin ZIP packages the MCP server and workers; build the desktop executable separately with the command above. Keep its generated DLLs and configuration beside the executable.
 
 ### CLI
 
