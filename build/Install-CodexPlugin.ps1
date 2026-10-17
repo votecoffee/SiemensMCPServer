@@ -91,7 +91,7 @@ if ($PrepareOnly) {
     @{ state = 'prepared'; marketplaceRoot = $root; pluginSource = $destination; packageSha256 = $zipHash; settingsChanged = $false; legacyZipSeparatorsNormalized = $legacySeparators } | ConvertTo-Json
     exit 0
 }
-$codex = (Get-Command codex -CommandType Application -ErrorAction Stop).Source
+$codex = (Get-Command codex -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 $configurationRoot = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }
 $cachePrefix = [IO.Path]::GetFullPath((Join-Path $configurationRoot 'plugins\cache\siemens-mcp-server-local\siemens-mcp-server')).TrimEnd('\') + '\'
 $servers = & $codex mcp list --json | ConvertFrom-Json

@@ -35,7 +35,7 @@ def main():
         mock_home=root/'mock-home';mock_home.mkdir()
         blocked=subprocess.run(['powershell.exe','-NoProfile','-File',str(installer),'-Package',str(args.package.resolve()),'-InstallRoot',str(root/'legacy-guard')],
             env={**os.environ,'PATH':str(mock_cli)+os.pathsep+os.environ['PATH'],'CODEX_HOME':str(mock_home)},capture_output=True,text=True,encoding='utf-8',timeout=60)
-        assert blocked.returncode!=0 and 'old siemens-tia-openness server is still enabled' in blocked.stderr,blocked.stdout+blocked.stderr
+        assert blocked.returncode!=0 and 'old siemens-tia-openness server is still enabled' in ' '.join(blocked.stderr.split()),blocked.stdout+blocked.stderr
         assert not (mock_home/'config.toml').exists()
         controls = {}
         for name, changed in [
