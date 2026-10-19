@@ -53,7 +53,7 @@ Pass the inner request as `argumentsJson` to `tia_preview_extension` with `modul
 
 Apply an already-authorized plan through `tia_apply_extension_plan` using the returned plan ID and candidate SHA-256. The host retains sidecars and uses its existing native transaction/readback guards. Compile and save are separate operations.
 
-Only selected `Name` values change. IDs, link roles, other references, captions, styles, cultures and scripts retain their existing values. **A syntactically valid name does not prove that the target exists or has a compatible type.** This worker does not resolve HMI/PLC symbols, verify the connection partner or assess runtime behavior. Discover and check the intended target using native browsing and project engineering checks. Native import, compile and save/reopen acceptance for this operation remains pending.
+Only selected `Name` values change. IDs, link roles, other references, captions, styles, cultures and scripts retain their existing values. **A syntactically valid name does not prove that the target exists or has a compatible type.** This worker does not resolve HMI/PLC symbols, verify the connection partner or assess runtime behavior. Discover and check the intended target using native browsing and project engineering checks. A selected V15.1 copied-control tag-array rebind passed native readback, compile and save/reopen after separate target/type/bounds checks. Other link roles, targets and devices require their own native acceptance.
 
 ## Bounds and checks
 

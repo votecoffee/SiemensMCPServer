@@ -53,6 +53,16 @@ Destinations must be exact returned ObjectList paths already containing exported
 
 Every prototype is frozen from the initial snapshot before batch changes. Native IDs are freshly allocated while all original IDs remain reserved, and internal `TargetID` links are remapped. Events, scripts, styles, language slots, graphic references and other XML are retained. External ID links and symbolic names retain their existing values: **review inherited actions and bindings**. Names embedded in scripts or symbolic links are not automatically rewritten to copied control names.
 
+Inspection includes the existing numeric `tabIndex`, or `null` when absent, complex or unsupported. Review interactive copies' tab order and explicitly edit an existing `TabIndex` to an unused native value when necessary. V15.1 was observed changing a copied button's duplicate index during import; strict readback rejected the mismatch and rolled back. A fresh preview with an explicit distinct index passed. The worker does not silently allocate tab indexes or synthesize missing fields. Noninteractive `-1` values can remain inherited where supported.
+
+For a single button prototype with an existing index, an optional clone scalar edit has this shape:
+
+```json
+{ "xPath": "/Document/Hmi.Screen.Button/AttributeList/TabIndex", "expectedValue": "1", "newValue": "2" }
+```
+
+Use the actual returned value and an unused destination index; the values above are illustrative. Group edits use paths inside the complete Document-wrapped group prototype.
+
 Optional edits change existing scalar values only. They cannot override mapped control names or change IDs, `TargetID` links, composition, culture identities or external-file metadata flags. Companion paths still have to resolve inside the staged resource. Native field validity remains subject to import/compile checks.
 
 After an authorized clone is applied, reread the native resource and use [reference inspection/rebinding](COMFORT-REFERENCES.md) to change explicitly selected symbolic tag links inside the new control. This leaves the original control's links unchanged; target lookup/type checks and native acceptance remain separate.
@@ -71,4 +81,4 @@ The preview reports the selected sources, mappings/edits, affected control count
 
 Limits are 16 MiB of supplied/candidate XML characters, 50,000 resource elements, 64 XML levels, 2,000 exported controls, 1–200 catalog rows per page, 1–50 changes per preview, 500 copied controls, 5,000 elements per prototype and a 4 MiB aggregate prototype/copy budget. Catalog replies have an escaped JSON budget and continuation offset. Each copy permits up to 100 scalar edits with paths/values bounded to 4096 characters.
 
-Unit and real net48 worker tests cover cloning, group naming, frozen batches, references, preservation, companions and preview guards. Native-shaped `ObjectName`/`#ID` fixtures and retained V15.1 exports exercise the corrected adapter. MCP checks verify current-host reload and atomic rejection on 0.10.0/0.10.3. Native control import/compile/save acceptance remains pending. Objects absent from Siemens' native export surface cannot be assessed through export/readback equality; see [validation status](NATIVE-ACCEPTANCE.md).
+Unit and real net48 worker tests cover cloning, group naming, frozen batches, references, preservation, companions and preview guards. Native-shaped `ObjectName`/`#ID` fixtures and retained V15.1 exports exercise the corrected adapter. MCP checks verify current-host reload and atomic rejection on 0.10.0/0.10.3. Selected V15.1 button/group clones passed native readback, compile and save/reopen; removal of the copied subtrees restored the pre-clone fingerprint. Other control/device cases require separate native acceptance. Objects absent from Siemens' native export surface cannot be assessed through export/readback equality; see [validation status](NATIVE-ACCEPTANCE.md).

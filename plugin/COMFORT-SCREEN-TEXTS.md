@@ -68,4 +68,4 @@ The preview reports exact old/new run edits, affected Text fields, native candid
 - Inspection returns 1–200 rows per call with an escaped JSON budget and `payloadLimited` continuation. Edits allow 1–200 selections and at most 4096 characters per old/new run.
 - Stored text is inspected without evaluating runtime bindings, rendering or language completeness. Native control restrictions still apply.
 
-Unit tests cover preservation, escaping, whitespace-only changes and staged candidates. Real net48 worker/MCP checks cover Unicode, filtering, reload rollback and older-host rejection. Attached-project caption import/compile/save acceptance remains pending; see [validation status](NATIVE-ACCEPTANCE.md).
+Unit tests cover preservation, escaping, whitespace-only changes and staged candidates. Real net48 worker/MCP checks cover Unicode, filtering, reload rollback and older-host rejection. A selected embedded styled caption passed V15.1 native edit/readback, compile and save/reopen; other storage/control cases require separate acceptance; see [validation status](NATIVE-ACCEPTANCE.md).

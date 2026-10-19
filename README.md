@@ -130,6 +130,8 @@ Project-text capture requires host 0.9.0 or newer. New native capture kinds requ
 
 Comfort workers support [layout](plugin/COMFORT-LAYOUT.md), [styled captions](plugin/COMFORT-SCREEN-TEXTS.md), [control/group copies](plugin/COMFORT-SCREEN-ITEMS.md), [symbolic tag/connection rebinding](plugin/COMFORT-REFERENCES.md) and [event/animation copies with explicit owner links](plugin/COMFORT-BEHAVIORS.md). The 0.10.4 host/worker fixes native V15.1 `ObjectName` controls and `#ID` references, including import readback comparisons. Upgrade/reconnect the host before staging this Comfort bundle; subsequent compatible workers can reload through the same `classicReferences` contract. See [native XML compatibility](plugin/EXTENSIONS.md#classic-native-xml).
 
+Comfort worker 0.10.5 adds layout for horizontal/vertical lines with one zero extent, updates their primary endpoints and dependent bounds together, exposes control `TabIndex` values for reviewed copies, and preserves exported composition positions when copying behaviors. Inconsistent line geometry is rejected before scalar-edit staging. These worker changes reload on host 0.10.4 or newer. The 0.10.5 host additionally owns runtime shutdown cleanup and records failed readback artifact paths; obtaining those host changes requires an upgrade/reconnect.
+
 ## Development
 
 Run the offline tests from the repository root:

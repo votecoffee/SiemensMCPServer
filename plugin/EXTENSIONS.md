@@ -1,4 +1,4 @@
-# Reloadable feature extensions — 0.10.4
+# Reloadable feature extensions — 0.10.5
 
 The MCP host retains its connection to Codex and owns the Siemens attachment, single STA queue, transactions, offline checks, preview stores, candidate hashes and native readback. Pure feature workers receive JSON snapshots, never Siemens CLR objects. The host copies complete, hash-checked bundles into private generation directories before starting workers, so they do not lock the source of the next update.
 
@@ -39,6 +39,10 @@ Comfort 0.10.0–0.10.3 introduced styled captions, control copies, symbolic reb
 
 Reload uses the native engineering queue and waits for active operations to finish. All replacements must pass file-integrity checks, protocol negotiation and worker startup/self-tests before activation. Successful reload invalidates **all** outstanding previews, including those from dedicated tools. Re-read and preview afterward. Rejected replacements retain the old workers and previews. Reload never detaches, saves, discards changes or reopens the project. Crashed or timed-out pure workers require reload; the host never replays a native write automatically. Replies have a 30-second deadline and 32 MiB frame limit.
 
+Comfort worker 0.10.5 adds endpoint-aware native Line layout, including one zero extent, and control `TabIndex` inspection, and retains native composition placement when copying events/animations. Scalar edits reject inconsistent line endpoints/bounds before staging. These use `classicReferences` and reload on host 0.10.4. The MCP tools and schemas are unchanged. Insertion uses an existing matching composition or the prototype owner's exported composition order; an unknown destination order is rejected. Host 0.10.5 also validates line geometry when staging extension candidates and immediately before classic resource import.
+
+Host 0.10.5 registers the runtime through a container-owned factory so normal shutdown drains its STA queue and disposes its workers before exit, following [.NET disposal ownership guidance](https://learn.microsoft.com/dotnet/core/extensions/dependency-injection-guidelines#services-not-created-by-the-service-container). It also writes `native-readback.json` before rejecting a mismatch, retaining the actual export path, expected/actual fingerprints and comparison result. `apply.json` records the transaction outcome. These host changes require upgrade/reconnect; the worker feature update alone can reload on 0.10.4.
+
 ## Classic native XML
 
 Host/worker 0.10.4 accepts the native `AttributeList/ObjectName` used by V15.1 screen controls, while retaining unambiguous `Name` fixtures/adapters. Copies rename the existing field rather than adding a second name. Missing, complex or ambiguous name fields make control operations unavailable. Layout, captions and reference/behavior catalogs use the same name reader.
@@ -75,7 +79,7 @@ For development, rebuild only the worker and stage the selected module:
 ```powershell
 powershell.exe -NoProfile -File build\Build-Extensions.ps1 `
   -Destination "$env:LOCALAPPDATA\SiemensMCPServer\Extensions" `
-  -WorkerVersion '0.10.4' -Modules comfort
+  -WorkerVersion '0.10.5' -Modules comfort
 ```
 
 Then call `tia_reload_extensions(module="comfort")`. This does not rebuild or replace the host. Use an isolated destination and matching host `--extensions-root` for test versions. Normal MCP builds automatically build bundled workers; `build\Build-Plugin.ps1` creates a complete release package with fresh bundled generations.

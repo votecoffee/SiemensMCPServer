@@ -1,4 +1,4 @@
-# SiemensMCPServer plugin 0.10.4
+# SiemensMCPServer plugin 0.10.5
 
 The project and GitHub repository are now **SiemensMCPServer**. The plugin/MCP ID is `siemens-mcp-server`, the local marketplace is `siemens-mcp-server-local`, and the host is `SiemensMCPServer.Mcp.exe`. Remove the old `siemens-tia-openness` plugin or direct MCP registration through Codex before installing the renamed plugin. The installer refuses to register a second copy while the old server is enabled. Do not remove its cache manually while it is running. This rename needs a host upgrade; feature-worker reload remains available afterward.
 
@@ -126,6 +126,8 @@ Host/worker 0.9.0 adds [project-text XLSX export/read/search](PROJECT-TEXTS.md) 
 Comfort workers provide [layout previews](COMFORT-LAYOUT.md), [styled caption-run edits](COMFORT-SCREEN-TEXTS.md), [control/group copies and removals](COMFORT-SCREEN-ITEMS.md), [symbolic reference rebinding](COMFORT-REFERENCES.md) and [behavior copies with explicit owner links](COMFORT-BEHAVIORS.md). Copies preserve native metadata and use fresh IDs; removals guard retained references. Scripts and computed names are not analyzed.
 
 Host/worker 0.10.4 fixes native V15.1 control `ObjectName` fields and `#ID` reference handling in cloning, inspection, deletion guards and host readback hashes. This requires a host upgrade/reconnect. The current Comfort bundle declares `classicReferences`; 0.10.0/0.10.3 reject it atomically and retain their previous worker. Subsequent workers using this contract can reload with the same 51-tool interface. Native import/compile/save acceptance of these newer operations remains pending; see [native XML compatibility](EXTENSIONS.md#classic-native-xml).
+
+Comfort worker 0.10.5 adds zero-extent Line layout, control `TabIndex` inspection and native composition placement for behavior copies. It reloads on 0.10.4; the separate 0.10.5 host cleanup/readback-diagnostic improvements require host upgrade/reconnect. See [extensions](EXTENSIONS.md).
 
 Use `plc_preview_object_edits`, `plc_preview_create_object`, or `plc_preview_delete_object` for advertised native operations. For program/interface/tag content, use `plc_preview_import` with files or `plc_preview_xml_import` with exact candidate XML. Imports require the target composition's fingerprint from `plc_read_object`, not a resource content hash. `plc_preview_import_bundle` imports types, tag tables, then blocks and supported user groups. Batch block/type imports permit temporarily missing references where the API supports that option; compile afterwards. Metadata-only objects are not reconstructed.
 

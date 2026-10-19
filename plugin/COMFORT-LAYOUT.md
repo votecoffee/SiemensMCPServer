@@ -6,6 +6,12 @@ The operations work with exported classic screen XML, prioritizing V15.1. The de
 
 The current 0.10.4 Comfort bundle uses native control `ObjectName` fields and `#ID`-aware host readback hashes. It requires host 0.10.4 and the `classicReferences` contract. The older-host compatibility above applies only to the 0.9.1 layout bundle; see [native XML compatibility](EXTENSIONS.md#classic-native-xml).
 
+Comfort worker 0.10.5 supports the exact native type `Hmi.Screen.Line` when width or height is zero and the other extent is positive. Horizontal, vertical and diagonal lines use the same move/align/distribute/resize operations. A resize may explicitly set one line extent to zero; zero-length lines, negative dimensions and zero dimensions on other control types remain unsupported. This worker reloads on host 0.10.4.
+
+Native Lines require existing scalar `StartLeft`, `StartTop`, `EndLeft` and `EndTop` primary properties. Their bounds must equal the endpoint minima and absolute differences. Missing, malformed, inconsistent or out-of-range endpoints remain inspection-only. Each edit updates the primary endpoints and dependent bounds together. Move/align/distribute retain endpoint direction; resize retains each nonzero axis direction. Expanding a zero axis places Start at the minimum and End at the maximum, as shown in the preview. Endpoint coordinates also stay within ±1,000,000. No missing geometry is synthesized.
+
+The worker's scalar-edit path also rejects inconsistent native Line geometry and restores its local document after rejection. Host 0.10.5 repeats this validation for extension candidates and classic XML applies. This is a geometry guard, not a complete native XML validator; reviewed general resource imports retain their documented native scope.
+
 ## Select controls
 
 1. Attach using the exact TIA process and project path, then discover the HMI ID and screen resource path.
@@ -15,7 +21,7 @@ The current 0.10.4 Comfort bundle uses native control `ObjectName` fields and `#
 
 Each row reports its native type, name, coordinate-container path, stored bounds and any unsupported reason. `geometryAvailable` describes XML fields, not native edit permission. A resource can remain inspection-only. Follow `nextOffset` while `hasMore` is true; use the same supplied XML for consistent local paging.
 
-Normal screens, templates, popups, slide-ins, permanent screens and global elements are eligible when their native XML exposes supported controls. Each control must belong to `ScreenItems` and already contain scalar integer `Left`, `Top`, `Width` and `Height` fields. Missing, complex, fractional or zero-size geometry is reported as unsupported. No geometry fields are invented.
+Normal screens, templates, popups, slide-ins, permanent screens and global elements are eligible when their native XML exposes supported controls. Each control must belong to `ScreenItems` and already contain scalar integer `Left`, `Top`, `Width` and `Height` fields. Missing, complex or fractional geometry is reported as unsupported. Zero extents follow the native Line rules above. No geometry fields are invented.
 
 ## Preview a layout change
 
@@ -58,6 +64,6 @@ Review the result against the authorized scope, then apply its `planId` and `can
 
 - Supplied XML: at most 16 MiB of characters, 50,000 resource elements and 64 levels.
 - Inspection: 1–200 rows per call, offset 0–10,000, bounded escaped JSON payload with `payloadLimited` and a continuation offset.
-- Layout: 1–100 exact selections. Positions/deltas are bounded to ±1,000,000; dimensions are 1–1,000,000. These are parser limits, not a claim about every native control's accepted range.
+- Layout: 1–100 exact selections. Positions/deltas are bounded to ±1,000,000; dimensions are 1–1,000,000 except a native Line may have one zero extent. These are parser limits, not a claim about every native control's accepted range.
 - Stored geometry is used without evaluating runtime dynamizations, rotation, screen clipping or collisions. A native control can impose additional restrictions during import/compile.
-- Unit fixtures, real net48 workers, MCP routing and older-host reload compatibility are tested. Layout import/compile/save acceptance on an attached V15.1 project remains pending; see [validation status](NATIVE-ACCEPTANCE.md).
+- Unit fixtures, real net48 workers, MCP routing and older-host reload compatibility are tested. Selected V15.1 control movement and endpoint-aware Line movement/resize passed native readback, compile and save/reopen; see [validation status](NATIVE-ACCEPTANCE.md).

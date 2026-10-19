@@ -4,6 +4,8 @@ Comfort worker 0.10.3 adds paged `inspect_behaviors` and extends `change_behavio
 
 The current worker uses `local` inspection and `classicXml` previews with `snapshotKind="classicReferences"`. Upgrade/reconnect to host 0.10.4 or newer before staging this bundle, then call `tia_reload_extensions(module="comfort")`. Successful reload invalidates outstanding previews. Older hosts reject this contract and keep their previous generation. See [native XML compatibility](EXTENSIONS.md#classic-native-xml).
 
+Copies retain their native composition position within the destination ObjectList. The worker inserts alongside matching compositions, or uses the prototype owner's exported composition order when that group is absent. It rejects an unknown order instead of appending after unrelated compositions. Combined replacement copies are inserted before the selected old behavior is removed.
+
 ## Inspect prototypes
 
 Read the exact classic native resource with `hmi_read_classic_resource`, retaining its XML, HMI ID, native resource path, resource fingerprint and editability flag. Call `tia_read_extension` with `module="comfort"`, `operation="inspect_behaviors"` and an `argumentsJson` object containing the returned `xml` plus optional `rootXPath`, `offset` and `maxItems`.
@@ -81,4 +83,4 @@ py -3 -B -X utf8 scripts/test_comfort_behaviors.py `
   --report artifacts/comfort-behaviors.json
 ```
 
-See [validation status](NATIVE-ACCEPTANCE.md) for the remaining native boundaries.
+Selected V15.1 event replacement passed native readback, compile and save/reopen after correcting a test parameter rejected by compilation. Explicit external Owner/Control mapping and animation-copy acceptance remain pending. See [validation status](NATIVE-ACCEPTANCE.md) for the native checks and remaining boundaries.
