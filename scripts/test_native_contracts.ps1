@@ -61,7 +61,10 @@ if ($referenceService) {
     foreach ($name in @('SourceObject', 'ReferenceObject', 'Location')) {
         $referenceType = $api.GetType("Siemens.Engineering.CrossReference.$name", $true)
         $fields = if ($name -eq 'Location') { @('Name','ReferenceLocation','ReferenceType','Access','ReferencedAsName','Address','TypeName') } else { @('Name','Address','TypeName','Device','Path') }
-        foreach ($field in $fields) { Assert-Contract ($null -ne $referenceType.GetProperty($field)) "$name exposes textual/enum field $field" }
+        foreach ($field in $fields) {
+            $property = $referenceType.GetProperty($field)
+            Assert-Contract ($null -ne $property -and ($property.PropertyType -eq [string] -or $property.PropertyType.IsEnum)) "$name exposes textual/enum field $field"
+        }
     }
 }
 Assert-Contract ($null -ne $hmi.GetMethod('ImportScreenOverview', [Type[]]@([IO.FileInfo], $importOptions))) 'HmiTarget imports the permanent-area singleton'

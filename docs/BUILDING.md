@@ -72,6 +72,15 @@ py -3 -B -X utf8 scripts/test_comfort_package.py Mcp/bin/Release/V15.1/net48/Sie
 
 This probe can also run against an existing 0.7.1 host executable to check compatibility with a newer worker. See the [Comfort package guide](../plugin/COMFORT-PACKAGES.md) for supported input and native acceptance limits.
 
+The PLC inspection probe exercises the real worker with synthetic source/reference snapshots and the host's catalog, native API capability report, unattached-read rejection, PLC reload and rejected-startup diagnostics. It does not attach or perform native source/reference reads:
+
+```powershell
+py -3 -B -X utf8 scripts/test_plc_inspection.py Mcp/bin/Release/V15.1/net48/SiemensMCPServer.Mcp.exe
+py -3 -B -X utf8 scripts/test_plc_inspection.py Mcp/bin/Release/V19/net48/SiemensMCPServer.Mcp.exe
+```
+
+Use optional `--previous-host` with a pre-0.7.3 host executable that retains its bundled workers to check rejection of the new PLC route without losing the previous running generation. See [PLC inspection](../plugin/PLC-INSPECTION.md) for version and native acceptance boundaries.
+
 ## Desktop verification
 
 The desktop project uses SDK-style .NET Framework 4.8 builds and locked NuGet dependencies. Its native transfer adapter source is shared with MCP, without a reference to the MCP executable or host dependencies.

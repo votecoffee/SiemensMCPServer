@@ -119,7 +119,7 @@ Comfort worker 0.7.2 adds offline screen/tag package generation from native XML 
 
 The 0.7.2 host adds Unified compile-service lookup within the HMI's owning device when its software has no compiler. Results report the selected native scope. This broker change requires a host upgrade/reconnect; native Unified compile acceptance remains pending.
 
-Host/worker 0.7.3 adds PLC `read_source`, `find_in_source` and `cross_references` through `tia_read_extension`. These use explicit PLC/object paths and verified Offline state. Native readable-source export supports SCL/STL, data blocks and PLC types; native cross-references require a matching API and object service (present in the inspected V19 API, absent in V15.1). The new broker read route requires a host upgrade/reconnect. Native project acceptance remains pending.
+Host/worker 0.7.3 adds PLC `read_source`, `find_in_source` and `cross_references` through `tia_read_extension`. These use explicit PLC/object paths and verified Offline state. Native readable-source export supports SCL/STL, data blocks and PLC types; native cross-references require a matching API and object service (present in the inspected V19 API, absent in V15.1). The new broker read route requires a host upgrade/reconnect. Native project acceptance remains pending; see [PLC inspection](plugin/PLC-INSPECTION.md).
 
 ## Development
 
