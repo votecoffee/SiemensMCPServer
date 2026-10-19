@@ -1,6 +1,8 @@
 param(
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'SiemensMCPServer\Desktop'),
-    [switch]$CheckOnly
+    [switch]$CheckOnly,
+    [switch]$Safeguards,
+    [string]$SettingsFile = ''
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Desktop-Common.ps1')
@@ -18,10 +20,16 @@ $executable = Join-Path $directory 'SiemensMCPServer.exe'
 if (-not (Test-Path -LiteralPath $executable -PathType Leaf) -or (Get-DesktopFileHash $executable) -cne $receipt.executableSha256) {
     throw 'Installed desktop executable is missing or changed. Run InstallAndRun.cmd to reinstall.'
 }
+if (($Safeguards -or $SettingsFile) -and ($receipt.version -as [version]) -lt [version]'1.3.0') {
+    throw 'Safeguards launch options require desktop 1.3.0 or newer. Run InstallAndRun.cmd to update.'
+}
+$launchArguments = @('--tia-version=' + $receipt.engineeringVersion)
+if ($Safeguards) { $launchArguments += '--safeguards' }
+if ($SettingsFile) { $launchArguments += ('"--settings-file=' + [IO.Path]::GetFullPath($SettingsFile) + '"') }
 if ($CheckOnly) {
-    [ordered]@{ state = 'ready'; executable = $executable; api = $receipt.api; engineeringVersion = $receipt.engineeringVersion } | ConvertTo-Json
+    [ordered]@{ state = 'ready'; executable = $executable; api = $receipt.api; engineeringVersion = $receipt.engineeringVersion; arguments = $launchArguments } | ConvertTo-Json
 } else {
     # The user requested the interactive desktop application, so show its normal window.
-    $process = Start-Process -FilePath $executable -ArgumentList @('--tia-version=' + $receipt.engineeringVersion) -WorkingDirectory $directory -PassThru
+    $process = Start-Process -FilePath $executable -ArgumentList $launchArguments -WorkingDirectory $directory -PassThru
     [ordered]@{ state = 'started'; processId = $process.Id; executable = $executable; nativeProjectAttached = $false } | ConvertTo-Json
 }

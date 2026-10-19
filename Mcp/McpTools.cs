@@ -43,7 +43,7 @@ namespace SiemensMCPServer.Mcp
             => Result(() => runtime.Invoke(s => s.ApplyExtension(planId, candidateSha256), token, writes: true));
 
         [McpServerTool(Name = "tia_list_versions", ReadOnly = true, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
-        [Description("List installed TIA versions compatible with this server build, the selected API, and whether writes are enabled.")]
+        [Description("List installed TIA versions compatible with this server build, the selected API, and whether writes are enabled, current shared safeguard policy/settings path and launch permission.")]
         public Task<CallToolResult> Versions(CancellationToken token) => Result(() => runtime.Versions(token));
 
         [McpServerTool(Name = "hmi_prepare_classic_export_bundle", ReadOnly = false, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
@@ -108,7 +108,7 @@ namespace SiemensMCPServer.Mcp
         public Task<CallToolResult> Read(string hmiId, string listName, CancellationToken token) => Result(() => runtime.Invoke(s => s.Read(hmiId, listName), token));
 
         [McpServerTool(Name = "hmi_preview_text_edits", ReadOnly = false, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
-        [Description("Preview edits to existing plain text in SingleValue entries. Preserves unselected languages and objects. Requires the fingerprint and exact old text from hmi_read_text_list. Writes before/candidate snapshots and a diff locally; does not modify TIA. Returns a 30-minute plan and candidate SHA-256 for apply.")]
+        [Description("Preview edits to existing plain text in SingleValue entries. Preserves unselected languages and objects. Requires the fingerprint and exact old text from hmi_read_text_list. Writes before/candidate snapshots and a diff locally; does not modify TIA. Returns a plan with its configured expiry (30 minutes by default) and candidate SHA-256 for apply.")]
         public Task<CallToolResult> Preview(string hmiId, string listName, string expectedFingerprint,
             [Description("Each edit specifies entry (numeric string or Default), culture, expectedText, and newText. Only existing entries/cultures are supported.")] TextEdit[] edits, CancellationToken token)
             => Result(() => runtime.Invoke(s => s.Preview(hmiId, listName, expectedFingerprint, edits), token));

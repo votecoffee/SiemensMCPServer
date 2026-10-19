@@ -72,3 +72,7 @@ For the stateful adapter gate, host 0.14.1 adds an internal provider seam consum
 ```
 
 Run from the repository with the same broker source/dependencies as above. The optional previous host must predate 0.14.1. This check compares complete direct/broker text-list read results, preserves a 49,152-character multilingual payload, rejects wrong-owner/hash/consumed/stale plans, tests reload success/failure, and keeps fixture compile/save/reopen separate. It proves release discards process-owned plans/selection and records exactly three independent fixture import effects, including one lost reply with an uncertain broker receipt. The recovery barrier survives broker restart; explicit reconciliation after inspecting that isolated test state adds no effect. No cross-route write retry occurs. These fixture results cannot establish native or Codex UI acceptance.
+
+## App safeguard policy
+
+Host 0.15.0 shares [desktop-editable app safeguards](SAFEGUARDS.md) for writes, operation ceilings, preview limits and request limits. These settings apply identically behind direct and broker routes. They do not edit broker service allowlists, leases or recovery barriers, and they do not infer authorization from chat approval-mode arguments. The effective permission is the intersection of app policy, launch permission and client/broker authorization.

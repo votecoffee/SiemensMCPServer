@@ -50,6 +50,17 @@ try {
     $ready = & (Join-Path $repo 'Run.cmd') -InstallRoot $install -CheckOnly | ConvertFrom-Json
     Assert-Install ($LASTEXITCODE -eq 0 -and $ready.state -eq 'ready' -and $ready.executable -ceq $firstExe) 'Root Run.cmd works from another directory with spaces and ampersands in the installation path'
 } finally { Pop-Location }
+$policyPath = Join-Path $scratch 'Policy path with spaces/safeguards.json'
+$settingsReady = & $launcher -InstallRoot $install -Safeguards -SettingsFile $policyPath -CheckOnly | ConvertFrom-Json
+Assert-Install ($settingsReady.arguments -contains '--safeguards' -and $settingsReady.arguments -contains ('"--settings-file=' + $policyPath + '"')) 'Settings-only launcher preserves an isolated settings path with spaces'
+Assert-Install (-not (Test-Path -LiteralPath $policyPath)) 'Checking the settings launch does not create or modify a policy'
+$activeReceipt = Join-Path $install 'active.json'; $activeBytes = [IO.File]::ReadAllBytes($activeReceipt)
+try {
+    $legacy = $first | ConvertTo-Json | ConvertFrom-Json; $legacy.version = '1.2.2.0'
+    [IO.File]::WriteAllText($activeReceipt, ($legacy | ConvertTo-Json))
+    $failure = Rejected-Script $launcher @('-InstallRoot', $install, '-Safeguards', '-CheckOnly')
+    Assert-Install ($failure.code -ne 0 -and $failure.text.Contains('1.3.0 or newer')) 'Settings launcher rejects older desktops rather than opening a different workflow'
+} finally { [IO.File]::WriteAllBytes($activeReceipt, $activeBytes) }
 $second = Install-Test $install
 $secondExe = Join-Path (Join-Path $install $second.directory) 'SiemensMCPServer.exe'
 Assert-Install ($first.directory -cne $second.directory -and (Get-FileHash -LiteralPath $firstExe -Algorithm SHA256).Hash -ceq $firstHash) 'Updating uses a fresh directory and preserves the previous executable'

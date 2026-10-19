@@ -1,4 +1,4 @@
-# SiemensMCPServer plugin 0.14.1
+# SiemensMCPServer plugin 0.15.0
 
 The project and GitHub repository are now **SiemensMCPServer**. The plugin/MCP ID is `siemens-mcp-server`, the local marketplace is `siemens-mcp-server-local`, and the host is `SiemensMCPServer.Mcp.exe`. Remove the old `siemens-tia-openness` plugin or direct MCP registration through Codex before installing the renamed plugin. The installer refuses to register a second copy while the old server is enabled. Do not remove its cache manually while it is running. This rename needs a host upgrade; feature-worker reload remains available afterward.
 
@@ -7,6 +7,8 @@ This local Windows plugin provides Comfort/classic and Unified engineering objec
 Host/Comfort worker 0.14.1 preserves literal carriage returns and mixed CR/LF values in classic text-list XML and fingerprints. This needs a host upgrade/reconnect: the new `internalText` / `literalTextV1` worker contract is rejected by older hosts, retaining their previous generation. Native acceptance of exact multiline values remains separate.
 
 A selected V15.1 broker pilot passed single-line English/German Unicode edits, native readback, compile and save/reopen, then restored the original saved state. CRLF/LF edits in the tested native body/p entries failed strict readback and rolled back. See [validation scope](NATIVE-ACCEPTANCE.md); offline newline preservation is not native multiline acceptance.
+
+Host 0.15.0 and desktop 1.3.0 share [GUI-editable safeguards](SAFEGUARDS.md): write ceilings, operation restrictions, confirmations, preview limits, project scope and request limits. Permissions are rechecked for subsequent operations; scheduling/location changes require a host restart. Local settings do not grant client/broker or Siemens permission.
 
 ## Install the built package
 
@@ -62,7 +64,7 @@ Open a backed-up or disposable TIA project first. Ask the chat to list compatibl
 
 > In the selected project, change entry 7 of Messages_TL in en-US from "Old message" to "New message". Show the preview, apply the requested change, compile the HMI, and report the result. Leave saving to me.
 
-Call `tia_get_api_capabilities` to inspect the loaded API, then attach to the exact process/project and use the target's family and capability flags. For text lists, use `hmi_list_text_lists`, `hmi_read_text_list`, `hmi_preview_text_edits`, and `hmi_apply_text_edits`. A preview returns a diff, a plan ID, the native import scope, and a candidate hash. Apply rechecks the snapshot under native exclusive access and commits only after native readback matches the candidate. A plan expires after 30 minutes and can be attempted once. A failed or interrupted operation requires inspecting the current HMI before retrying.
+Call `tia_get_api_capabilities` to inspect the loaded API, then attach to the exact process/project and use the target's family and capability flags. For text lists, use `hmi_list_text_lists`, `hmi_read_text_list`, `hmi_preview_text_edits`, and `hmi_apply_text_edits`. A preview returns a diff, a plan ID, the native import scope, and a candidate hash. Apply rechecks the snapshot under native exclusive access and commits only after native readback matches the candidate. A plan uses the configured preview lifetime (30 minutes by default) and can be attempted once. A failed or interrupted operation requires inspecting the current HMI before retrying.
 
 Artifacts live under `%LOCALAPPDATA%\SiemensMCPServer\Mcp\Sessions` by default. Override with `--artifact-root=C:\some\directory`. Each preview retains original/candidate snapshots, hashes, a diff and an apply result. Classic snapshots are XML; Unified snapshots are JSON. Unified text-list snapshots contain both native YAML files and list identities. These are recovery artifacts for the selected workflow, not complete project archives. The project is never saved automatically.
 

@@ -32,6 +32,10 @@ The launcher checks the selected executable's recorded hash. A missing or change
 
 Opening the application enumerates available TIA instances. Attachment and engineering changes still require selecting a project/target and the GUI actions below.
 
+## Safeguards
+
+Open **Safeguards...** in the toolbar to edit the shared desktop/MCP policy, even without an attachment. Use `Run.cmd -Safeguards` for the settings window alone. The editor controls write permissions, import and Save confirmations, native deletion/overwrite ceilings, preview limits, project scope, evidence folders and MCP request limits. It lists mandatory integrity checks separately. See [the complete settings reference](../plugin/SAFEGUARDS.md) for defaults, scope, persistence and when a restart is required.
+
 ## Connect
 
 1. Open the intended project in a compatible TIA Portal instance.

@@ -92,6 +92,10 @@ Open the project in TIA Portal, attach to its process and select a target labele
 
 **Unified transfers depend on the selected API. V19 supports native tag/script transfers, but has no native screen or text-list transfer route. PLC transfers require a verified Offline state.** See [desktop usage](docs/DESKTOP.md) and [classic screen workflows](docs/CLASSIC-DESKTOP.md). The plugin ZIP packages the MCP server and workers; install the desktop application separately with the command above. Its generated DLLs and configuration stay beside the executable.
 
+### Safeguards settings
+
+Desktop 1.3.0 adds **Safeguards...** for the shared desktop/MCP policy: write permissions, native deletion and overwrite ceilings, import/Save confirmations, preview expiry, request limits, project scope and evidence folders. Open the editor without connecting to TIA with `Run.cmd -Safeguards`. Host 0.15.0 reads the same per-user policy before subsequent protected operations; scheduler changes require a host restart. MCP still requires `--allow-writes` and client/broker permission. Mandatory integrity checks are visible and remain enforced. See [all settings and their exact scope](plugin/SAFEGUARDS.md).
+
 ### CLI
 
 Launch the server from a built package or its build output. It communicates over stdio and requires an MCP client:

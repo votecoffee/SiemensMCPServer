@@ -144,3 +144,12 @@ powershell.exe -NoProfile -File scripts/test_native_contracts.ps1 -Version V19 -
 ```
 
 The smoke script constructs the form without process enumeration, uses synthetic target families to check view selection, and verifies disabled actions without an attachment. Native contract checks inspect installed method signatures only. Neither script attaches to a project or performs native imports/exports. The optional smoke `-ScreenshotPath` renders an invisible test form; keep output outside the public tree or under `.local/`.
+
+## Safeguards policy checks
+
+```powershell
+py -3 -B -X utf8 scripts/test_safeguards.py Mcp/bin/Release/V15.1/net48/SiemensMCPServer.Mcp.exe
+powershell.exe -NoProfile -STA -File scripts/test_desktop_smoke.ps1 -DesktopDirectory bin/Release -Version V15.1
+```
+
+These use isolated settings files. They verify production-host permission gates before native dispatch, live policy refresh, configured scheduling, malformed/deleted policy rejection, and save/reload through the real desktop property grid. They do not attach or invoke native project writes. Unit tests cover preview expiry, revoked permissions after preview and stale-editor rejection. See [Safeguards](../plugin/SAFEGUARDS.md).

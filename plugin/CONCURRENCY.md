@@ -8,6 +8,8 @@ Host **0.13.0** accepts overlapping MCP requests on one connection. Pure local a
 | Local analysis | 2 by default | 32 | Advertised `local` read operations and disk-only classic bundle conversion |
 | Control | 1 | 16 | Extension catalog/status and read-route classification |
 
+Host 0.15.0 exposes these defaults through the desktop [Safeguards editor](SAFEGUARDS.md). Queue capacities, analysis parallelism and worker response deadlines apply on host restart; `--analysis-parallelism` explicitly overrides that saved parallelism. Native parallelism remains fixed at one.
+
 Limits are per host. Queue capacity excludes active requests. Full queues return an error immediately; the host does not silently drop or replay requests. Invalid oversized extension arguments are rejected before queue admission. Existing per-request XML, frame and response bounds still apply; queue counts are not a shared memory-byte budget.
 
 ```mermaid
