@@ -4,6 +4,8 @@ Comfort worker 0.9.1 adds `inspect_screen_layout` and `arrange_screen_items`. Th
 
 The operations work with exported classic screen XML, prioritizing V15.1. The desktop GUI retains its transfer workflows; these layout commands are MCP extension operations. Unified uses its separate native object/property workflow.
 
+The newer 0.10.0 Comfort bundle also contains [screen text-run edits](COMFORT-SCREEN-TEXTS.md) and therefore requires host 0.10.0 for its corrected rich-text hash contract. The older-host compatibility above applies to the 0.9.1 layout bundle.
+
 ## Select controls
 
 1. Attach using the exact TIA process and project path, then discover the HMI ID and screen resource path.

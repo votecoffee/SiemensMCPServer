@@ -1,4 +1,4 @@
-# Reloadable feature extensions — 0.9.1
+# Reloadable feature extensions — 0.10.0
 
 The MCP host retains its connection to Codex and owns the Siemens attachment, single STA queue, transactions, offline checks, preview stores, candidate hashes and native readback. Pure feature workers receive JSON snapshots, never Siemens CLR objects. The host copies complete, hash-checked bundles into private generation directories before starting workers, so they do not lock the source of the next update.
 
@@ -35,6 +35,8 @@ The 0.9.0 host adds `projectLanguages` and `projectTexts` snapshots for [native 
 
 Comfort worker 0.9.1 adds [screen-layout inspection and reviewed move/align/distribute/resize operations](COMFORT-LAYOUT.md) using the existing `local` and `classicXml` routes. These operations reload on the checked 0.7.4 and 0.9.0 hosts with unchanged host PID/binary and MCP schemas. No new native capture kind or host reconnect is required for this Comfort update.
 
+Host/worker 0.10.0 adds [styled screen text-run inspection and editing](COMFORT-SCREEN-TEXTS.md). The host fixes resource/behavior fingerprints to preserve authored whitespace inside `Text`, including spaces between styled runs. Caption previews declare `classicXml` with `snapshotKind="screenText"`; earlier hosts reject this contract and keep their old Comfort generation. Upgrade/reconnect the host before staging the new Comfort bundle. Later caption workers using this contract can reload on 0.10.0 without another native adapter change; the 51 fixed MCP tools are unchanged.
+
 Reload uses the native engineering queue and waits for active operations to finish. All replacements must pass file-integrity checks, protocol negotiation and worker startup/self-tests before activation. Successful reload invalidates **all** outstanding previews, including those from dedicated tools. Re-read and preview afterward. Rejected replacements retain the old workers and previews. Reload never detaches, saves, discards changes or reopens the project. Crashed or timed-out pure workers require reload; the host never replays a native write automatically. Replies have a 30-second deadline and 32 MiB frame limit.
 
 ## Stage an update
@@ -56,7 +58,7 @@ For development, rebuild only the worker and stage the selected module:
 ```powershell
 powershell.exe -NoProfile -File build\Build-Extensions.ps1 `
   -Destination "$env:LOCALAPPDATA\SiemensMCPServer\Extensions" `
-  -WorkerVersion '0.9.1' -Modules comfort
+  -WorkerVersion '0.10.0' -Modules comfort
 ```
 
 Then call `tia_reload_extensions(module="comfort")`. This does not rebuild or replace the host. Use an isolated destination and matching host `--extensions-root` for test versions. Normal MCP builds automatically build bundled workers; `build\Build-Plugin.ps1` creates a complete release package with fresh bundled generations.
@@ -65,7 +67,9 @@ Then call `tia_reload_extensions(module="comfort")`. This does not rebuild or re
 
 A bundle contains `extension.json`, `SiemensMCPServer.ExtensionWorker.exe`, dependencies and optional feature data. The host and installer also accept the former `SiemensTiaOpenness.ExtensionWorker.exe` entry point for existing protocol-1 bundles, with the same integrity and handshake checks. The manifest is `tia-extension-v1`, protocol `1`, with a module name, three-part version and exact relative file inventory (`path`, `bytes`, `sha256`). Its handshake must return the same module/version/protocol and a bounded operation catalog. Workers include no Siemens engineering DLLs.
 
-UTF-8 JSON-line requests contain `id`, `operation`, `input`; responses return the same `id` and `result` or `error`. `$hello` advertises operations. Supported routes are local inspection, internal transformations for existing tools, classic XML, Unified objects, PLC sources, PLC read snapshots and project read snapshots. The host controls native target selection and mutation scope. New routes require a host update; new operations on existing routes do not.
+UTF-8 JSON-line requests contain `id`, `operation`, `input`; responses return the same `id` and `result` or `error`. `$hello` advertises operations. Supported routes are local inspection, internal transformations for existing tools, classic XML, Unified objects, PLC sources, PLC read snapshots and project read snapshots. The host controls native target selection and mutation scope. New routes require a host update; new operations using an existing route and the same capability contract do not.
+
+An existing route may also declare a capability contract that older hosts cannot validate. `classicXml` previews with `snapshotKind="screenText"` are restricted to module `comfort` on host 0.10.0+, which preserves rich-text whitespace during fingerprint/readback checks. Other existing classic-XML operations keep an empty snapshot kind. This marker introduces no native service access; it prevents loading caption workers on hosts with the earlier hash behavior.
 
 `plcRead` operations must belong to module `plc`, set `preview=false` and declare `snapshotKind="source"` or `"crossReferences"`. Caller arguments contain exact `plcId`/`path`, host-validated `capture`, and worker-specific `options`. The host calls the worker with `phase="validate"` before capture, then with `phase="snapshot"` and the serialized native snapshot. The worker must support both phases. Capture settings come from the caller and are never taken from worker output. The route cannot import, generate blocks, compile, save or navigate native services beyond the two declared read capabilities. Workers normalize one optional UTF-8 BOM at the first input frame; JSON content is preserved. Failed worker starts retain bounded stderr diagnostics and the previous generation.
 
