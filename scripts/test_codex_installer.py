@@ -13,8 +13,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("package", type=Path)
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--installer", type=Path, help="Use the installer from a freshly extracted package")
     args = parser.parse_args()
-    installer = Path(__file__).resolve().parents[1] / "build/Install-CodexPlugin.ps1"
+    installer = args.installer.resolve() if args.installer else Path(__file__).resolve().parents[1] / "build/Install-CodexPlugin.ps1"
     with tempfile.TemporaryDirectory(prefix="tia-codex-installer-") as scratch:
         root = Path(scratch)
 
@@ -50,6 +51,20 @@ def main():
             assert Path(descriptor['transport']['command']).is_file()
             assert not (broker_root/'.agents').exists() and not (broker_home/'unexpected-call').exists()
             assert (broker_home/'config.toml').read_text(encoding='utf-8') == '# Preserve existing plugin choices\n'
+            helper = installer.parent/'New-BrokerRegistration.ps1'
+            scoped_path = root/'scoped-pilot.json'
+            scoped = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(helper),
+                '-PluginRoot', descriptor['transport']['cwd'], '-OutputPath', str(scoped_path), '-AllowedWriteTools', 'tia_attach'],
+                capture_output=True, text=True, encoding='utf-8', timeout=30)
+            assert scoped.returncode == 0, scoped.stdout+scoped.stderr
+            pilot = json.loads(scoped_path.read_text(encoding='utf-8'))
+            assert pilot['allow_writes'] is True and pilot['allowed_write_tools'] == ['tia_attach']
+            assert pilot['transport']['args'] == ['--allow-writes']
+            retained = scoped_path.read_bytes()
+            repeated = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(helper),
+                '-PluginRoot', descriptor['transport']['cwd'], '-OutputPath', str(scoped_path)],
+                capture_output=True, text=True, encoding='utf-8', timeout=30)
+            assert repeated.returncode != 0 and scoped_path.read_bytes() == retained
         # A renamed plugin must not register beside the enabled old identity.
         mock_cli=root/'mock-cli';mock_cli.mkdir()
         (mock_cli/'codex.cmd').write_text('@echo off\nif "%1"=="mcp" (\necho [{"name":"siemens-tia-openness","enabled":true,"transport":{}}]\nexit /b 0\n)\necho Unexpected Codex registration call\nexit /b 99\n',encoding='ascii')
@@ -77,7 +92,7 @@ def main():
             controls[name] = "rejected before extraction"
     report = {"preparation": "passed", "repeatPreparation": "passed", "settingsChanged": False, "legacyDuplicateServer": "rejected before Codex registration", "negativeControls": controls}
     if 'staged' in locals():
-        report['brokerPreparation'] = 'passed; exclusive/read-only descriptor, no Codex calls or settings changes'
+        report['brokerPreparation'] = 'passed; exclusive/read-only default, explicit scoped write opt-in, existing outputs preserved, no Codex calls or settings changes'
     if args.report:
         args.report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2))

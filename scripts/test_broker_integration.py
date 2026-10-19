@@ -16,6 +16,7 @@ import tempfile
 import time
 
 import jsonschema
+from universal_tools import __version__ as broker_version
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from universal_tools.cli import initialize, probe, process_options, stop
@@ -87,6 +88,7 @@ def main():
     parser.add_argument('--broker-source', required=True, type=Path)
     parser.add_argument('--report', type=Path)
     args = parser.parse_args()
+    assert tuple(int(part) for part in broker_version.split('.')) >= (0, 11, 1), 'Use broker 0.11.1 or newer with its pinned dependencies'
     with tempfile.TemporaryDirectory(prefix='siemens-broker-') as temporary:
         state = Path(temporary)
         with socket.socket() as socket_handle:
@@ -107,6 +109,7 @@ def main():
                     assert process.poll() is None and time.monotonic() < deadline, 'Isolated broker did not start'
                     time.sleep(0.1)
                 report = asyncio.run(check(state, args.broker_source.resolve()))
+                report['brokerVersion'] = broker_version
             except BaseException:
                 print((state/'daemon.log').read_text(encoding='utf-8', errors='replace'), file=sys.stderr)
                 raise
