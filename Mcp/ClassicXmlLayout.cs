@@ -48,6 +48,8 @@ namespace SiemensMCPServer.Mcp
     {
         private const int LayoutLimit = 1000000;
         private static readonly string[] GeometryFields = { "Left", "Top", "Width", "Height" };
+        private static bool LayoutDimensionsValid(XElement node, int width, int height) => width <= LayoutLimit && height <= LayoutLimit
+            && (node.Name == "Hmi.Screen.Line" ? width >= 0 && height >= 0 && (width != 0 || height != 0) : width > 0 && height > 0);
         private sealed class LayoutItem
         {
             public XElement Node = null!;
@@ -87,8 +89,10 @@ namespace SiemensMCPServer.Mcp
                         item.Fields = fields.Select(f => f[0]).ToArray();
                         for (int i = 0; i < 4; i++)
                             if (!int.TryParse(item.Fields[i].Value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out values[i])
-                                || values[i] < -LayoutLimit || values[i] > LayoutLimit || (i >= 2 && values[i] < 1))
-                                item.UnsupportedReason = "Geometry must contain bounded integer positions and positive integer dimensions (absolute limit 1000000).";
+                                || values[i] < -LayoutLimit || values[i] > LayoutLimit)
+                                item.UnsupportedReason = "Geometry must contain bounded integers (absolute limit 1000000).";
+                        if (item.UnsupportedReason == null && !LayoutDimensionsValid(node, values[2], values[3]))
+                            item.UnsupportedReason = "Dimensions must be positive, except native Line controls may have one zero extent and one positive extent.";
                         if (item.UnsupportedReason == null) item.Bounds = new ClassicLayoutBounds { Left = values[0], Top = values[1], Width = values[2], Height = values[3] };
                     }
                 }
@@ -182,6 +186,7 @@ namespace SiemensMCPServer.Mcp
             foreach (var item in selected)
             {
                 var b = after[item.XPath]; int[] values = { b.Left, b.Top, b.Width, b.Height };
+                if (!LayoutDimensionsValid(item.Node, b.Width, b.Height)) throw new ArgumentException("Resulting dimensions must be positive; only native Line controls allow one zero extent. A zero-length line is not supported.");
                 int[] old = { item.Bounds!.Left, item.Bounds.Top, item.Bounds.Width, item.Bounds.Height };
                 for (int i = 0; i < 4; i++) if (old[i] != values[i])
                     edits.Add(new ClassicXmlEdit { XPath = Path(item.Fields[i]), ExpectedValue = item.Fields[i].Value, NewValue = values[i].ToString(CultureInfo.InvariantCulture) });
@@ -208,8 +213,8 @@ namespace SiemensMCPServer.Mcp
             if (align && (r.Items.Length < 2 || !new[] { "left", "right", "horizontalCenter", "top", "bottom", "verticalCenter" }.Contains(r.Alignment)))
                 throw new ArgumentException("Alignment requires at least two items and an explicit supported alignment.");
             if (distribute && (r.Items.Length < 3 || !new[] { "horizontal", "vertical" }.Contains(r.Axis))) throw new ArgumentException("Distribution requires at least three items and horizontal or vertical axis.");
-            if (resize && ((!r.Width.HasValue && !r.Height.HasValue) || r.Width < 1 || r.Width > LayoutLimit || r.Height < 1 || r.Height > LayoutLimit))
-                throw new ArgumentException("Resize requires width and/or height, each within 1..1000000.");
+            if (resize && ((!r.Width.HasValue && !r.Height.HasValue) || r.Width < 0 || r.Width > LayoutLimit || r.Height < 0 || r.Height > LayoutLimit))
+                throw new ArgumentException("Resize requires width and/or height, each within 0..1000000. Zero extents require a native Line control with a nonzero other extent.");
         }
     }
 }
