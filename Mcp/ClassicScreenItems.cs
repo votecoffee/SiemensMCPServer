@@ -67,6 +67,12 @@ namespace SiemensMCPServer.Mcp
             && (string?)e.Attribute("CompositionName") == "ScreenItems" && e.Parent?.Name == "ObjectList"
             && !e.Ancestors().Any(a => BehaviorCompositions.Contains((string?)a.Attribute("CompositionName"), StringComparer.Ordinal));
         private static bool ItemNameValid(string? name) => !string.IsNullOrWhiteSpace(name) && name.Length <= 128 && !name.Any(char.IsControl);
+        private static int? ItemTabIndex(XElement node)
+        {
+            var fields = node.Elements("AttributeList").Elements("TabIndex").ToArray();
+            return fields.Length == 1 && !fields[0].HasAttributes && !fields[0].HasElements && fields[0].Nodes().All(n => n is XText)
+                && int.TryParse(fields[0].Value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int value) ? value : (int?)null;
+        }
         private static string[] ItemReferenceMetadata(XElement node) => node.DescendantsAndSelf().Attributes()
             .Where(a => new[] { "ID", "UId", "TargetID", "CompositionName", "external" }.Contains(a.Name.LocalName))
             .Select(a => a.Name + "=" + a.Value).Concat(node.Descendants().Where(e => e.Name.LocalName == "Culture").Select(e => "Culture=" + e.Value)).ToArray();
@@ -131,7 +137,7 @@ namespace SiemensMCPServer.Mcp
                 var members = state.Items.Where(i => i.Node.AncestorsAndSelf().Contains(item.Node)).ToArray();
                 string? cloneReason = state.UnsupportedReason ?? (members.Length > 500 || item.Node.DescendantsAndSelf().Take(5001).Count() > 5000 ? "Prototype exceeds 500 controls or 5000 XML elements." : null);
                 string? removalReason = state.UnsupportedReason ?? RemovalBlock(members);
-                var row = new { xPath = item.XPath, item.Name, nativeType = item.Node.Name.LocalName, containerXPath = Path(item.Node.Parent!), subtreeItems = members.Length,
+                var row = new { xPath = item.XPath, item.Name, nativeType = item.Node.Name.LocalName, containerXPath = Path(item.Node.Parent!), subtreeItems = members.Length, tabIndex = ItemTabIndex(item.Node),
                     cloneAvailable = cloneReason == null, cloneUnavailableReason = cloneReason, standaloneRemovalAvailable = removalReason == null, removalUnavailableReason = removalReason,
                     selection = new ClassicScreenItemSelection { XPath = item.XPath, ExpectedFingerprint = item.Fingerprint } };
                 int cost = JsonSerializer.Serialize(row, JsonDefaults.Options).Length;
@@ -139,7 +145,7 @@ namespace SiemensMCPServer.Mcp
                 rows.Add(row); characters += cost; next++;
             }
             return new { Name, NativeType, items = rows, matchedItems = filtered.Length, offset = request.Offset, nextOffset = next, hasMore = next < filtered.Length, payloadLimited = limited,
-                scope = "Existing exported classic ScreenItems and containers already holding controls. Native IDs and exact symbolic open-link names are checked for removal; code strings, computed names, runtime behavior and native acceptance are not evaluated." };
+                scope = "Existing exported classic ScreenItems and containers already holding controls. Review inherited TabIndex values and explicitly edit interactive copies to avoid native reassignment. Native IDs and exact symbolic open-link names are checked for removal; code strings, computed names, runtime behavior and native acceptance are not evaluated." };
         }
         public object ChangeScreenItems(ClassicScreenItemRequest request)
         {

@@ -148,4 +148,18 @@ public sealed class NativeComfortXmlTests
         var recipe = new FeatureRecipes("comfort", "[{\"name\":\"set_left\",\"xPath\":\"//Left\",\"newValue\":\"20\"}]").Operations.Single();
         Assert.Equal("classicReferences", recipe.SnapshotKind); Assert.True(recipe.IsCompatible("comfort"));
     }
+    [Fact] public void InteractiveCopiesExposeTabIndexAndPermitAnExplicitDistinctValue()
+    {
+        string xml = Xml.Replace("<ObjectName>Start</ObjectName>", "<ObjectName>Start</ObjectName><TabIndex>1</TabIndex>");
+        Assert.Equal(1, Items(xml)[0].GetProperty("tabIndex").GetInt32()); Assert.Equal(JsonValueKind.Null, Items(xml)[1].GetProperty("tabIndex").ValueKind);
+        var clone = Clone(xml); clone.Edits = new[] { new ClassicXmlEdit { XPath = "/Document/Hmi.Screen.Button/AttributeList/TabIndex", ExpectedValue = "1", NewValue = "2" } };
+        string candidate = Candidate("change_screen_items", new { changes = new[] { clone } }, xml);
+        var rows = Items(candidate); Assert.Equal(1, rows[0].GetProperty("tabIndex").GetInt32()); Assert.Equal(2, rows.Last().GetProperty("tabIndex").GetInt32());
+    }
+    [Theory] [InlineData("unknown")] [InlineData("2147483648")] [InlineData("<Value>1</Value>")]
+    public void UnsupportedTabIndexValuesAreNotPresentedAsEditableNumericHints(string value)
+    {
+        string xml = Xml.Replace("<ObjectName>Start</ObjectName>", "<ObjectName>Start</ObjectName><TabIndex>" + value + "</TabIndex>");
+        Assert.Equal(JsonValueKind.Null, Items(xml)[0].GetProperty("tabIndex").ValueKind);
+    }
 }

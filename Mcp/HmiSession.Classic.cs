@@ -45,9 +45,10 @@ namespace SiemensMCPServer.Mcp
                 {
                     TransferNative.Import(target, candidateDirectory, true);
                     var after = ReadClassicResource(before.HmiId, before.Path);
-                    if (after.Fingerprint != expected) throw new InvalidOperationException("Native Comfort readback differs from the preview; transaction not committed.");
                     File.WriteAllText(Path.Combine(Path.GetDirectoryName(candidateDirectory)!, "native-readback.json"),
-                        System.Text.Json.JsonSerializer.Serialize(new { artifactDirectory = after.Directory, fingerprint = after.Fingerprint }, JsonDefaults.Options), new UTF8Encoding(false));
+                        System.Text.Json.JsonSerializer.Serialize(new { artifactDirectory = after.Directory, fingerprint = after.Fingerprint, expectedFingerprint = expected,
+                            matched = after.Fingerprint == expected, scope = "Export captured inside the native transaction; apply.json records the final outcome." }, JsonDefaults.Options), new UTF8Encoding(false));
+                    if (after.Fingerprint != expected) throw new InvalidOperationException("Native Comfort readback differs from the preview; transaction not committed. Inspect native-readback.json in the plan artifacts.");
                     if (exclusive.IsCancellationRequested || !transaction.CanCommit) throw new InvalidOperationException("Comfort transaction cancelled or cannot commit.");
                     transaction.CommitOnDispose();
                 }
