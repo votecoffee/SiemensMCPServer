@@ -55,6 +55,8 @@ def validate(files):
         assert "COMFORT-SCREEN-ITEMS.md" in files
     if version >= (0, 10, 2):
         assert "COMFORT-REFERENCES.md" in files
+    if version >= (0, 10, 3):
+        assert "COMFORT-BEHAVIORS.md" in files
     return len(manifest)
 
 
