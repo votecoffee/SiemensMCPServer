@@ -84,6 +84,9 @@ namespace SiemensMCPServer.Mcp
         }
         public async Task<object> ReadExtension(string module, string operation, string argumentsJson, CancellationToken token)
         {
+            ExtensionBundle.ModuleName(module);
+            if (operation == null || operation.Length == 0 || operation.Length > 128 || operation.Any(char.IsControl)) throw new ArgumentException("Use an advertised bounded extension operation name.");
+            if (argumentsJson == null || argumentsJson.Length > 16 * 1024 * 1024) throw new ArgumentException("Supply a bounded JSON arguments object.");
             var route = (string)await control.Enqueue(() => {
                 var descriptor = extensions.Operation(module, operation);
                 if (descriptor.Preview) throw new ArgumentException("Use a preview for this extension operation.");

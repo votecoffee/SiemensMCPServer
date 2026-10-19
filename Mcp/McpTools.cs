@@ -21,11 +21,11 @@ namespace SiemensMCPServer.Mcp
         public McpTools(OpennessRuntime runtime) { this.runtime = runtime; }
 
         [McpServerTool(Name = "tia_list_extensions", ReadOnly = true, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
-        [Description("List trusted feature extensions, loaded versions, worker/host process IDs, generation IDs and operation input schemas. Starts pure workers as needed; does not load Siemens APIs or attach to TIA. Existing dedicated tools use these same workers.")]
+        [Description("List trusted feature extensions, loaded versions, primary/local worker process IDs, generation IDs and operation input schemas. Includes native/local/control queue counts, limits, active request names/IDs and cancellation/failure counters. Runs on the control lane, so local/native workloads do not occupy its queue. Starts pure primary workers as needed; does not load Siemens APIs or attach to TIA. Existing dedicated tools use these same workers.")]
         public Task<CallToolResult> Extensions(CancellationToken token) => Result(() => runtime.ListExtensions(token));
 
         [McpServerTool(Name = "tia_reload_extensions", ReadOnly = false, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
-        [Description("Reload a staged trusted extension by module name; empty module reloads all. Waits behind active broker operations, verifies payload hashes/protocol and stages replacement workers before an atomic switch. Successful reload invalidates ALL outstanding previews; failed reload keeps existing workers/previews. Preserves TIA attachment and unsaved engineering changes. Does not save or change the project. External versions are selected by active.json under the configured extension root.")]
+        [Description("Reload a staged trusted extension by module name; empty module reloads all. Queues on the native STA and drains active analysis generation leases before an atomic verified switch; new worker calls wait at that barrier. Successful reload invalidates ALL outstanding previews; failed reload keeps existing workers/previews. Preserves TIA attachment and unsaved engineering changes. Does not save or change the project. External versions are selected by active.json under the configured extension root.")]
         public Task<CallToolResult> ReloadExtensions(string module, CancellationToken token) => Result(() => runtime.ReloadExtensions(module, token));
 
         [McpServerTool(Name = "tia_read_extension", ReadOnly = false, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
