@@ -17,6 +17,7 @@ namespace SiemensMCPServer.Mcp
                 string? version = Environment.GetEnvironmentVariable("TIA_PORTAL_VERSION");
                 string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SiemensMCPServer", "Mcp", "Sessions");
                 bool writes = false;
+                int analysisParallelism = 2;
                 string? extensionsRoot = null;
                 foreach (string arg in args)
                 {
@@ -24,6 +25,9 @@ namespace SiemensMCPServer.Mcp
                     else if (arg.StartsWith("--tia-version=", StringComparison.Ordinal)) version = arg.Substring(14);
                     else if (arg.StartsWith("--artifact-root=", StringComparison.Ordinal)) root = arg.Substring(16);
                     else if (arg.StartsWith("--extensions-root=", StringComparison.Ordinal)) extensionsRoot = arg.Substring(18);
+                    else if (arg.StartsWith("--analysis-parallelism=", StringComparison.Ordinal)) {
+                        if (!int.TryParse(arg.Substring(23), out analysisParallelism) || analysisParallelism < 1 || analysisParallelism > 8) throw new ArgumentException("Analysis parallelism must be 1..8.");
+                    }
                     else throw new ArgumentException("Unknown option: " + arg);
                 }
                 var builder = Host.CreateApplicationBuilder();
@@ -31,7 +35,7 @@ namespace SiemensMCPServer.Mcp
                 builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
                 builder.Logging.SetMinimumLevel(LogLevel.Warning);
                 // Container ownership drains the STA queue and disposes workers before host exit.
-                builder.Services.AddSingleton(_ => new OpennessRuntime(version, root, writes, extensionsRoot));
+                builder.Services.AddSingleton(_ => new OpennessRuntime(version, root, writes, extensionsRoot, analysisParallelism));
                 builder.Services.AddMcpServer(options => {
                     options.ServerInfo = new ModelContextProtocol.Protocol.Implementation { Name = "siemens-mcp-server", Version = typeof(Program).Assembly.GetName().Version!.ToString(3) };
                     options.ServerInstructions = "Use explicit TIA process, project path, and HMI IDs. Read a text list, preview edits, and inspect the diff before applying authorized changes. Apply never saves; compile and save are separate tools. Classic and capability-checked Unified operations; use tia_get_api_capabilities and the target family. Do not retry an uncertain write; inspect current state first.";

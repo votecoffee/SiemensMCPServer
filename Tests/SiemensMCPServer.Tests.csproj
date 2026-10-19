@@ -15,6 +15,8 @@
     <Compile Include="../Shared/UnifiedScreenCatalog.cs" Link="UnifiedScreenCatalog.cs" />
     <Compile Include="../Mcp/JsonDefaults.cs" Link="JsonDefaults.cs" />
     <Compile Include="../Mcp/ExtensionManager.cs" Link="ExtensionManager.cs" />
+    <Compile Include="../Mcp/ExtensionWorkerPool.cs" Link="ExtensionWorkerPool.cs" />
+    <Compile Include="../Mcp/RequestLane.cs" Link="RequestLane.cs" />
     <Compile Include="../Mcp/ExtensionPlanStore.cs" Link="ExtensionPlanStore.cs" />
     <Compile Include="../Extensions/ExtensionContract.cs" Link="ExtensionContract.cs" />
     <Compile Include="../Extensions/FeatureOperations.cs" Link="FeatureOperations.cs" />

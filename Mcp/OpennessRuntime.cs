@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -55,8 +54,7 @@ namespace SiemensMCPServer.Mcp
 
     internal sealed class OpennessRuntime : IDisposable
     {
-        private readonly BlockingCollection<Action> queue = new BlockingCollection<Action>(100);
-        private readonly Thread thread;
+        private readonly RequestLane native, local, control;
         private readonly string artifactRoot;
         private readonly bool allowWrites;
         private IHmiSession? session;
@@ -64,35 +62,46 @@ namespace SiemensMCPServer.Mcp
         private int disposed;
         private readonly ExtensionManager extensions;
 
-        public OpennessRuntime(string? version, string artifactRoot, bool allowWrites, string? extensionsRoot = null)
+        public OpennessRuntime(string? version, string artifactRoot, bool allowWrites, string? extensionsRoot = null, int analysisParallelism = 2)
         {
             requestedVersion = version; this.artifactRoot = Path.GetFullPath(artifactRoot); this.allowWrites = allowWrites;
             extensions = new ExtensionManager(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "extensions"),
                 extensionsRoot ?? ExtensionPaths.DefaultRoot(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)),
-                Path.Combine(this.artifactRoot, "extension-workers"));
-            thread = new Thread(Run) { IsBackground = true, Name = "TIA Openness STA" };
-            thread.SetApartmentState(ApartmentState.STA);
-            thread.Start();
+                Path.Combine(this.artifactRoot, "extension-workers"), localParallelism: analysisParallelism);
+            local = new RequestLane("Local analysis", analysisParallelism, 32);
+            control = new RequestLane("Request control", 1, 16);
+            native = new RequestLane("TIA Openness STA", 1, 100, sta: true, cleanup: () => session?.Dispose());
         }
 
-        public Task<object> ListExtensions(CancellationToken token) => Enqueue(() => extensions.List(), token);
+        public Task<object> ListExtensions(CancellationToken token) => control.Enqueue(() => extensions.List(new {
+            native = native.Snapshot(), local = local.Snapshot(), control = control.Snapshot(),
+            scope = "Native calls/transactions are FIFO on one STA. Pure local analysis uses separate bounded workers. Queued cancellation removes work before dispatch; running operations finish without thread abort. Reload drains active generation leases." }), token, nameof(ListExtensions));
         public Task<object> ReloadExtensions(string module, CancellationToken token) => Enqueue(() => extensions.Reload(module, () => session?.InvalidatePreviews()), token);
         private static JsonElement Arguments(string json)
         {
             if (json == null || json.Length > 16 * 1024 * 1024) throw new ArgumentException("Supply a bounded JSON arguments object.");
             using (var doc = JsonDocument.Parse(json)) { if (doc.RootElement.ValueKind != JsonValueKind.Object) throw new ArgumentException("Extension arguments must be a JSON object."); return doc.RootElement.Clone(); }
         }
-        public Task<object> ReadExtension(string module, string operation, string argumentsJson, CancellationToken token) => Enqueue(() => {
-            var descriptor = extensions.Operation(module, operation);
-            if (descriptor.Preview) throw new ArgumentException("Use a preview for this extension operation.");
-            var arguments = Arguments(argumentsJson);
-            object data;
-            if (descriptor.Route == "local") data = extensions.Execute(module, operation, arguments);
-            else if (descriptor.Route == "plcRead" && module == "plc") data = EnsureSession().ReadPlcExtension(operation, descriptor.SnapshotKind, arguments);
-            else if (descriptor.Route == "projectRead" && module == "project") data = EnsureSession().ReadProjectExtension(operation, descriptor.SnapshotKind, arguments);
-            else throw new ArgumentException("This extension operation has no read route.");
-            return (object)new { extension = extensions.Identity(module), data };
-        }, token);
+        public async Task<object> ReadExtension(string module, string operation, string argumentsJson, CancellationToken token)
+        {
+            var route = (string)await control.Enqueue(() => {
+                var descriptor = extensions.Operation(module, operation);
+                if (descriptor.Preview) throw new ArgumentException("Use a preview for this extension operation.");
+                return descriptor.Route;
+            }, token, "Route extension read").ConfigureAwait(false);
+            if (route == "local") return await local.Enqueue(() => extensions.ExecuteLocal(module, operation, Arguments(argumentsJson)), token, module + "/" + operation).ConfigureAwait(false);
+            return await Enqueue(() => {
+                // Reload can happen after classification. Revalidate before native capture.
+                var descriptor = extensions.Operation(module, operation);
+                if (descriptor.Route != route || descriptor.Preview) throw new InvalidOperationException("Extension route changed; inspect its current schema before retrying.");
+                var arguments = Arguments(argumentsJson);
+                object data;
+                if (route == "plcRead" && module == "plc") data = EnsureSession().ReadPlcExtension(operation, descriptor.SnapshotKind, arguments);
+                else if (route == "projectRead" && module == "project") data = EnsureSession().ReadProjectExtension(operation, descriptor.SnapshotKind, arguments);
+                else throw new ArgumentException("This extension operation has no read route.");
+                return (object)new { extension = extensions.Identity(module), data };
+            }, token, module + "/" + operation).ConfigureAwait(false);
+        }
         public Task<object> PreviewExtension(string module, string operation, string targetId, string path, string fingerprint, string argumentsJson, CancellationToken token)
             => Enqueue(() => EnsureSession().PreviewExtension(module, operation, targetId, path, fingerprint, Arguments(argumentsJson)), token);
 
@@ -104,7 +113,7 @@ namespace SiemensMCPServer.Mcp
         }, token);
 
         public Task<object> PrepareClassicBundle(string sourceDirectory, string[] categories, ClassicFolderName[] folderNames, CancellationToken token)
-            => Enqueue(() => ClassicExportBundle.Prepare(sourceDirectory, Path.Combine(artifactRoot, "classic-export-bundles", Guid.NewGuid().ToString("N")), categories, folderNames), token);
+            => local.Enqueue(() => ClassicExportBundle.Prepare(sourceDirectory, Path.Combine(artifactRoot, "classic-export-bundles", Guid.NewGuid().ToString("N")), categories, folderNames), token, nameof(PrepareClassicBundle));
 
         public Task<object> SelectVersion(string version, CancellationToken token) => Enqueue(() => {
             string selected = Normalize(version);
@@ -116,10 +125,10 @@ namespace SiemensMCPServer.Mcp
             return (object)new { selectedEngineeringVersion = selected };
         }, token);
 
-        public Task<object> Invoke(Func<IHmiSession, object> operation, CancellationToken token, bool writes = false) => Enqueue(() => {
+        public Task<object> Invoke(Func<IHmiSession, object> operation, CancellationToken token, bool writes = false, [CallerMemberName] string operationName = "") => Enqueue(() => {
             if (writes && !allowWrites) throw new InvalidOperationException("Writes are disabled. Start this server with --allow-writes to apply, compile or save.");
             return operation(EnsureSession());
-        }, token);
+        }, token, operationName);
 
         private IHmiSession EnsureSession()
         {
@@ -135,22 +144,10 @@ namespace SiemensMCPServer.Mcp
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static IHmiSession CreateSession(string root, IFeatureEngine features) => new HmiSession(root, features);
 
-        private Task<object> Enqueue(Func<object> operation, CancellationToken token)
+        private Task<object> Enqueue(Func<object> operation, CancellationToken token, [CallerMemberName] string operationName = "")
         {
-            var completion = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             if (Volatile.Read(ref disposed) != 0) throw new ObjectDisposedException(nameof(OpennessRuntime));
-            if (!queue.TryAdd(() => {
-                try { token.ThrowIfCancellationRequested(); completion.SetResult(operation()); }
-                catch (OperationCanceledException) { completion.SetCanceled(); }
-                catch (Exception ex) { completion.SetException(ex); }
-            })) throw new InvalidOperationException("TIA request queue is full; wait for the current operation.");
-            return completion.Task;
-        }
-
-        private void Run()
-        {
-            try { foreach (Action action in queue.GetConsumingEnumerable()) action(); }
-            finally { try { session?.Dispose(); } finally { extensions.Dispose(); } }
+            return native.Enqueue(operation, token, operationName);
         }
 
         private static string Normalize(string version)
@@ -163,10 +160,11 @@ namespace SiemensMCPServer.Mcp
         public void Dispose()
         {
             if (Interlocked.Exchange(ref disposed, 1) != 0) return;
-            queue.CompleteAdding();
-            // Never abort a native import or dispose its session from another thread.
-            thread.Join();
-            queue.Dispose();
+            control.BeginStop(); local.BeginStop(); native.BeginStop();
+            // Stop queued work; let dispatched native operations finish, and release
+            // their session on its owning STA before disposing pure workers.
+            try { control.Dispose(); local.Dispose(); native.Dispose(); }
+            finally { extensions.Dispose(); }
         }
     }
 }

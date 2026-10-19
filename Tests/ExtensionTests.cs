@@ -150,6 +150,7 @@ public sealed class ExtensionTests
     {
         public string Directory; public bool Disposed; public ExtensionHello Hello { get; }
         public int ProcessId => 123;
+        public bool Healthy => !Disposed;
         public FakeWorker(ExtensionBundle bundle) { Directory = bundle.Directory; Hello = new ExtensionHello { Protocol = 1, Module = bundle.Manifest.Module, Version = bundle.Manifest.Version, Operations = FeatureOperations.Describe(bundle.Manifest.Module) }; }
         public JsonElement Call(string operation, object input) => FeatureOperations.Execute(Hello.Module, operation, ExtensionWire.Json(input));
         public void Dispose() { Disposed = true; }

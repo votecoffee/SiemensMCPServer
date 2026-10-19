@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Threading;
 using SiemensMCPServer.Extensions;
 
 namespace SiemensMCPServer.Mcp
@@ -80,6 +81,7 @@ namespace SiemensMCPServer.Mcp
     {
         ExtensionHello Hello { get; }
         int ProcessId { get; }
+        bool Healthy { get; }
         JsonElement Call(string operation, object input);
     }
     internal sealed class ExtensionWorker : IExtensionWorker
@@ -94,6 +96,7 @@ namespace SiemensMCPServer.Mcp
         private readonly StringBuilder errors = new StringBuilder();
         public ExtensionHello Hello { get; private set; } = null!;
         public int ProcessId { get; private set; }
+        public bool Healthy => !faulted && !stopped;
         public ExtensionWorker(ExtensionBundle bundle, int timeoutMs = 30000)
         {
             this.timeoutMs = timeoutMs;
@@ -166,21 +169,36 @@ namespace SiemensMCPServer.Mcp
             process.Dispose();
         }
     }
-    // Accessed only through the same serial STA queue as all broker operations.
+    // Native calls use the primary worker on the STA. Pure local calls use a
+    // separate process pool under a generation lease shared with reload.
     internal sealed class ExtensionManager : IFeatureEngine, IDisposable
     {
         private sealed class Active : IDisposable
         {
             public ExtensionBundle Bundle = null!;
             public IExtensionWorker Worker = null!;
+            public ExtensionWorkerPool Local = null!;
             public string Generation = Guid.NewGuid().ToString("N");
-            public void Dispose() => Worker.Dispose();
+            public void Dispose() { try { Local.Dispose(); } finally { Worker.Dispose(); } }
         }
         private readonly string bundledRoot, externalRoot, cacheRoot;
         private readonly Func<ExtensionBundle, IExtensionWorker> factory;
         private readonly Dictionary<string, Active> active = new Dictionary<string, Active>(StringComparer.Ordinal);
-        public ExtensionManager(string bundledRoot, string externalRoot, string cacheRoot, Func<ExtensionBundle, IExtensionWorker>? factory = null)
-        { this.bundledRoot = Path.GetFullPath(bundledRoot); this.externalRoot = Path.GetFullPath(externalRoot); this.cacheRoot = Path.GetFullPath(cacheRoot); this.factory = factory ?? (b => new ExtensionWorker(b)); }
+        private readonly object activation = new object();
+        private readonly ReaderWriterLockSlim generations = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+        private readonly int localParallelism;
+        private bool disposed;
+        public ExtensionManager(string bundledRoot, string externalRoot, string cacheRoot, Func<ExtensionBundle, IExtensionWorker>? factory = null, int localParallelism = 2)
+        {
+            if (localParallelism < 1 || localParallelism > 8) throw new ArgumentException("Local analysis parallelism must be 1..8.");
+            this.localParallelism = localParallelism; this.bundledRoot = Path.GetFullPath(bundledRoot); this.externalRoot = Path.GetFullPath(externalRoot); this.cacheRoot = Path.GetFullPath(cacheRoot); this.factory = factory ?? (b => new ExtensionWorker(b));
+        }
+        private T Read<T>(Func<T> action)
+        {
+            generations.EnterReadLock();
+            try { if (disposed) throw new ObjectDisposedException(nameof(ExtensionManager)); return action(); }
+            finally { generations.ExitReadLock(); }
+        }
         private Dictionary<string, string> Registry(string? root = null)
         {
             root = root ?? externalRoot;
@@ -204,6 +222,14 @@ namespace SiemensMCPServer.Mcp
             var bundle = ExtensionBundle.Read(staged, module);
             if (bundle.ManifestSha256 != original.ManifestSha256) throw new InvalidOperationException("Extension changed while staging.");
             var candidate = new Active { Bundle = bundle, Worker = factory(bundle) };
+            candidate.Local = new ExtensionWorkerPool(localParallelism, () => {
+                var worker = factory(bundle);
+                try {
+                    if (JsonSerializer.Serialize(worker.Hello, ExtensionWire.Options) != JsonSerializer.Serialize(candidate.Worker.Hello, ExtensionWire.Options))
+                        throw new InvalidOperationException("Local worker catalog differs from its generation's primary worker.");
+                    return worker;
+                } catch { worker.Dispose(); throw; }
+            });
             try
             {
                 File.WriteAllText(Path.Combine(staged, "activation.json"), JsonSerializer.Serialize(new { module, bundle.Manifest.Version, candidate.Generation, workerProcessId = candidate.Worker.ProcessId, bundle.ManifestSha256, sourceDirectory = source }, JsonDefaults.Options), new UTF8Encoding(false));
@@ -214,32 +240,44 @@ namespace SiemensMCPServer.Mcp
         private Active Get(string module)
         {
             ExtensionBundle.ModuleName(module);
-            if (!active.TryGetValue(module, out var loaded)) { loaded = Load(module, Registry()); active.Add(module, loaded); }
-            return loaded;
+            lock (activation) {
+                if (!active.TryGetValue(module, out var loaded)) { loaded = Load(module, Registry()); active.Add(module, loaded); }
+                return loaded;
+            }
         }
         public JsonElement Execute(string module, string operation, object input)
-        {
+        => Read(() => {
             var loaded = Get(module);
             if (!loaded.Worker.Hello.Operations.Any(o => o.Name == operation)) throw new ArgumentException("Unknown extension operation; inspect tia_list_extensions.");
             return loaded.Worker.Call(operation, input);
-        }
-        public ExtensionOperation Operation(string module, string name) => Get(module).Worker.Hello.Operations.SingleOrDefault(o => o.Name == name) ?? throw new ArgumentException("Unknown extension operation.");
-        public object Identity(string module)
-        {
+        });
+        public object ExecuteLocal(string module, string operation, object input) => Read(() => {
             var loaded = Get(module);
-            return new { module, loaded.Bundle.Manifest.Version, loaded.Generation, workerProcessId = loaded.Worker.ProcessId, loaded.Bundle.ManifestSha256 };
-        }
-        public string Generation(string module) => Get(module).Generation;
-        public object List()
-        {
+            var descriptor = loaded.Worker.Hello.Operations.SingleOrDefault(o => o.Name == operation) ?? throw new ArgumentException("Unknown extension operation.");
+            if (descriptor.Route != "local" || descriptor.Preview) throw new InvalidOperationException("Operation is no longer a local read; inspect its current schema before retrying.");
+            var data = loaded.Local.Call(operation, input);
+            return (object)new { extension = Identity(module), data };
+        });
+        public ExtensionOperation Operation(string module, string name) => Read(() => Get(module).Worker.Hello.Operations.SingleOrDefault(o => o.Name == name) ?? throw new ArgumentException("Unknown extension operation."));
+        public object Identity(string module)
+        => Read<object>(() => {
+            var loaded = Get(module);
+            return new { module, loaded.Bundle.Manifest.Version, loaded.Generation, workerProcessId = loaded.Worker.ProcessId, localWorkerProcessIds = loaded.Local.ProcessIds, loaded.Bundle.ManifestSha256 };
+        });
+        public string Generation(string module) => Read(() => Get(module).Generation);
+        public object List(object? requests = null) => Read<object>(() => {
             var registry = Registry();
-            var modules = new[] { "comfort", "unified", "plc" }.Concat(Registry(bundledRoot).Keys).Concat(registry.Keys).Concat(active.Keys).Distinct(StringComparer.Ordinal).OrderBy(s => s, StringComparer.Ordinal).ToArray();
+            string[] known; lock (activation) known = active.Keys.ToArray();
+            var modules = new[] { "comfort", "unified", "plc" }.Concat(Registry(bundledRoot).Keys).Concat(registry.Keys).Concat(known).Distinct(StringComparer.Ordinal).OrderBy(s => s, StringComparer.Ordinal).ToArray();
             return new { hostProcessId = Process.GetCurrentProcess().Id, extensionRoot = externalRoot,
-                modules = modules.Select(module => { var a = Get(module); return new { module, a.Bundle.Manifest.Version, a.Generation, workerProcessId = a.Worker.ProcessId, a.Bundle.ManifestSha256, operations = a.Worker.Hello.Operations }; }).ToArray(),
+                modules = modules.Select(module => { var a = Get(module); return new { module, a.Bundle.Manifest.Version, a.Generation, workerProcessId = a.Worker.ProcessId, localWorkerProcessIds = a.Local.ProcessIds, a.Bundle.ManifestSha256, operations = a.Worker.Hello.Operations }; }).ToArray(), requests,
                 scope = "Trusted local worker code; hashes detect changes, not publisher identity. Workers receive serialized data, never Siemens objects. Reload does not save or alter the project." };
-        }
+        });
         public object Reload(string module, Action invalidatePreviews)
         {
+            generations.EnterWriteLock();
+            try {
+            if (disposed) throw new ObjectDisposedException(nameof(ExtensionManager));
             var registry = Registry();
             string[] modules = module == "" ? new[] { "comfort", "unified", "plc" }.Concat(Registry(bundledRoot).Keys).Concat(registry.Keys).Concat(active.Keys).Distinct(StringComparer.Ordinal).ToArray() : new[] { module };
             var replacements = new Dictionary<string, Active>(StringComparer.Ordinal);
@@ -252,7 +290,13 @@ namespace SiemensMCPServer.Mcp
             foreach (var old in previous) old.Dispose();
             return new { reloaded = modules, hostProcessId = Process.GetCurrentProcess().Id, previewsInvalidated = true, projectChanged = false,
                 modules = modules.Select(Identity).ToArray() };
+            } finally { generations.ExitWriteLock(); }
         }
-        public void Dispose() { foreach (var worker in active.Values) worker.Dispose(); active.Clear(); }
+        public void Dispose()
+        {
+            generations.EnterWriteLock();
+            try { if (disposed) return; disposed = true; foreach (var worker in active.Values) worker.Dispose(); active.Clear(); }
+            finally { generations.ExitWriteLock(); }
+        }
     }
 }
