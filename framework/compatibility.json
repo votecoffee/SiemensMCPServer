@@ -1,12 +1,10 @@
 {
   "schemaVersion": 1,
-  "status": "awaiting-compatible-framework-package",
+  "status": "isolated-compatibility-accepted",
   "requiredMcpPythonSeries": "2.3",
-  "acceptedFrameworkVersion": null,
+  "acceptedFrameworkVersion": "0.14.0",
   "productionAdoption": false,
-  "historicalReference": {
-    "frameworkVersion": "0.13.0",
-    "mcpPythonVersion": "1.30.0",
-    "scope": "Disposable compatibility tests only; not an approved installation target"
-  }
+  "frameworkSourceCommit": "52478c3868b18faf821ca22fd2bc38e5d0599b9b",
+  "acceptedMcpPythonVersion": "2.3.0",
+  "wireProtocolVersion": "2025-11-25"
 }

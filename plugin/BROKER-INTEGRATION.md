@@ -56,11 +56,10 @@ Contributed guides reuse standalone instructions and public references. They are
 
 Unit tests cover deterministic publication, four embedded guides, transitive references, content-bound revisions, stale hashes and unknown IDs. `scripts/test_broker_integration.py` uses an isolated current broker, two stdio frontends and the real Siemens executable. It checks discovery, workflow schema/hashes, contributed tools/references, exclusive ownership, stale rejection and write denial without installing the Siemens plugin or attaching to TIA.
 
-Use a current broker development environment with its pinned dependencies and importable source:
+Use the isolated framework environment described in [APP-FRAMEWORK.md](APP-FRAMEWORK.md), with its pinned wheel and SDK 2 dependencies. The broker source argument supplies the matching workflow schema:
 
 ```powershell
-$env:PYTHONPATH = 'C:\source\CodexMCPBroker\src'
-& 'C:\source\CodexMCPBroker\.local\development\Scripts\python.exe' -B -X utf8 scripts/test_broker_integration.py 'C:\packages\extracted\server\SiemensMCPServer.Mcp.exe' --broker-source 'C:\source\CodexMCPBroker'
+& 'C:\private\siemens-framework\runtime\Scripts\python.exe' -B -X utf8 scripts/test_broker_integration.py 'C:\packages\extracted\server\SiemensMCPServer.Mcp.exe' --broker-source 'C:\source\CodexMCPBroker'
 ```
 
 This checks metadata/read-only compatibility. A separate packaged 0.14.1 V15.1 native pilot subsequently passed selected single-line English/German Unicode text-list edits, native readback, compile, save/reopen and restoration through an isolated broker. CRLF and LF candidates in the tested native body/p entries failed strict readback and rolled back; offline literal preservation does not establish native multiline support. Fresh Codex chat activation, other native workflows/families, payload/media parity and native failure recovery still need applicable acceptance before migration. Keep standalone integrations during those gates. See [native acceptance](NATIVE-ACCEPTANCE.md) and the broker's [coexistence policy](https://github.com/votecoffee/CodexMCPBroker/blob/main/docs/plugin-coexistence.md).
@@ -68,10 +67,10 @@ This checks metadata/read-only compatibility. A separate packaged 0.14.1 V15.1 n
 For the stateful adapter gate, host 0.14.1 adds an internal provider seam consumed only by the separately compiled `SiemensMCPServer.Mcp.Fixture.exe`. Production startup has no fake-provider argument. The fixture refuses loaded Siemens assemblies and substitutes `IHmiSession`; production MCP handlers, queues, `TextListWorkflow` and pure feature workers remain in use. It does not exercise native `HmiSession` target/transaction checks or Siemens import/compile/save behavior.
 
 ```powershell
-& 'C:\source\CodexMCPBroker\.local\development\Scripts\python.exe' -B -X utf8 scripts/test_broker_adapter.py 'C:\packages\extracted\server\SiemensMCPServer.Mcp.exe' --previous-host 'C:\packages\previous\server\SiemensMCPServer.Mcp.exe'
+& 'C:\private\siemens-framework\runtime\Scripts\python.exe' -B -X utf8 scripts/test_broker_adapter.py 'C:\packages\extracted\server\SiemensMCPServer.Mcp.exe' --previous-host 'C:\packages\previous\server\SiemensMCPServer.Mcp.exe'
 ```
 
-Run from the repository with the same broker source/dependencies as above. The optional previous host must predate 0.14.1. This check compares complete direct/broker text-list read results, preserves a 49,152-character multilingual payload, rejects wrong-owner/hash/consumed/stale plans, tests reload success/failure, and keeps fixture compile/save/reopen separate. It proves release discards process-owned plans/selection and records exactly three independent fixture import effects, including one lost reply with an uncertain broker receipt. The recovery barrier survives broker restart; explicit reconciliation after inspecting that isolated test state adds no effect. No cross-route write retry occurs. These fixture results cannot establish native or Codex UI acceptance.
+Run from the repository with the same pinned framework dependencies as above. Successful-result comparisons normalize only the optional omitted/false `isError` default; other received fields are retained. The optional previous host must predate 0.14.1. This check compares complete direct/broker text-list read results, preserves a 49,152-character multilingual payload, rejects wrong-owner/hash/consumed/stale plans, tests reload success/failure, and keeps fixture compile/save/reopen separate. It proves release discards process-owned plans/selection and records exactly three independent fixture import effects, including one lost reply with an uncertain broker receipt. The recovery barrier survives broker restart; explicit reconciliation after inspecting that isolated test state adds no effect. No cross-route write retry occurs. These fixture results cannot establish native or Codex UI acceptance.
 
 ## App safeguard policy
 
@@ -79,4 +78,4 @@ Host 0.15.0 shares [desktop-editable app safeguards](SAFEGUARDS.md) for writes, 
 
 ## Shared framework direction
 
-The primary shared-code path is the [app-owned framework profile](APP-FRAMEWORK.md), targeting a compatible MCP Python 2.3 framework package with the current .NET SDK behind its MCP worker boundary. Framework package acceptance is pending; the older Python SDK is not an installation target. Universal aggregation is optional. The standalone plugin, app policy and versioned publication/recovery boundaries remain; no native .NET binding or installed migration is claimed.
+The optional [app-owned framework profile](APP-FRAMEWORK.md) pins framework 0.14.0 / MCP Python 2.3.0 with the current .NET SDK behind its MCP process boundary. Isolated compatibility is accepted; production adoption remains pending. Universal aggregation is optional. The standalone plugin, app policy and versioned publication/recovery boundaries remain; no native .NET binding or installed migration is claimed.

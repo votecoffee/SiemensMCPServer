@@ -45,6 +45,9 @@ foreach ($file in Get-ChildItem -LiteralPath $root -File -Recurse -Force) {
     $relative = $file.FullName.Substring($root.Length + 1).Replace('\', '/')
     if ($relative -cne 'manifest.json' -and -not $seen.Contains($relative)) { throw 'Unexpected payload file.' }
 }
+if (-not $seen.Contains('framework/compatibility.json')) { throw 'Payload framework profile is missing.' }
+$profile = Get-Content -LiteralPath (Join-Path $root 'framework\compatibility.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+if ($profile.schemaVersion -ne 1 -or $profile.requiredMcpPythonSeries -ne '2.3') { throw 'Unsupported framework profile.' }
 [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($output)) | Out-Null
 $scratch = Join-Path ([IO.Path]::GetDirectoryName($output)) ('framework-prepare-' + [Guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($scratch) | Out-Null
@@ -66,7 +69,7 @@ try {
     }
     $stream = [IO.File]::Open($output, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
     try { $bytes = [Text.UTF8Encoding]::new($false).GetBytes(($publication | ConvertTo-Json -Depth 16)); $stream.Write($bytes, 0, $bytes.Length) } finally { $stream.Dispose() }
-    @{ state = 'framework-publication-prepared'; frameworkVersion = $null; requiredMcpPythonSeries = '2.3'; compatibilityAcceptance = 'pending compatible framework package'; publication = $output; backendRevision = $revision;
+    @{ state = 'framework-publication-prepared'; frameworkVersion = $profile.acceptedFrameworkVersion; requiredMcpPythonSeries = $profile.requiredMcpPythonSeries; compatibilityAcceptance = $profile.status; publication = $output; backendRevision = $revision;
        writesEnabled = $service.allow_writes; standalonePluginChanged = $false; liveRegistrationChanged = $false; nativeProjectChanged = $false } | ConvertTo-Json
 } finally {
     if (Test-Path -LiteralPath $descriptor) { Remove-Item -LiteralPath $descriptor }

@@ -17,31 +17,31 @@ import time
 
 import jsonschema
 from universal_tools import __version__ as broker_version
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from universal_tools.transport import list_all_tools
+from mcp import Client, StdioServerParameters
 from universal_tools.cli import initialize, probe, process_options, stop
 
 
 def data(result):
-    assert not result.isError, result.model_dump_json()
-    return result.structuredContent or json.loads(result.content[0].text)
+    assert not result.is_error, result.model_dump_json()
+    return result.structured_content or json.loads(result.content[0].text)
 
 
 async def check(state, broker_source):
     async with AsyncExitStack() as stack:
         async def connect():
-            pipes = await stack.enter_async_context(stdio_client(StdioServerParameters(
-                command=sys.executable, args=['-m', 'universal_tools', '--state', str(state), 'proxy'])))
-            session = await stack.enter_async_context(ClientSession(*pipes))
-            await session.initialize()
+            session = await stack.enter_async_context(Client(StdioServerParameters(
+                command=sys.executable, args=['-m', 'universal_tools', '--state', str(state), 'proxy']),
+                mode="legacy", cache=None, read_timeout_seconds=90))
+            assert session.session.initialize_result.protocol_version == "2025-11-25"
             return session
         owner, other = await connect(), await connect()
-        assert len((await owner.list_tools()).tools) == 14
+        assert len(await list_all_tools(owner.session)) == 14
         refreshed = data(await owner.call_tool('refresh_services', {}))
         matches = data(await owner.call_tool('search_tools', {'query': 'workflow', 'kind': 'capability'}))['matches']
         assert len(matches) == 4 and all(not item['callable'] for item in matches), (matches, refreshed)
         context = data(await owner.call_tool('acquire_service', {'service_id': 'siemens-mcp-server'}))['context_id']
-        assert (await other.call_tool('acquire_service', {'service_id': 'siemens-mcp-server'})).isError
+        assert (await other.call_tool('acquire_service', {'service_id': 'siemens-mcp-server'})).is_error
         data(await owner.call_tool('refresh_capabilities', {'service_id': 'siemens-mcp-server', 'context_id': context}))
         matches = data(await owner.call_tool('search_tools', {'query': 'workflow', 'kind': 'capability'}))['matches']
 
@@ -67,15 +67,15 @@ async def check(state, broker_source):
                 content = data(await read(reference['read']['tool'], reference['read']['arguments']))
                 assert hashlib.sha256(content['content'].encode('utf-8')).hexdigest() == reference['sha256']
                 references += 1
-            assert (await read('tia_read_workflow', {**arguments, 'expectedRevision': 'stale'})).isError
-            assert (await read('tia_read_workflow', arguments, other)).isError
+            assert (await read('tia_read_workflow', {**arguments, 'expectedRevision': 'stale'})).is_error
+            assert (await read('tia_read_workflow', arguments, other)).is_error
             guides += 1
         # The normal app result envelope and target write policy remain unchanged.
         versions = data(await read('tia_list_versions', {}))['result']
         assert versions['writesEnabled'] is False
         attach = data(await owner.call_tool('describe_tool', {'tool_id': 'siemens-mcp-server/tia_attach'}))
         assert attach['invocation']['channel'] == 'call_write_tool' and attach['invocation']['registration_blocker'], attach['invocation']
-        assert (await read('tia_attach', {'processId': 1, 'expectedProjectPath': 'not-a-project'})).isError
+        assert (await read('tia_attach', {'processId': 1, 'expectedProjectPath': 'not-a-project'})).is_error
         data(await owner.call_tool('release_service', {'service_id': 'siemens-mcp-server', 'context_id': context}))
         return {'workflowGuides': guides, 'referenceReadbacks': references, 'staleGuidesRejected': True,
                 'competingFrontendBlocked': True, 'writesDisabled': True, 'brokerTools': 14,
@@ -88,15 +88,17 @@ def main():
     parser.add_argument('--broker-source', required=True, type=Path)
     parser.add_argument('--report', type=Path)
     args = parser.parse_args()
-    assert tuple(int(part) for part in broker_version.split('.')) >= (0, 11, 1), 'Use broker 0.11.1 or newer with its pinned dependencies'
+    assert tuple(int(part) for part in broker_version.split('.')) >= (0, 14, 0), 'Use broker 0.14.0 or newer with its pinned SDK 2 dependencies'
     with tempfile.TemporaryDirectory(prefix='siemens-broker-') as temporary:
         state = Path(temporary)
         with socket.socket() as socket_handle:
             socket_handle.bind(('127.0.0.1', 0)); port = socket_handle.getsockname()[1]
         settings = initialize(state, port)
+        policy = state / 'safeguards.json'
+        policy.write_text(json.dumps({'schemaVersion': 1, 'mcpWritesEnabled': False}), encoding='utf-8')
         descriptor = {'schema_version': 1, 'id': 'siemens-mcp-server', 'display_name': 'SiemensMCPServer',
             'transport': {'type': 'stdio', 'command': str(args.executable.resolve()),
-                'args': ['--artifact-root='+str(state/'artifacts'), '--extensions-root='+str(state/'extensions')]},
+                'args': ['--settings-file='+str(policy), '--artifact-root='+str(state/'artifacts'), '--extensions-root='+str(state/'extensions')]},
             'allow_writes': False, 'allowed_write_tools': [], 'session_mode': 'exclusive', 'resource_id': 'siemens-tia-openness',
             'timeout_seconds': 60, 'capability_catalog': {'tool': 'tia_list_broker_capabilities', 'arguments': {}}}
         (state/'services/siemens-mcp-server.json').write_text(json.dumps(descriptor), encoding='utf-8')

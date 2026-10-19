@@ -67,6 +67,18 @@ def validate(files):
     if version >= (0, 14, 0):
         assert "BROKER-INTEGRATION.md" in files
         assert "scripts/New-BrokerRegistration.ps1" in files
+    if version >= (0, 15, 1):
+        profile = json.loads(files["framework/compatibility.json"])
+        assert profile["acceptedFrameworkVersion"] == "0.14.0"
+        assert profile["acceptedMcpPythonVersion"] == "2.3.0"
+        assert profile["wireProtocolVersion"] == "2025-11-25"
+        assert profile["productionAdoption"] is False
+        pins = files["framework/requirements-lock.txt"].decode("utf-8").splitlines()
+        assert "universal-codex-tools==0.14.0" in pins
+        assert "mcp==2.3.0" in pins and "mcp-types==2.3.0" in pins
+        assert "scripts/New-FrameworkPublication.ps1" in files
+        assert "scripts/test_app_framework.py" in files
+        assert not any(name.endswith(".whl") or name.startswith("universal_tools/") for name in files)
     assert not any('fixture' in name.lower() or '/fixtures/' in name.lower() for name in files), 'Test fixtures must not be distributed'
     return len(manifest)
 

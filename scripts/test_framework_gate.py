@@ -1,4 +1,4 @@
-"""Check the pending MCP 2.3 gate without importing an SDK or starting a process."""
+"""Check the pinned MCP 2.3 gate without importing an SDK or starting a process."""
 import asyncio
 import builtins
 import json
@@ -25,7 +25,7 @@ class FrameworkGateTests(unittest.TestCase):
             root = Path(scratch)
             (root / "framework").mkdir()
             (root / "framework/compatibility.json").write_text(json.dumps({
-                "acceptedFrameworkVersion": accepted, "requiredMcpPythonSeries": "2.3"}), encoding="utf-8")
+                "acceptedFrameworkVersion": accepted, "requiredMcpPythonSeries": "2.3", "acceptedMcpPythonVersion": "2.3.0"}), encoding="utf-8")
             with patch("builtins.__import__", side_effect=reject_sdk), patch("subprocess.run", side_effect=AssertionError("No process may start")):
                 with self.assertRaises(exception):
                     asyncio.run(run(root))
@@ -38,6 +38,12 @@ class FrameworkGateTests(unittest.TestCase):
 
     def test_older_mcp_stops_before_import_or_start(self):
         self.check_gate("test-compatible-version", {"universal-codex-tools": "test-compatible-version", "mcp": "1.30.0"}, AssertionError)
+
+    def test_unaccepted_mcp_patch_stops_before_import_or_start(self):
+        self.check_gate("0.14.0", {"universal-codex-tools": "0.14.0", "mcp": "2.3.1"}, AssertionError)
+
+    def test_mismatched_wire_types_stop_before_import_or_start(self):
+        self.check_gate("0.14.0", {"universal-codex-tools": "0.14.0", "mcp": "2.3.0", "mcp-types": "2.2.0"}, AssertionError)
 
 
 if __name__ == "__main__":

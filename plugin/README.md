@@ -1,4 +1,4 @@
-# SiemensMCPServer plugin 0.15.0
+# SiemensMCPServer plugin 0.15.1
 
 The project and GitHub repository are now **SiemensMCPServer**. The plugin/MCP ID is `siemens-mcp-server`, the local marketplace is `siemens-mcp-server-local`, and the host is `SiemensMCPServer.Mcp.exe`. Remove the old `siemens-tia-openness` plugin or direct MCP registration through Codex before installing the renamed plugin. The installer refuses to register a second copy while the old server is enabled. Do not remove its cache manually while it is running. This rename needs a host upgrade; feature-worker reload remains available afterward.
 
@@ -10,7 +10,7 @@ A selected V15.1 broker pilot passed single-line English/German Unicode edits, n
 
 Host 0.15.0 and desktop 1.3.0 share [GUI-editable safeguards](SAFEGUARDS.md): write ceilings, operation restrictions, confirmations, preview limits, project scope and request limits. Permissions are rechecked for subsequent operations; scheduling/location changes require a host restart. Local settings do not grant client/broker or Siemens permission.
 
-The experimental [shared app framework profile](APP-FRAMEWORK.md) targets MCP Python 2.3 and keeps the current .NET MCP SDK unchanged behind a versioned backend publication. A compatible framework package must be verified/pinned before acceptance; no older Python dependency lock is shipped. Universal Tools is optional and the standard standalone plugin remains supported. Actual Codex/native deployment acceptance is pending.
+The optional [shared app framework profile](APP-FRAMEWORK.md) pins framework 0.14.0 / MCP Python 2.3.0, with the current .NET MCP SDK behind a versioned backend publication. Isolated packaged profiles exercise persistent ownership, refresh, workflow discovery and recovery. Production adoption and actual Codex/native framework acceptance remain pending. Universal Tools is optional and the standalone plugin remains supported.
 
 ## Install the built package
 

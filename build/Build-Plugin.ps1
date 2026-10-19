@@ -37,6 +37,7 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\test_app_framework.py') -De
 $frameworkDirectory = Join-Path $packageRoot 'framework'
 New-Item -ItemType Directory -Path $frameworkDirectory -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'framework\compatibility.json') -Destination $frameworkDirectory
+Copy-Item -LiteralPath (Join-Path $repoRoot 'framework\requirements-lock.txt') -Destination $frameworkDirectory
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Install-Extension.ps1') -Destination $helperDirectory
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Write-ComfortPackage.ps1') -Destination $helperDirectory
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Analyze-HmiReferences.ps1') -Destination $helperDirectory

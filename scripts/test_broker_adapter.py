@@ -1,7 +1,7 @@
 """Production MCP adapter + test-only IHmiSession; no Siemens/native project access.
 
 Builds a separate fixture against the supplied host. Requires a current broker
-Python environment and source on PYTHONPATH. All registrations/state are temporary.
+Python environment with the pinned framework wheel installed. All registrations/state are temporary.
 """
 import argparse
 import asyncio
@@ -17,15 +17,15 @@ import sys
 import tempfile
 import time
 
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from mcp import Client, StdioServerParameters
 from universal_tools import __version__ as broker_version
+from universal_tools.transport import list_all_tools
 from universal_tools.cli import initialize, probe, process_options, recover_context, stop
 
 
 def data(result):
-    assert not result.isError, result.model_dump_json()
-    return result.structuredContent or json.loads(result.content[0].text)
+    assert not result.is_error, result.model_dump_json()
+    return result.structured_content or json.loads(result.content[0].text)
 
 
 def app(result):
@@ -33,7 +33,11 @@ def app(result):
 
 
 def wire(result):
-    return result.model_dump(mode='json', by_alias=True, exclude_none=True)
+    value = result.model_dump(mode="json", by_alias=True, exclude_none=True, exclude_unset=True)
+    # .NET omits the optional false flag; SDK 2 routing emits it explicitly.
+    # Normalize only this protocol default, retaining every other received field.
+    value.setdefault("isError", False)
+    return value
 
 
 class Broker:
@@ -64,9 +68,9 @@ class Broker:
 
 
 async def connect(stack, command, args, env=None):
-    pipes = await stack.enter_async_context(stdio_client(StdioServerParameters(command=str(command), args=args, env=env)))
-    client = await stack.enter_async_context(ClientSession(*pipes))
-    await client.initialize()
+    client = await stack.enter_async_context(Client(StdioServerParameters(command=str(command), args=args, env=env),
+        mode="legacy", cache=None, read_timeout_seconds=90))
+    assert client.session.initialize_result.protocol_version == "2025-11-25"
     return client
 
 
@@ -78,14 +82,15 @@ def events(root, name):
 
 async def exercise(broker, fixture, native, external):
     project = str(native/'FixtureProject.ap15_1')
+    policy_arg = '--settings-file=' + str(native/'safeguards.json')
     env = {**os.environ, 'SIEMENS_FIXTURE_STATE': str(native)}
     counter = 0
     async with AsyncExitStack() as stack:
         proxy_args = ['-m', 'universal_tools', '--state', str(broker.root), 'proxy']
         owner = await connect(stack, sys.executable, proxy_args)
         other = await connect(stack, sys.executable, proxy_args)
-        direct = await connect(stack, fixture, ['--allow-writes', '--artifact-root='+str(native/'direct-artifacts'), '--extensions-root='+str(external)], env)
-        outer = (await owner.list_tools()).tools
+        direct = await connect(stack, fixture, ['--allow-writes', policy_arg, '--artifact-root='+str(native/'direct-artifacts'), '--extensions-root='+str(external)], env)
+        outer = await list_all_tools(owner.session)
         assert len(outer) == 14
         data(await owner.call_tool('refresh_services', {}))
         context = data(await owner.call_tool('acquire_service', {'service_id': 'siemens-mcp-server'}))['context_id']
@@ -122,16 +127,16 @@ async def exercise(broker, fixture, native, external):
             return {'planId': plan['planId'], 'candidateSha256': plan['candidateSha256']}
 
         first, overlapping = await preview('Reviewed café テスト 😀', initial), await preview('Conflicting edit', initial)
-        assert (await call('hmi_apply_text_edits', apply_args(first), write=True, session=other)).isError
-        assert (await call('hmi_apply_text_edits', {**apply_args(first), 'candidateSha256': '0'*64}, write=True)).isError
+        assert (await call('hmi_apply_text_edits', apply_args(first), write=True, session=other)).is_error
+        assert (await call('hmi_apply_text_edits', {**apply_args(first), 'candidateSha256': '0'*64}, write=True)).is_error
         assert len(events(native, 'import-effect')) == 0
         applied = app(await call('hmi_apply_text_edits', apply_args(first), write=True, request_id='first-apply'))
         assert applied['state'] == 'applied' and not applied['projectSaved']
         assert len(events(native, 'import-effect')) == 1 and not events(native, 'save')
-        assert (await call('hmi_apply_text_edits', apply_args(first), write=True, request_id='first-apply')).isError
-        assert (await call('hmi_apply_text_edits', apply_args(first), write=True)).isError
-        assert (await call('hmi_apply_text_edits', apply_args(overlapping), write=True)).isError
-        assert (await call('hmi_apply_text_edits', apply_args(overlapping), write=True)).isError
+        assert (await call('hmi_apply_text_edits', apply_args(first), write=True, request_id='first-apply')).is_error
+        assert (await call('hmi_apply_text_edits', apply_args(first), write=True)).is_error
+        assert (await call('hmi_apply_text_edits', apply_args(overlapping), write=True)).is_error
+        assert (await call('hmi_apply_text_edits', apply_args(overlapping), write=True)).is_error
         assert len(events(native, 'import-effect')) == 1
         refreshed = data(await other.call_tool('refresh_services', {}))
         assert refreshed['tool_count'] >= 54
@@ -141,7 +146,7 @@ async def exercise(broker, fixture, native, external):
         original = app(await call('tia_list_extensions'))
         reloaded = app(await call('tia_reload_extensions', {'module': 'comfort'}, write=True))
         assert reloaded['previewsInvalidated']
-        assert (await call('hmi_apply_text_edits', apply_args(reload_plan), write=True)).isError
+        assert (await call('hmi_apply_text_edits', apply_args(reload_plan), write=True)).is_error
         after = app(await call('tia_list_extensions'))
         assert original['hostProcessId'] == after['hostProcessId']
         before_module = next(m for m in original['modules'] if m['module'] == 'comfort')
@@ -154,7 +159,7 @@ async def exercise(broker, fixture, native, external):
         pointer = external/'active.json'
         pointer.write_text(json.dumps({'comfort': 'releases/comfort/missing'}), encoding='utf-8')
         try:
-            assert (await call('tia_reload_extensions', {'module': 'comfort'}, write=True)).isError
+            assert (await call('tia_reload_extensions', {'module': 'comfort'}, write=True)).is_error
         finally:
             pointer.unlink()
         app(await call('hmi_apply_text_edits', apply_args(large), write=True))
@@ -166,7 +171,7 @@ async def exercise(broker, fixture, native, external):
         assert len(events(native, 'import-effect')) == 2 and not events(native, 'save')
         app(await call('hmi_compile', {'hmiId': 'fixture-hmi'}, write=True))
         assert not events(native, 'save')
-        assert (await call('tia_save_project', {'expectedProjectPath': project+'.wrong'}, write=True)).isError
+        assert (await call('tia_save_project', {'expectedProjectPath': project+'.wrong'}, write=True)).is_error
         app(await call('tia_save_project', {'expectedProjectPath': project}, write=True))
         assert len(events(native, 'save')) == 1
         app(await call('tia_reopen_project', {'expectedProjectPath': project}, write=True))
@@ -178,23 +183,23 @@ async def exercise(broker, fixture, native, external):
         context = data(await owner.call_tool('acquire_service', {'service_id': 'siemens-mcp-server'}))['context_id']
         assert context != old_context and not app(await call('tia_get_status'))['attached']
         app(await call('tia_attach', attach, write=True))
-        assert (await call('hmi_apply_text_edits', apply_args(abandoned), write=True)).isError
+        assert (await call('hmi_apply_text_edits', apply_args(abandoned), write=True)).is_error
         assert len(events(native, 'import-effect')) == 2
 
         # Independent provider journal records the effect before process loss.
         lost = await preview('Effect recorded, reply lost')
         (native/'lose-reply').touch()
-        assert (await call('hmi_apply_text_edits', apply_args(lost), write=True, request_id='lost-reply')).isError
+        assert (await call('hmi_apply_text_edits', apply_args(lost), write=True, request_id='lost-reply')).is_error
         assert len(events(native, 'import-effect')) == 3
         receipt = data(await owner.call_tool('get_request_status', {'request_id': 'lost-reply'}))
         assert receipt['status'] == 'uncertain'
         assert data(await owner.call_tool('service_session_status', {'service_id': 'siemens-mcp-server'}))['state'] == 'lost'
-        assert (await owner.call_tool('acquire_service', {'service_id': 'siemens-mcp-server'})).isError
-        assert (await other.call_tool('acquire_service', {'service_id': 'siemens-mcp-server'})).isError
-        assert (await call('hmi_apply_text_edits', apply_args(lost), write=True, request_id='lost-reply')).isError
+        assert (await owner.call_tool('acquire_service', {'service_id': 'siemens-mcp-server'})).is_error
+        assert (await other.call_tool('acquire_service', {'service_id': 'siemens-mcp-server'})).is_error
+        assert (await call('hmi_apply_text_edits', apply_args(lost), write=True, request_id='lost-reply')).is_error
         assert len(events(native, 'import-effect')) == 3
         return context, {'backend': 'test-only IHmiSession; Siemens assemblies forbidden', 'productionHandlersAndWorkers': True,
-            'directBrokerCompleteReadResultsEqual': True, 'unicodeReadbackCharacters': len(literal),
+            'directBrokerCompleteReadResultsEqual': True, 'defaultIsErrorFalseNormalized': True, 'unicodeReadbackCharacters': len(literal),
             'wrongOwnerHashConsumedAndStalePlansRejected': True, 'reloadInvalidatesAndFailedReloadRetainsPlans': True,
             'compileSaveReopenSeparate': True, 'releaseDiscardsSelectionAndPlans': True,
             'lostReplyReceipt': receipt['status'], 'independentImportEffects': 3, 'zeroReplay': True,
@@ -204,7 +209,7 @@ async def exercise(broker, fixture, native, external):
 async def barrier_after_restart(broker):
     async with AsyncExitStack() as stack:
         client = await connect(stack, sys.executable, ['-m', 'universal_tools', '--state', str(broker.root), 'proxy'])
-        assert (await client.call_tool('acquire_service', {'service_id': 'siemens-mcp-server'})).isError
+        assert (await client.call_tool('acquire_service', {'service_id': 'siemens-mcp-server'})).is_error
 
 
 async def previous_host_rejects_worker(previous, current, root):
@@ -217,7 +222,7 @@ async def previous_host_rejects_worker(previous, current, root):
         comfort = next(m for m in before['modules'] if m['module'] == 'comfort')
         shutil.copytree(current.parent/'extensions'/registry['comfort'], external/'releases/comfort/literal-text')
         (external/'active.json').write_text(json.dumps({'comfort': 'releases/comfort/literal-text'}), encoding='utf-8')
-        assert (await client.call_tool('tia_reload_extensions', {'module': 'comfort'})).isError
+        assert (await client.call_tool('tia_reload_extensions', {'module': 'comfort'})).is_error
         after = app(await client.call_tool('tia_list_extensions', {}))
         retained = next(m for m in after['modules'] if m['module'] == 'comfort')
         assert retained['generation'] == comfort['generation'] and retained['workerProcessId'] == comfort['workerProcessId']
@@ -247,11 +252,13 @@ def main():
         fixture = fixture_dir/'SiemensMCPServer.Mcp.Fixture.exe'
         shutil.copy2(host.with_suffix('.exe.config'), fixture.with_suffix('.exe.config'))
         native = root/'test-native'; native.mkdir()
+        policy = native/'safeguards.json'
+        policy.write_text(json.dumps({'schemaVersion': 1, 'mcpWritesEnabled': True}), encoding='utf-8')
         external = root/'external'
         os.environ['SIEMENS_FIXTURE_STATE'] = str(native)
         broker = Broker(root/'broker')
         registration = {'schema_version': 1, 'id': 'siemens-mcp-server', 'display_name': 'Siemens adapter fixture',
-            'transport': {'type': 'stdio', 'command': str(fixture), 'args': ['--allow-writes', '--artifact-root='+str(root/'artifacts'), '--extensions-root='+str(external)],
+            'transport': {'type': 'stdio', 'command': str(fixture), 'args': ['--allow-writes', '--settings-file='+str(policy), '--artifact-root='+str(root/'artifacts'), '--extensions-root='+str(external)],
                 'env_vars': ['SIEMENS_FIXTURE_STATE']}, 'allow_writes': True,
             'allowed_write_tools': ['tia_attach', 'hmi_read_text_list', 'hmi_preview_text_edits', 'hmi_apply_text_edits', 'tia_reload_extensions', 'hmi_compile', 'tia_save_project', 'tia_reopen_project'],
             'session_mode': 'exclusive', 'resource_id': 'synthetic-siemens-resource', 'timeout_seconds': 60,
