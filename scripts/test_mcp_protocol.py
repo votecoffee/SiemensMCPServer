@@ -176,7 +176,7 @@ def run(executable, native=False):
                                     ("plc_compile", {"plcId": "missing"})]:
                 rejected = call(name, **arguments)
                 assert rejected.get("isError") and "Writes are disabled" in rejected["content"][0]["text"], rejected
-            report = {"protocol": initialized["protocolVersion"], "toolCount": len(tools), "compatibleVersions": data["compatibleEngineeringVersions"],
+            report = {"protocol": initialized["protocolVersion"], "hostVersion": initialized["serverInfo"]["version"], "toolCount": len(tools), "compatibleVersions": data["compatibleEngineeringVersions"],
                       "writeGuards": "passed", "schema": "passed", "classicBundleConversion": "passed", "extensionReload": "passed; same host PID, new worker/generation, Unicode preserved", "nativeProcessEnumeration": "not requested"}
             if native:
                 capabilities = call("tia_get_api_capabilities")

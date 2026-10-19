@@ -109,6 +109,9 @@ def main():
         if result.returncode:
             raise RuntimeError(result.stdout + result.stderr)
         protocol = json.loads(result.stdout)
+        package_version = json.loads(files['plugin.json'])['version']
+        if tuple(int(part) for part in package_version.split('.')[:3]) >= (0, 12, 0):
+            assert protocol['hostVersion'] == package_version, 'Advertised host version differs from the package version'
     report = {"package": package.name, "sha256": package_hash, "manifestFileCount": file_count,
               "manifest": "passed", "noSiemensRedistribution": "passed", "negativeControls": controls,
               "freshExtractionProtocol": protocol, "nativeImportCompileSave": "pending"}
