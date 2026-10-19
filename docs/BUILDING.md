@@ -13,6 +13,14 @@ dotnet build SiemensMCPServer.csproj -c Release -p:TiaPortalVersion=V15.1
 
 The MCP build stages bundled workers automatically. Use `-p:StageFeatureExtensions=false` only when a separate build step supplies them.
 
+For a per-user desktop install, run [InstallAndRun.cmd](../InstallAndRun.cmd) from the checkout. It builds/publishes the GUI, creates the Start menu shortcut and opens it. [Run.cmd](../Run.cmd) launches the installed selection afterward. See [desktop installation](DESKTOP.md#install-and-launch) for API/profile and path options. These commands leave Codex plugin settings alone.
+
+The desktop executable embeds the original HMI/PLC icon in `assets/SiemensMCPServer.ico`. To regenerate its seven sizes from the drawing source on Windows:
+
+```powershell
+powershell.exe -NoProfile -File build/New-AppIcon.ps1
+```
+
 ## Select an installed API
 
 `TiaPortalVersion` chooses the build's API. `TiaPortalInstallVersion` chooses the installation supplying it; newer installations may retain older APIs:
@@ -64,6 +72,14 @@ powershell.exe -NoProfile -File scripts/test_native_contracts.ps1 -Version V15.1
 ```
 
 Offline and metadata checks do not establish native project or runtime acceptance. See [validation status](../plugin/NATIVE-ACCEPTANCE.md). Keep machine-specific evidence outside the public tree or under `.local/`.
+
+The desktop installer check publishes into isolated `.local` folders and creates test shortcuts outside the real Start menu. It verifies install/update preservation, launch-path handling, shortcut arguments/icon, dependency files, missing-SDK rejection and altered-receipt/executable rejection without opening the GUI or attaching to TIA:
+
+```powershell
+powershell.exe -NoProfile -File scripts/test_desktop_installer.ps1 -ReportPath artifacts/desktop-installer.json
+```
+
+Pass `-Version V19` for that API, or `-Version V17 -TiaPortalInstallVersion V19` for a compatibility SDK supplied by the installed V19 environment. Installer checks cover V15.1 and V19; GUI/native transfer acceptance remains a separate result.
 
 Run the installed API matrix without attaching to a project:
 

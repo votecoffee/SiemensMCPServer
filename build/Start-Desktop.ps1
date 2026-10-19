@@ -3,6 +3,7 @@ param(
     [switch]$CheckOnly
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Desktop-Common.ps1')
 $root = [IO.Path]::GetFullPath($InstallRoot)
 $receiptPath = Join-Path $root 'active.json'
 if (-not (Test-Path -LiteralPath $receiptPath -PathType Leaf)) { throw 'Desktop GUI is not installed here. Run InstallAndRun.cmd first.' }
@@ -14,7 +15,7 @@ if ($receipt.format -cne 'siemens-desktop-install-v1' -or $receipt.directory -no
 $directory = [IO.Path]::GetFullPath((Join-Path $root $receipt.directory))
 if (-not $directory.StartsWith((Join-Path $root 'apps') + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Desktop installation path escapes its application directory.' }
 $executable = Join-Path $directory 'SiemensMCPServer.exe'
-if (-not (Test-Path -LiteralPath $executable -PathType Leaf) -or (Get-FileHash -LiteralPath $executable -Algorithm SHA256).Hash.ToLowerInvariant() -cne $receipt.executableSha256) {
+if (-not (Test-Path -LiteralPath $executable -PathType Leaf) -or (Get-DesktopFileHash $executable) -cne $receipt.executableSha256) {
     throw 'Installed desktop executable is missing or changed. Run InstallAndRun.cmd to reinstall.'
 }
 if ($CheckOnly) {

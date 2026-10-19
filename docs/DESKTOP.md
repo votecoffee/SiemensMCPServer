@@ -2,7 +2,35 @@
 
 `SiemensMCPServer.exe` discovers classic Comfort / Advanced HMI, Unified HMI and Siemens PLC software in the attached project. Select the intended target in **HMI / PLC**. The family prefix distinguishes the available workflows.
 
-Build and launch instructions are in the [root README](../README.md#desktop-gui). Keep all DLLs and the generated `.exe.config` from the desktop output beside the executable. The MCP plugin ZIP does not contain the GUI.
+The MCP plugin ZIP does not contain the GUI. Use the root commands below to install it from this checkout.
+
+## Install and launch
+
+Double-click [InstallAndRun.cmd](../InstallAndRun.cmd) in the project root. It builds the desktop application with its dependencies, installs it for the current user, creates a Start menu shortcut with the embedded HMI/PLC icon, and launches the GUI. The default API/engineering version is **V15.1**. Building requires Windows, a .NET 8 or newer SDK, .NET Framework 4.8 targeting support and the selected Siemens Openness API. The installer does not install those prerequisites or change Codex settings.
+
+Later, open **Start > SiemensMCPServer > SiemensMCPServer (V15.1)** or double-click [Run.cmd](../Run.cmd). `Run.cmd` opens the last installed profile without rebuilding. Start menu shortcuts are separate for each API profile.
+
+Select another API explicitly:
+
+```powershell
+.\InstallAndRun.cmd -TiaPortalVersion V19
+.\InstallAndRun.cmd -TiaPortalVersion V17 -TiaPortalInstallVersion V19
+```
+
+`TiaPortalVersion` is the compiled API; `TiaPortalInstallVersion` is the runtime engineering installation supplying it. Both default to V15.1. An explicit `-TiaPublicApiDir` may select a nonstandard SDK directory; the matching runtime installation must still be registered with Siemens. See [build configuration](BUILDING.md).
+
+The default app root is `%LOCALAPPDATA%\SiemensMCPServer\Desktop`. Each installation publishes into a new `apps` subdirectory and records the selected executable in `active.json`. Existing application folders and previous selection receipts are retained, allowing a running older copy to keep its files. The selected API's Start menu shortcut points directly to the installed GUI, with its working directory and engineering-version argument. No admin elevation or Windows machine-wide installation is used.
+
+Additional options:
+
+- `InstallAndRun.cmd -NoShortcut`: install and launch without creating a shortcut.
+- `InstallAndRun.cmd -InstallRoot "C:\path\to\desktop"`: choose another application root; pass the same `-InstallRoot` to `Run.cmd`.
+- `powershell.exe -NoProfile -File build/Install-Desktop.ps1`: install and create the shortcut without opening the GUI. Add `-Run` to open it.
+- `Run.cmd -CheckOnly`: verify the selected installation and report its executable without launching.
+
+The launcher checks the selected executable's recorded hash. A missing or changed executable requires reinstalling. A missing SDK or failed build leaves the selected installation unchanged. Incomplete builds are retained for diagnostics. Keep all DLLs and the generated `.exe.config` beside the installed executable. After closing older GUI instances, old version directories can be removed manually if no longer needed.
+
+Opening the application enumerates available TIA instances. Attachment and engineering changes still require selecting a project/target and the GUI actions below.
 
 ## Connect
 

@@ -74,16 +74,19 @@ Use `-PrepareOnly` to verify and stage a package without changing Codex settings
 
 ### Desktop GUI
 
-Build and launch the WinForms application independently of the MCP server:
+Double-click [InstallAndRun.cmd](InstallAndRun.cmd) in the project root, or run:
 
 ```powershell
-dotnet build SiemensMCPServer.csproj -c Release -p:TiaPortalVersion=V15.1
-& .\bin\Release\SiemensMCPServer.exe --tia-version=V15.1
+.\InstallAndRun.cmd
 ```
+
+It builds the V15.1 desktop GUI, installs it under `%LOCALAPPDATA%\SiemensMCPServer\Desktop`, adds **SiemensMCPServer (V15.1)** to the Start menu with an application icon, and opens the GUI. No administrator access is required for the app installation. Building requires a .NET 8 or newer SDK, .NET Framework 4.8 targeting support and the selected installed Openness API. Later, use the Start menu shortcut or [Run.cmd](Run.cmd) to launch without rebuilding.
+
+For another installed API, use `.\InstallAndRun.cmd -TiaPortalVersion V19`. Add `-TiaPortalInstallVersion V19` when an older API is supplied by that installation; `-NoShortcut` skips the Start menu entry. Each update uses a fresh application folder and retains earlier versions. These commands install the GUI only; Codex plugin setup remains separate. See [desktop installation options](docs/DESKTOP.md#install-and-launch).
 
 Open the project in TIA Portal, attach to its process and select a target labeled **Comfort / Advanced**, **Unified** or **PLC**. Classic targets retain selected-screen/folder export, all-screen export, screen XML import, screens-only import and complete-HMI export/import. Unified and PLC targets show a resource browser with selected/whole-target exports, native resource-folder imports and export-bundle imports. Imports leave the project unsaved; inspect and compile before saving explicitly.
 
-**Unified transfers depend on the selected API. V19 supports native tag/script transfers, but has no native screen or text-list transfer route. PLC transfers require a verified Offline state.** See [desktop usage](docs/DESKTOP.md) and [classic screen workflows](docs/CLASSIC-DESKTOP.md). The plugin ZIP packages the MCP server and workers; build the desktop executable separately with the command above. Keep its generated DLLs and configuration beside the executable.
+**Unified transfers depend on the selected API. V19 supports native tag/script transfers, but has no native screen or text-list transfer route. PLC transfers require a verified Offline state.** See [desktop usage](docs/DESKTOP.md) and [classic screen workflows](docs/CLASSIC-DESKTOP.md). The plugin ZIP packages the MCP server and workers; install the desktop application separately with the command above. Its generated DLLs and configuration stay beside the executable.
 
 ### CLI
 

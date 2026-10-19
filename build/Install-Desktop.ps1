@@ -8,6 +8,7 @@ param(
     [switch]$Run
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Desktop-Common.ps1')
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $root = [IO.Path]::GetFullPath($InstallRoot)
 Get-Command dotnet -CommandType Application -ErrorAction Stop | Out-Null
@@ -56,7 +57,7 @@ if (-not $NoShortcut) {
     } finally { [Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell) | Out-Null }
 }
 $receipt = [ordered]@{ format = 'siemens-desktop-install-v1'; installedUtc = [DateTime]::UtcNow.ToString('O'); api = $TiaPortalVersion;
-    engineeringVersion = $TiaPortalInstallVersion; directory = $relativeDirectory; executableSha256 = (Get-FileHash -LiteralPath $executable -Algorithm SHA256).Hash.ToLowerInvariant();
+    engineeringVersion = $TiaPortalInstallVersion; directory = $relativeDirectory; executableSha256 = Get-DesktopFileHash $executable;
     version = [Diagnostics.FileVersionInfo]::GetVersionInfo($executable).FileVersion; startMenuShortcut = $shortcutPath; codexSettingsChanged = $false; nativeProjectChanged = $false }
 $utf8 = [Text.UTF8Encoding]::new($false)
 [IO.File]::WriteAllText((Join-Path $destination 'installation.json'), ($receipt | ConvertTo-Json -Depth 5), $utf8)
