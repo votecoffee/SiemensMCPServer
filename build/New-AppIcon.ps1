@@ -1,37 +1,18 @@
-param([string]$OutputPath = (Join-Path $PSScriptRoot '..\assets\SiemensMCPServer.ico'))
+param(
+    [string]$OutputPath = (Join-Path $PSScriptRoot '..\assets\SiemensMCPServer.ico'),
+    [string]$SourceDirectory = (Join-Path $PSScriptRoot '..\assets\siemens-plc')
+)
 $ErrorActionPreference = 'Stop'
-Add-Type -AssemblyName System.Drawing
-# Original HMI-screen/PLC artwork. No Siemens corporate logo or external image assets.
+# Package the supplied PNG frames verbatim. No resampling or drawing is performed.
 $frames = [Collections.Generic.List[byte[]]]::new()
-$sizes = @(16, 24, 32, 48, 64, 128, 256)
+$sizes = @(16, 20, 24, 32, 48, 64, 128, 256)
 foreach ($size in $sizes) {
-    $bitmap = [Drawing.Bitmap]::new($size, $size)
-    $graphics = [Drawing.Graphics]::FromImage($bitmap)
-    $background = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#142D40'))
-    $accent = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#00D5BF'))
-    $white = [Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#F1F7FA'))
-    $stream = [IO.MemoryStream]::new()
-    try {
-        $graphics.SmoothingMode = [Drawing.Drawing2D.SmoothingMode]::AntiAlias
-        $graphics.Clear([Drawing.Color]::Transparent)
-        $graphics.ScaleTransform(($size / 256.0), ($size / 256.0))
-        $graphics.FillRectangle($background, 8, 8, 240, 240)
-        $graphics.FillRectangle($accent, 34, 40, 164, 120)
-        $graphics.FillRectangle($background, 45, 51, 142, 90)
-        $graphics.FillRectangle($accent, 96, 157, 22, 24)
-        $graphics.FillRectangle($accent, 70, 177, 76, 9)
-        $graphics.FillRectangle($background, 120, 117, 110, 108)
-        $graphics.FillRectangle($white, 130, 127, 90, 88)
-        $graphics.FillRectangle($background, 140, 139, 70, 18)
-        foreach ($x in @(142, 165, 188)) {
-            $graphics.FillRectangle($accent, $x, 170, 13, 13)
-            $graphics.FillRectangle($background, $x, 193, 13, 9)
-        }
-        $bitmap.Save($stream, [Drawing.Imaging.ImageFormat]::Png)
-        $frames.Add($stream.ToArray())
-    } finally {
-        $stream.Dispose(); $white.Dispose(); $accent.Dispose(); $background.Dispose(); $graphics.Dispose(); $bitmap.Dispose()
-    }
+    $frame = [IO.File]::ReadAllBytes((Join-Path $SourceDirectory ("siemens_plc_icon_{0}x{0}.png" -f $size)))
+    if ($frame.Length -lt 33 -or [BitConverter]::ToString($frame, 0, 8) -cne '89-50-4E-47-0D-0A-1A-0A' -or
+        [Text.Encoding]::ASCII.GetString($frame, 12, 4) -cne 'IHDR' -or
+        [Net.IPAddress]::NetworkToHostOrder([BitConverter]::ToInt32($frame, 16)) -ne $size -or
+        [Net.IPAddress]::NetworkToHostOrder([BitConverter]::ToInt32($frame, 20)) -ne $size) { throw "Invalid PNG frame for size $size." }
+    $frames.Add($frame)
 }
 $path = [IO.Path]::GetFullPath($OutputPath)
 [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path)) | Out-Null

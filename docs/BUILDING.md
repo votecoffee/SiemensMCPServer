@@ -15,7 +15,7 @@ The MCP build stages bundled workers automatically. Use `-p:StageFeatureExtensio
 
 For a per-user desktop install, run [InstallAndRun.cmd](../InstallAndRun.cmd) from the checkout. It builds/publishes the GUI, creates the Start menu shortcut and opens it. [Run.cmd](../Run.cmd) launches the installed selection afterward. See [desktop installation](DESKTOP.md#install-and-launch) for API/profile and path options. These commands leave Codex plugin settings alone.
 
-The desktop executable embeds the original HMI/PLC icon in `assets/SiemensMCPServer.ico`. To regenerate its seven sizes from the drawing source on Windows:
+The desktop executable embeds the supplied PLC/HMI icon in `assets/SiemensMCPServer.ico`. Its eight PNG sizes are retained under `assets/siemens-plc`. To rebuild the ICO from those unchanged frames on Windows:
 
 ```powershell
 powershell.exe -NoProfile -File build/New-AppIcon.ps1
