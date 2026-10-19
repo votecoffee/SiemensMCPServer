@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace SiemensMCPServer.Mcp
 {
@@ -64,6 +65,8 @@ namespace SiemensMCPServer.Mcp
             if (!keep) registration.Dispose();
             return item.Completion.Task;
         }
+        public Task<object> EnqueueSnapshot(Func<object> operation, CancellationToken token, string operationName)
+            => Enqueue(() => JsonSerializer.SerializeToElement(operation(), JsonDefaults.Options), token, operationName);
         private void CancelQueued(Item item)
         {
             CancellationTokenRegistration registration;

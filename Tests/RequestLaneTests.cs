@@ -13,6 +13,20 @@ public sealed class RequestLaneTests
     static void Wait(ManualResetEventSlim gate) { if (!gate.Wait(TimeSpan.FromSeconds(10))) throw new TimeoutException("Test gate did not open."); }
     static int Count(RequestLane lane, string property) => ExtensionWire.Json(lane.Snapshot()).GetProperty(property).GetInt32();
 
+    [Fact] public async Task NativeSnapshotMaterializesDeferredReadsBeforeCrossingTheOwnerThreadBoundary()
+    {
+        using var lane = new RequestLane("snapshot", 1, 2); int owner = 0, reads = 0;
+        var response = await lane.EnqueueSnapshot(() => {
+            owner = Environment.CurrentManagedThreadId;
+            return new { values = Enumerable.Range(0, 5).Select(value => {
+                Assert.Equal(owner, Environment.CurrentManagedThreadId); Interlocked.Increment(ref reads); return value;
+            }) };
+        }, default, "deferred native read");
+        Assert.Equal(5, reads); var json = Assert.IsType<System.Text.Json.JsonElement>(response);
+        Assert.Equal(5, json.GetProperty("values").GetArrayLength());
+        Assert.Contains("values", System.Text.Json.JsonSerializer.Serialize(json)); Assert.Equal(5, reads);
+    }
+
     [Fact] public async Task SerialLanePreservesFifoThreadOwnershipAndContinuesAfterErrors()
     {
         using var started = new ManualResetEventSlim(); using var release = new ManualResetEventSlim(); using var lane = new RequestLane("native-test", 1, 10);

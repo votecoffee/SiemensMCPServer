@@ -62,6 +62,8 @@ def validate(files):
         assert "scripts/Analyze-HmiReferences.ps1" in files
     if version >= (0, 12, 0):
         assert "scripts/Edit-ProjectTexts.ps1" in files
+    if version >= (0, 13, 0):
+        assert "CONCURRENCY.md" in files
     return len(manifest)
 
 

@@ -150,7 +150,9 @@ namespace SiemensMCPServer.Mcp
         private Task<object> Enqueue(Func<object> operation, CancellationToken token, [CallerMemberName] string operationName = "")
         {
             if (Volatile.Read(ref disposed) != 0) throw new ObjectDisposedException(nameof(OpennessRuntime));
-            return native.Enqueue(operation, token, operationName);
+            // Materialize deferred native enumerations on the owning thread. Only
+            // immutable JSON crosses the native queue's response boundary.
+            return native.EnqueueSnapshot(operation, token, operationName);
         }
 
         private static string Normalize(string version)
