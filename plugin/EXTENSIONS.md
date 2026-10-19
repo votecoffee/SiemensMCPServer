@@ -1,4 +1,4 @@
-# Reloadable feature extensions — 0.9.0
+# Reloadable feature extensions — 0.9.1
 
 The MCP host retains its connection to Codex and owns the Siemens attachment, single STA queue, transactions, offline checks, preview stores, candidate hashes and native readback. Pure feature workers receive JSON snapshots, never Siemens CLR objects. The host copies complete, hash-checked bundles into private generation directories before starting workers, so they do not lock the source of the next update.
 
@@ -33,6 +33,8 @@ The 0.8.0 host adds `projectRead` and a fourth bundled `project` module for [lib
 
 The 0.9.0 host adds `projectLanguages` and `projectTexts` snapshots for [native project-text XLSX inspection](PROJECT-TEXTS.md). This requires another host upgrade/reconnect; 0.8.0 rejects the new kinds and keeps its previous project worker. The existing library capture contract is unchanged. Subsequent workbook formatting/search operations can reload on the same snapshot contract.
 
+Comfort worker 0.9.1 adds [screen-layout inspection and reviewed move/align/distribute/resize operations](COMFORT-LAYOUT.md) using the existing `local` and `classicXml` routes. These operations reload on the checked 0.7.4 and 0.9.0 hosts with unchanged host PID/binary and MCP schemas. No new native capture kind or host reconnect is required for this Comfort update.
+
 Reload uses the native engineering queue and waits for active operations to finish. All replacements must pass file-integrity checks, protocol negotiation and worker startup/self-tests before activation. Successful reload invalidates **all** outstanding previews, including those from dedicated tools. Re-read and preview afterward. Rejected replacements retain the old workers and previews. Reload never detaches, saves, discards changes or reopens the project. Crashed or timed-out pure workers require reload; the host never replays a native write automatically. Replies have a 30-second deadline and 32 MiB frame limit.
 
 ## Stage an update
@@ -54,7 +56,7 @@ For development, rebuild only the worker and stage the selected module:
 ```powershell
 powershell.exe -NoProfile -File build\Build-Extensions.ps1 `
   -Destination "$env:LOCALAPPDATA\SiemensMCPServer\Extensions" `
-  -WorkerVersion '0.7.2' -Modules comfort
+  -WorkerVersion '0.9.1' -Modules comfort
 ```
 
 Then call `tia_reload_extensions(module="comfort")`. This does not rebuild or replace the host. Use an isolated destination and matching host `--extensions-root` for test versions. Normal MCP builds automatically build bundled workers; `build\Build-Plugin.ps1` creates a complete release package with fresh bundled generations.

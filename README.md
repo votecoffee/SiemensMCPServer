@@ -32,7 +32,7 @@ The server exposes engineering operations through the Model Context Protocol (MC
 
 | Area | Scope |
 | --- | --- |
-| Comfort / classic HMI | Primary profile: V15.1. Text lists, native XML resources, scalar properties, supported object creation/deletion, prototype-based screen/tag packages and bulk transfers. |
+| Comfort / classic HMI | Primary profile: V15.1. Text lists, native XML resources, reviewed control arrangement, scalar properties, supported object creation/deletion, prototype-based screen/tag packages and bulk transfers. |
 | Unified HMI | API-visible objects and supported screen properties. Text lists require the native paired-YAML API; V19 does not expose that route. |
 | Siemens PLC | Offline blocks, data types, tags, native XML transfers, SCL/STL generation, readable-source export/search, API-supported cross-references and compile diagnostics. |
 | Desktop utility | Comfort / Advanced screens and resources; Unified native transfers where available; offline PLC XML resources. |
@@ -124,6 +124,8 @@ PLC extensions export readable native SCL/STL/DB/UDT source, search it and read 
 Project extensions provide bounded [library metadata browsing](plugin/LIBRARY-INSPECTION.md) and [project-text XLSX export/read/search](plugin/PROJECT-TEXTS.md). Text export requires two explicit active cultures and retains the original workbook/hash; translation import is not implemented. The bundled [library](plugin/skills/inspect-libraries/SKILL.md) and [project-text](plugin/skills/inspect-project-texts/SKILL.md) skills describe selection and paging.
 
 Project-text capture requires host 0.9.0 or newer. New native capture kinds require a host upgrade/reconnect; later worker formatting/search can reload on the same contract. See [API compatibility](plugin/API-COMPATIBILITY.md) and [native validation status](plugin/NATIVE-ACCEPTANCE.md) before treating build/metadata checks as attached-project acceptance.
+
+The [Comfort layout worker](plugin/COMFORT-LAYOUT.md) adds move, align, equal-gap distribution and resize previews using existing routes. It reloads on checked 0.7.4/0.9.0 hosts without replacing the host or reconnecting Codex.
 
 ## Development
 
