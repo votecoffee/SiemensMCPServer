@@ -6,6 +6,8 @@ This local Windows plugin provides Comfort/classic and Unified engineering objec
 
 Host/Comfort worker 0.14.1 preserves literal carriage returns and mixed CR/LF values in classic text-list XML and fingerprints. This needs a host upgrade/reconnect: the new `internalText` / `literalTextV1` worker contract is rejected by older hosts, retaining their previous generation. Native acceptance of exact multiline values remains separate.
 
+A selected V15.1 broker pilot passed single-line English/German Unicode edits, native readback, compile and save/reopen, then restored the original saved state. CRLF/LF edits in the tested native body/p entries failed strict readback and rolled back. See [validation scope](NATIVE-ACCEPTANCE.md); offline newline preservation is not native multiline acceptance.
+
 ## Install the built package
 
 Host 0.14.0 adds [Universal Tools compatibility](BROKER-INTEGRATION.md): normalized workflow discovery and hash-pinned guide readers, with explicit broker-route preparation that skips installation of this plugin. Standalone use remains supported. Automatic route selection awaits workflow migration acceptance. The host exposes 54 tools; the existing 51 engineering schemas are unchanged.
