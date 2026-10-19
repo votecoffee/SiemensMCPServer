@@ -91,7 +91,8 @@ def host_probe(executable, bundle, root, repo):
         after = client.call('tia_list_extensions'); updated = {m['module']: m for m in after['modules']}
         assert before['hostProcessId'] == after['hostProcessId'] == client.process.pid
         assert updated['comfort']['generation'] != modules['comfort']['generation']
-        assert updated['comfort']['version'] == '0.10.1'
+        expected_version = worker(bundle, [packet(1, '$hello', {})])[0]['result']['version']
+        assert updated['comfort']['version'] == expected_version
         assert all(updated[m]['generation'] == modules[m]['generation'] for m in modules if m != 'comfort')
         rows = client.call('tia_read_extension', module='comfort', operation='inspect_screen_items', argumentsJson=json.dumps({'xml': XML}))['data']['items']
         assert len(rows) == 5

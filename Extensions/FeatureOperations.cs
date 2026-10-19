@@ -22,6 +22,8 @@ namespace SiemensMCPServer.Extensions
                     Op("list_libraries", "List the attached project library and already-open global libraries with exact IDs and bounded metadata. Does not open, upgrade or save libraries.", "projectRead", false, LibraryInspectionOperations.Schema(false), "libraryCatalog"),
                     Op("browse_library", "Browse one returned library/path: folders, types, versions or master-copy content descriptions. Read-only metadata; no instance creation, dependency traversal or library updates.", "projectRead", false, LibraryInspectionOperations.Schema(true), "libraryCatalog") };
                 case "comfort": return new[] {
+                    Op("inspect_references", "Inspect exported classic LinkList references, exact symbolic names and owning controls. Native-ID and unsupported roles are inspection-only; supplied XML only, with bounded pages and exact owner/type filters.", "local", false, ReferenceSchema(false)),
+                    Op("rebind_references", "Change exact existing symbolic Tag, ControllerTag and Connection names with per-link fingerprints and old values. Preserves native quoting verbatim; does not verify target existence/types or rewrite scripts. Requires host 0.10.0+ whitespace-preserving contract.", "classicXml", true, ReferenceSchema(true), "screenText"),
                     Op("inspect_screen_items", "Inspect exact exported classic screen control prototypes, fingerprints and existing destination containers. Reports clone eligibility and standalone removal references; supplied XML only.", "local", false, ScreenItemSchema(false)),
                     Op("change_screen_items", "Clone/remove exported classic controls or groups within one screen. Requires explicit names for all copied controls, remaps native IDs and guards retained references. Uses host 0.10.0+ whitespace-preserving screenText contract.", "classicXml", true, ScreenItemSchema(true), "screenText"),
                     Op("inspect_screen_texts", "Inspect/filter bounded multilingual classic screen text runs, retaining exact field fingerprints, cultures, run indexes and formatting. Supplied XML only; dynamic or unknown markup is inspection-only.", "local", false, ScreenTextSchema(false)),
@@ -55,6 +57,18 @@ namespace SiemensMCPServer.Extensions
             JsonElement args = input.TryGetProperty("arguments", out var nested) ? nested : input;
             if (module == "comfort")
             {
+                if (operation == "inspect_references")
+                {
+                    var request = ExtensionWire.Parse<ClassicReferenceInspection>(args);
+                    RequireScreenXml(request.Xml);
+                    return ExtensionWire.Json(new ClassicXmlDocument(request.Xml).ReferenceCatalog(request));
+                }
+                if (operation == "rebind_references")
+                {
+                    string xml = input.GetProperty("snapshot").GetString()!;
+                    RequireScreenXml(xml);
+                    return ExtensionWire.Json(new ClassicXmlDocument(xml).RebindReferences(ExtensionWire.Parse<ClassicReferenceRequest>(args)));
+                }
                 if (operation == "inspect_screen_items")
                 {
                     var request = ExtensionWire.Parse<ClassicScreenItemInspection>(args);
@@ -136,6 +150,17 @@ namespace SiemensMCPServer.Extensions
         private static void RequireScreenXml(string xml)
         {
             if (xml == null || xml.Length == 0 || xml.Length > 16 * 1024 * 1024) throw new ArgumentException("Supply native screen XML within the 16 MiB limit.");
+        }
+        private static object ReferenceSchema(bool edit)
+        {
+            if (!edit) return new { type = "object", additionalProperties = false, required = new[] { "xml" }, properties = new {
+                xml = new { type = "string", minLength = 1, maxLength = 16777216 }, rootXPath = new { type = "string", maxLength = 4096 },
+                linkType = new { type = "string", maxLength = 128 }, offset = new { type = "integer", minimum = 0, maximum = 5000 }, maxItems = new { type = "integer", minimum = 1, maximum = 200 } } };
+            return new { type = "object", additionalProperties = false, required = new[] { "edits" }, properties = new {
+                edits = new { type = "array", minItems = 1, maxItems = 200, items = new { type = "object", additionalProperties = false, required = new[] { "selection", "newName" }, properties = new {
+                    selection = new { type = "object", additionalProperties = false, required = new[] { "xPath", "expectedFingerprint", "expectedName" }, properties = new {
+                        xPath = new { type = "string", minLength = 1, maxLength = 4096 }, expectedFingerprint = new { type = "string", pattern = "^[0-9a-f]{64}$" },
+                        expectedName = new { type = "string", minLength = 1, maxLength = 4096 } } }, newName = new { type = "string", minLength = 1, maxLength = 4096 } } } } } };
         }
         private static object ScreenTextSchema(bool edit)
         {
