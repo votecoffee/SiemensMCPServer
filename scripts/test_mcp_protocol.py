@@ -95,6 +95,12 @@ def run(executable, native=False):
                 layout = call("tia_read_extension", module="comfort", operation="inspect_screen_layout", argumentsJson=json.dumps({"xml":"<Document><Hmi.Screen.Screen><AttributeList><Name>Layout</Name></AttributeList></Hmi.Screen.Screen></Document>"}))
                 assert not layout.get("isError"), layout
                 assert layout["structuredContent"]["result"]["data"]["totalItems"] == 0
+            if host_version >= (0, 10, 0):
+                screen_text_op = next(o for o in modules["comfort"]["operations"] if o["name"] == "edit_screen_texts")
+                assert screen_text_op["route"] == "classicXml" and screen_text_op["snapshotKind"] == "screenText"
+                texts = call("tia_read_extension", module="comfort", operation="inspect_screen_texts", argumentsJson=json.dumps({"xml":"<Document><Hmi.Screen.Screen><AttributeList><Name>Text probe</Name></AttributeList></Hmi.Screen.Screen></Document>"}))
+                assert not texts.get("isError"), texts
+                assert texts["structuredContent"]["result"]["data"]["matchedRuns"] == 0
             reloaded = call("tia_reload_extensions", module="comfort")
             assert not reloaded.get("isError"), reloaded
             reload_data = reloaded["structuredContent"]["result"]
