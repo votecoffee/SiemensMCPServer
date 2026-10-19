@@ -48,7 +48,7 @@ namespace SiemensMCPServer
         public int PreviewLifetimeMinutes { get; set; } = 30;
         [Category("4. Preview limits"), DisplayName("Pending previews per workflow"), Description("1..1000. Existing previews are retained when this is lowered; new previews are blocked until below the limit.")]
         public int MaxPendingPreviews { get; set; } = 100;
-        [Category("5. Request limits (host restart)"), DisplayName("Parallel local analysis jobs"), Description("1..8. Native operations always use a single STA lane. A host restart applies scheduler changes.")]
+        [Category("5. Request limits (host restart)"), DisplayName("Parallel local analysis jobs"), Description("1..8. Native operations always use a single STA lane. Restart applies changes; an explicit --analysis-parallelism launch argument overrides this value.")]
         public int AnalysisParallelism { get; set; } = 2;
         [Category("5. Request limits (host restart)"), DisplayName("Queued native requests"), Description("1..1000. Overflow is rejected before dispatch.")]
         public int NativeQueueCapacity { get; set; } = 100;

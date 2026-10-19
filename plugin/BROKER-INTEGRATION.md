@@ -76,3 +76,7 @@ Run from the repository with the same broker source/dependencies as above. The o
 ## App safeguard policy
 
 Host 0.15.0 shares [desktop-editable app safeguards](SAFEGUARDS.md) for writes, operation ceilings, preview limits and request limits. These settings apply identically behind direct and broker routes. They do not edit broker service allowlists, leases or recovery barriers, and they do not infer authorization from chat approval-mode arguments. The effective permission is the intersection of app policy, launch permission and client/broker authorization.
+
+## Shared framework direction
+
+The primary shared-code path is the [app-owned framework profile](APP-FRAMEWORK.md), pinned to `universal-codex-tools==0.13.0` with .NET behind its MCP worker boundary. Universal aggregation is an optional separate route. The profile retains the standard standalone plugin, app policy and versioned publication/recovery boundaries; no native .NET framework binding or installed migration is claimed.

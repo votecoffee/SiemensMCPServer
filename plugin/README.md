@@ -10,6 +10,8 @@ A selected V15.1 broker pilot passed single-line English/German Unicode edits, n
 
 Host 0.15.0 and desktop 1.3.0 share [GUI-editable safeguards](SAFEGUARDS.md): write ceilings, operation restrictions, confirmations, preview limits, project scope and request limits. Permissions are rechecked for subsequent operations; scheduling/location changes require a host restart. Local settings do not grant client/broker or Siemens permission.
 
+An experimental [shared app framework profile](APP-FRAMEWORK.md) uses a pinned Python package and versioned .NET MCP backend publication. It prepares private app-owned state without requiring the Universal Tools plugin; the standard standalone plugin remains supported. This is an isolated compatibility foundation, with actual Codex/native deployment acceptance still pending.
+
 ## Install the built package
 
 Host 0.14.0 adds [Universal Tools compatibility](BROKER-INTEGRATION.md): normalized workflow discovery and hash-pinned guide readers, with explicit broker-route preparation that skips installation of this plugin. Standalone use remains supported. Automatic route selection awaits workflow migration acceptance. The host exposes 54 tools; the existing 51 engineering schemas are unchanged.

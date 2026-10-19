@@ -153,3 +153,7 @@ powershell.exe -NoProfile -STA -File scripts/test_desktop_smoke.ps1 -DesktopDire
 ```
 
 These use isolated settings files. They verify production-host permission gates before native dispatch, live policy refresh, configured scheduling, malformed/deleted policy rejection, and save/reload through the real desktop property grid. They do not attach or invoke native project writes. Unit tests cover preview expiry, revoked permissions after preview and stale-editor rejection. See [Safeguards](../plugin/SAFEGUARDS.md).
+
+## Optional shared framework profile
+
+Use the pinned `framework/requirements-lock.txt` in a separate virtual environment with a verified local framework wheel, then run `scripts/test_app_framework.py` against a verified extracted Siemens package. See [the preparation and acceptance guide](../plugin/APP-FRAMEWORK.md). The normal GUI/.NET server has no Python dependency. This profile starts a disposable app-owned `ApplicationHost` with the .NET backend, preserves app write policy and exclusive ownership, and leaves live plugins, registrations and native projects unchanged.
