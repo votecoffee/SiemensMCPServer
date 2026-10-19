@@ -27,17 +27,19 @@ An explicit API directory can be supplied instead:
 dotnet build Mcp/SiemensMCPServer.Mcp.csproj -c Release -p:TiaPortalVersion=V17 '-p:TiaPublicApiDir=C:\Program Files\Siemens\Automation\Portal V20\PublicAPI\V17'
 ```
 
-V15.1–V20 use the classic assembly family. V21 uses separate modular `net48` Base/WinCC assemblies and requires the STEP 7 module for PLC support in both applications:
+V15.1–V20 use the classic assembly family. V21 uses separate modular `net48` Base/WinCC assemblies and requires the STEP 7 module for PLC support in both applications. Unified discovery explicitly loads the optional `Siemens.Engineering.WinCCUnified.dll` module when installed:
 
 ```powershell
 dotnet build Mcp/SiemensMCPServer.Mcp.csproj -c Release -p:TiaPortalVersion=V21
 ```
 
-These examples require the corresponding installed API. V15.1 and V19 are build-tested profiles; V21 and other profiles need separate validation. Pre-V21 and V21 builds are not interchangeable at runtime. Missing API assemblies produce build errors; Siemens engineering DLLs are not copied into packages.
+These examples require the corresponding installed API. V15.1–V19 are build-tested API profiles; V16–V18 were checked with compatibility assemblies supplied by V19. V20/V21 SDK and native validation remain pending. Pre-V21 and V21 builds are not interchangeable at runtime. Missing API assemblies produce build errors; Siemens engineering DLLs are not copied into packages. See the [compatibility matrix](../plugin/API-COMPATIBILITY.md).
 
 ## Runtime selection
 
 The resolver reads `HKEY_LOCAL_MACHINE\SOFTWARE\Siemens\Automation\Openness` and selects installations exposing the API version referenced by the executable. The desktop UI prompts when several compatible versions exist. MCP clients use `tia_list_versions` and `tia_select_version`, or supply `--tia-version` at launch. `TIA_PORTAL_VERSION` is also supported. Changing the loaded engineering API requires a host restart.
+
+For an API V16 build supplied by Portal V19, the runtime engineering selection is `V19`. The resolver validates full assembly identities and uses only the `net48` registry layout for V21. It does not select a .NET 8 assembly for this .NET Framework host.
 
 ## Package and verify
 
@@ -62,6 +64,16 @@ powershell.exe -NoProfile -File scripts/test_native_contracts.ps1 -Version V15.1
 ```
 
 Offline and metadata checks do not establish native project or runtime acceptance. See [validation status](../plugin/NATIVE-ACCEPTANCE.md). Keep machine-specific evidence outside the public tree or under `.local/`.
+
+Run the installed API matrix without attaching to a project:
+
+```powershell
+powershell.exe -NoProfile -File build/Test-ApiProfiles.ps1
+```
+
+The script finds matching APIs in installed Portal directories, builds each available profile, checks native signatures and MCP transport, and runs desktop build/smoke checks. Missing SDKs are reported separately; an installed profile failure returns a nonzero exit code. Reports and command logs default to ignored `artifacts/`. Invoke `& .\build\Test-ApiProfiles.ps1 -Versions V16,V17,V18` directly from PowerShell to restrict profiles. Use `-AutomationRoot` for a different installation root or `-SkipDesktop`/`-SkipProtocol` for narrower checks. A skipped check is not a pass.
+
+For individual metadata checks against a compatibility API, pass `-TiaPortalInstallVersion V19` or `-TiaPublicApiDir`. For a desktop smoke test, pass the matching runtime installation using `-TiaPortalInstallVersion V19`.
 
 The Comfort package integration probe installs a staged worker into an isolated extension root, reloads it in one persistent host, generates synthetic screen/tag XML and checks file materialization and rejection controls. It never attaches to a project:
 

@@ -96,9 +96,10 @@ def main():
             capability = client.call('tia_get_api_capabilities')
             inspection = capability['plcInspection']
             assert inspection['readableSourceApiPresent'] and inspection['verifiedOfflineRequired']
-            if capability['apiVersion'].startswith('15.1.'):
+            api_major = int(capability['apiVersion'].split('.')[0])
+            if api_major in (15, 16, 17):
                 assert inspection['nativeCrossReferenceApiPresent'] is False
-            elif capability['apiVersion'].startswith('19.'):
+            elif api_major in (18, 19):
                 assert inspection['nativeCrossReferenceApiPresent'] is True
             request['capture'] = {'withDependencies':False}; request['options'] = {}
             rejected = client.rejected('tia_read_extension', module='plc', operation='read_source', argumentsJson=json.dumps(request))

@@ -48,7 +48,7 @@ The server does not provide device download, runtime control, watch or force ope
 - A Windows account with Siemens Openness access, including membership in the local `Siemens TIA Openness` group.
 - For source builds: a .NET 8 or newer SDK and .NET Framework 4.8 targeting support. Visual Studio can open `SiemensMCPServer.sln`.
 
-Siemens engineering DLLs come from the installed TIA Portal environment and are not redistributed. V15.1 and V19 are build-tested profiles. Other installed APIs require their own build and validation; V21 uses a separate modular assembly family. See [build configuration](docs/BUILDING.md).
+Siemens engineering DLLs come from the installed TIA Portal environment and are not redistributed. V15.1, V16, V17, V18 and V19 API builds pass MCP/desktop checks; V16–V18 were checked using V19 compatibility APIs. Native project acceptance is narrower. V20/V21 SDK validation remains pending; V21 uses a separate modular assembly family. See the [compatibility matrix](plugin/API-COMPATIBILITY.md) and [build configuration](docs/BUILDING.md).
 
 ### Build and install the plugin
 
@@ -119,7 +119,9 @@ Comfort worker 0.7.2 adds offline screen/tag package generation from native XML 
 
 The 0.7.2 host adds Unified compile-service lookup within the HMI's owning device when its software has no compiler. Results report the selected native scope. This broker change requires a host upgrade/reconnect; native Unified compile acceptance remains pending.
 
-Host/worker 0.7.3 adds PLC `read_source`, `find_in_source` and `cross_references` through `tia_read_extension`. These use explicit PLC/object paths and verified Offline state. Native readable-source export supports SCL/STL, data blocks and PLC types; native cross-references require a matching API and object service (present in the inspected V19 API, absent in V15.1). The new broker read route requires a host upgrade/reconnect. Native project acceptance remains pending; see [PLC inspection](plugin/PLC-INSPECTION.md).
+Host/worker 0.7.3 adds PLC `read_source`, `find_in_source` and `cross_references` through `tia_read_extension`. These use explicit PLC/object paths and verified Offline state. Native readable-source export supports SCL/STL, data blocks and PLC types; native cross-references require a matching API and object service (present in inspected V18/V19 APIs, absent in V15.1/V16/V17). The new broker read route requires a host upgrade/reconnect. Native project acceptance remains pending; see [PLC inspection](plugin/PLC-INSPECTION.md).
+
+Host 0.7.4 supports flat Unified screen discovery on V16/V17 and prepares explicit V21 module loading and project-graphics service access. It requires a host upgrade/reconnect. V15.1–V19 API builds are checked; V20/V21 native acceptance remains pending. See [API compatibility](plugin/API-COMPATIBILITY.md).
 
 ## Development
 

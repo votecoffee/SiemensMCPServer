@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$DesktopDirectory,
-    [Parameter(Mandatory = $true)][ValidateSet('V15.1', 'V19')][string]$Version,
+    [Parameter(Mandatory = $true)][ValidateSet('V15.1', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21')][string]$Version,
+    [string]$TiaPortalInstallVersion = $Version,
     [string]$ScreenshotPath
 )
 $ErrorActionPreference = 'Stop'
@@ -12,7 +13,7 @@ $assembly = [Reflection.Assembly]::LoadFrom((Join-Path $directory 'SiemensMCPSer
 $publicStatic = [Reflection.BindingFlags]'Public,Static'
 $privateInstance = [Reflection.BindingFlags]'NonPublic,Instance'
 $resolver = $assembly.GetType('SiemensMCPServer.TiaPortalAssemblyResolver', $true)
-$resolver.GetMethod('Initialize', $publicStatic).Invoke($null, @($Version))
+$resolver.GetMethod('Initialize', $publicStatic).Invoke($null, @($TiaPortalInstallVersion))
 $formType = $assembly.GetType('SiemensMCPServer.MainForm', $true)
 $form = [Activator]::CreateInstance($formType, $privateInstance, $null, [object[]]@($false), $null)
 $checks = [Collections.Generic.List[string]]::new()

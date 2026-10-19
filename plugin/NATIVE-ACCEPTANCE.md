@@ -5,12 +5,14 @@ This document summarizes public validation scope. Project-specific exports, scre
 | Validation layer | Scope |
 | --- | --- |
 | Offline tests | XML/YAML handling, typed edits, identity/companion checks, preview lifecycles, worker reload, rollback, hashes and path validation. |
-| Build and transport checks | V15.1/V19 profiles, stdio initialization, tool schemas, fresh package extraction and installed API metadata. |
+| Build and transport checks | V15.1–V19 API profiles, stdio initialization, tool schemas and installed API metadata; V16–V18 checked with V19 compatibility APIs. Fresh package extraction is checked separately. See [compatibility](API-COMPATIBILITY.md). |
 | Comfort/classic V15.1 native checks | Selected resource/text edits, transfers, guards, compile/save/reopen and attached-project worker reload have been exercised in a limited test environment. |
 | Unified and PLC native writes | Separate native acceptance is still required. |
 | Generated Comfort screen/tag packages | Offline generation, binding checks, worker reload and exact file materialization tested; native import/compile/save acceptance remains pending. |
-| PLC readable-source and cross-reference inspection | Offline request/encoding/search/bounds tests and installed API signatures checked. Native attached-project acceptance remains pending. Native cross-reference API is present in inspected V19 metadata and absent in V15.1. |
-| Other API versions/devices | Require their own builds and native acceptance; exact V15.0 and V21 are not established by the V15.1/V19 checks. |
+| PLC readable-source and cross-reference inspection | Offline request/encoding/search/bounds tests and installed API signatures checked. Native attached-project acceptance remains pending. Native cross-reference API is present in inspected V18/V19 metadata and absent in V15.1/V16/V17. |
+| Unified V16/V17 flat screens | Synthetic catalog tests and installed screen/item/text/layout/dynamization signatures checked. Native attached-project acceptance remains pending. |
+| V21 module loading and project graphics | Synthetic identity/service-routing tests pass. SDK compilation and native project acceptance remain pending. |
+| Other API versions/devices | Require their own builds and native acceptance; exact V15.0, V20 and V21 are not established by these checks. Native V16/V17/V18 installations were not exercised. |
 | Runtime/device behavior | Not established by engineering tests; no download, watch or force workflow is provided. |
 
 Earlier native checks used earlier release binaries. Passing them does not certify every later binary, device category, operation or API version. Build success, native API signature checks and exported-file comparisons do not establish runtime behavior or complete project preservation.

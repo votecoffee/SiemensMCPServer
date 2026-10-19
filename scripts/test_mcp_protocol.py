@@ -159,9 +159,13 @@ def run(executable, native=False):
                 profile = capabilities["structuredContent"]["result"]
                 assert profile["classicTextLists"] is True
                 assert profile["comfortXmlResourceEdits"] is True and profile["plcEngineering"]["available"] is True, profile
-                if profile["apiVersion"].startswith("19."):
+                api_major = int(profile["apiVersion"].split(".")[0])
+                if 16 <= api_major <= 19:
                     assert profile["unifiedDiscovery"] and profile["unifiedScreenInspection"] and profile["unifiedScreenEdits"], profile
                     assert profile["unifiedTextListEditing"] is False, profile
+                    assert profile["unifiedScreenGroups"] is (api_major >= 18), profile
+                    assert profile["plcInspection"]["readableSourceApiPresent"] is True, profile
+                    assert profile["plcInspection"]["nativeCrossReferenceApiPresent"] is (api_major >= 18), profile
                 if profile["apiVersion"].startswith("15."):
                     assert profile["unifiedDiscovery"] is False, profile
                     assert profile["classicTranslationSlotRemoval"]["available"] is False, profile
