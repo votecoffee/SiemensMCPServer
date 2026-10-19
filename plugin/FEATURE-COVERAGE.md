@@ -1,6 +1,6 @@
 # Engineering feature coverage
 
-The MCP server has 51 tools. Five fixed extension tools provide discovery/read/preview/apply/reload while workers change independently of the host; see [extensions](EXTENSIONS.md). Comfort/classic V15.1 is the primary profile; Unified follows with version limits. See [validation status](NATIVE-ACCEPTANCE.md) for native boundaries. PLC and Unified native writes require separate acceptance. V15.1/V19 builds and offline reload tests do not establish every native operation or exact V15.0 compatibility. The WinForms UI supports classic HMI workflows plus API-supported Unified and offline PLC native transfers; see [desktop usage](../docs/DESKTOP.md).
+The MCP server has 51 tools. Five fixed extension tools provide discovery/read/preview/apply/reload while workers change independently of the host; see [extensions](EXTENSIONS.md). Comfort/classic V15.1 is the primary profile; Unified follows with version limits. See [validation status](NATIVE-ACCEPTANCE.md) for native boundaries. PLC and Unified native writes require separate acceptance. V15.1/V19 builds and offline reload tests do not establish every native operation or exact V15.0 compatibility. The WinForms UI supports classic HMI workflows plus API-supported Unified and offline PLC native transfers; see [desktop usage](https://github.com/votecoffee/SiemensMCPServer/blob/main/docs/DESKTOP.md).
 
 | Feature | Comfort / classic | Unified | Route and limit |
 | --- | --- | --- | --- |
