@@ -93,6 +93,14 @@ py -3 -B -X utf8 scripts/test_plc_inspection.py Mcp/bin/Release/V19/net48/Siemen
 
 Use optional `--previous-host` with a pre-0.7.3 host executable that retains its bundled workers to check rejection of the new PLC route without losing the previous running generation. See [PLC inspection](../plugin/PLC-INSPECTION.md) for version and native acceptance boundaries.
 
+The library probe exercises the real project worker, native API-member reporting, strict/unattached read rejection, worker reload and rejected-startup rollback. It does not attach or read a native library:
+
+```powershell
+py -3 -B -X utf8 scripts/test_library_inspection.py Mcp/bin/Release/V15.1/net48/SiemensMCPServer.Mcp.exe
+```
+
+Optional `--previous-host` accepts a 0.7.4 executable with its bundled workers to verify that the newer existing PLC module still loads on that host. The new project module requires host 0.8.0; see [library inspection](../plugin/LIBRARY-INSPECTION.md).
+
 ## Desktop verification
 
 The desktop project uses SDK-style .NET Framework 4.8 builds and locked NuGet dependencies. Its native transfer adapter source is shared with MCP, without a reference to the MCP executable or host dependencies.

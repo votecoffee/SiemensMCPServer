@@ -1,4 +1,4 @@
-# SiemensMCPServer plugin 0.7.4
+# SiemensMCPServer plugin 0.8.0
 
 The project and GitHub repository are now **SiemensMCPServer**. The plugin/MCP ID is `siemens-mcp-server`, the local marketplace is `siemens-mcp-server-local`, and the host is `SiemensMCPServer.Mcp.exe`. Remove the old `siemens-tia-openness` plugin or direct MCP registration through Codex before installing the renamed plugin. The installer refuses to register a second copy while the old server is enabled. Do not remove its cache manually while it is running. This rename needs a host upgrade; feature-worker reload remains available afterward.
 
@@ -118,6 +118,8 @@ Openness exposes PLC software in inspected V15.1–V19 APIs. After attaching to 
 Host/worker 0.7.3 adds [readable-source export/search and native cross-references](PLC-INSPECTION.md) through `tia_read_extension`. These read operations use explicit PLC/object paths, verified Offline state and bounded snapshots. V15.1–V19 expose source export; native cross-references are present in inspected V18/V19 APIs and absent in V15.1/V16/V17. The new broker route requires a host upgrade/reconnect, after which worker formatting/search can reload independently. Native attached-project acceptance remains pending.
 
 Host 0.7.4 supports flat Unified screen discovery on V16/V17, exact-identity loading of V21 product modules and the V21 project-graphics service path. V15.1–V19 API builds pass MCP/desktop checks; V20/V21 remain unvalidated without their SDKs. These native host changes require an upgrade/reconnect; see [API compatibility](API-COMPATIBILITY.md).
+
+Host/worker 0.8.0 adds read-only [project/open global library inspection](LIBRARY-INSPECTION.md) in a fourth `project` worker. Discover `list_libraries` and `browse_library` with `tia_list_extensions`; call them through `tia_read_extension` using the exact attached-project path and returned IDs/paths. The 51-tool facade is unchanged. The new broker route requires a host upgrade/reconnect; later formatting operations can reload on the same snapshot contract. The bundled [library skill](skills/inspect-libraries/SKILL.md) describes selection and paging. Native attached-project acceptance remains pending.
 
 Use `plc_preview_object_edits`, `plc_preview_create_object`, or `plc_preview_delete_object` for advertised native operations. For program/interface/tag content, use `plc_preview_import` with files or `plc_preview_xml_import` with exact candidate XML. Imports require the target composition's fingerprint from `plc_read_object`, not a resource content hash. `plc_preview_import_bundle` imports types, tag tables, then blocks and supported user groups. Batch block/type imports permit temporarily missing references where the API supports that option; compile afterwards. Metadata-only objects are not reconstructed.
 

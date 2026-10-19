@@ -20,6 +20,8 @@ V16–V19 expose the screen/item, button text/layout and dynamization members us
 
 Selected Comfort V15.1 native workflows were exercised with earlier binaries. Unified editing, PLC inspection/mutation and other native project/version combinations still require their own acceptance. See [validation status](NATIVE-ACCEPTANCE.md) and [PLC inspection](PLC-INSPECTION.md).
 
+Host 0.8.0 adds read-only [library inspection](LIBRARY-INSPECTION.md). Its MCP builds, transport and required library signatures were checked on V15.1–V19 APIs; V16–V18 again used V19 compatibility assemblies. Library metadata fields vary by API and are reported individually. This adds no new desktop library workflow, and native attached-library acceptance remains pending.
+
 ## API version versus engineering version
 
 `TiaPortalVersion` selects the compile-time API; `TiaPortalInstallVersion` selects the installation supplying it. For example:

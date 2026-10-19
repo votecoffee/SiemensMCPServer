@@ -40,6 +40,10 @@ def validate(files):
     assert modern["args"] == ["/d", "/c", "server\\SiemensMCPServer.Mcp.exe", "--allow-writes"]
     assert modern["cwd"] == "."
     assert "skills/edit-hmi-text/SKILL.md" in files
+    version = tuple(int(part) for part in portable["version"].split(".")[:3])
+    if version >= (0, 8, 0):
+        assert "skills/inspect-libraries/SKILL.md" in files
+        assert "LIBRARY-INSPECTION.md" in files
     return len(manifest)
 
 

@@ -10,6 +10,7 @@ This document summarizes public validation scope. Project-specific exports, scre
 | Unified and PLC native writes | Separate native acceptance is still required. |
 | Generated Comfort screen/tag packages | Offline generation, binding checks, worker reload and exact file materialization tested; native import/compile/save acceptance remains pending. |
 | PLC readable-source and cross-reference inspection | Offline request/encoding/search/bounds tests and installed API signatures checked. Native attached-project acceptance remains pending. Native cross-reference API is present in inspected V18/V19 metadata and absent in V15.1/V16/V17. |
+| Project/open global library inspection | Synthetic metadata/path/page/limit tests, V15.1–V19 library API signatures and real worker/MCP routing/reload checks pass. New native attachment/library-read acceptance remains pending. No library opening, updates or instance creation are implemented. |
 | Unified V16/V17 flat screens | Synthetic catalog tests and installed screen/item/text/layout/dynamization signatures checked. Native attached-project acceptance remains pending. |
 | V21 module loading and project graphics | Synthetic identity/service-routing tests pass. SDK compilation and native project acceptance remain pending. |
 | Other API versions/devices | Require their own builds and native acceptance; exact V15.0, V20 and V21 are not established by these checks. Native V16/V17/V18 installations were not exercised. |

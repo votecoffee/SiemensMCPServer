@@ -58,6 +58,7 @@ def run(executable, native=False):
             initialized = send("initialize", {"protocolVersion": "2025-11-25", "capabilities": {},
                                               "clientInfo": {"name": "tia-protocol-test", "version": "0.1.0"}})
             assert initialized["serverInfo"]["name"] == "siemens-mcp-server"
+            host_version = tuple(int(part) for part in initialized["serverInfo"]["version"].split(".")[:3])
             send("notifications/initialized", {}, notification=True)
             tools = {t["name"]: t for t in send("tools/list", {})["tools"]}
             expected = {"tia_list_versions", "tia_select_version", "tia_list_processes", "tia_attach", "tia_get_status",
@@ -82,7 +83,10 @@ def run(executable, native=False):
             extension_data = extensions["structuredContent"]["result"]
             assert extension_data["hostProcessId"] == process.pid
             modules = {m["module"]:m for m in extension_data["modules"]}
-            assert set(modules)=={"comfort","unified","plc","project"}
+            expected_modules = {"comfort", "unified", "plc"}
+            if host_version >= (0, 8, 0):
+                expected_modules.add("project")
+            assert set(modules) == expected_modules
             probe = call("tia_read_extension", module="comfort", operation="inspect_xml", argumentsJson=json.dumps({"xml":"<Document><Hmi.Screen.Screen><AttributeList><Name>Café — テスト</Name></AttributeList></Hmi.Screen.Screen></Document>", "editable":True},ensure_ascii=False))
             assert not probe.get("isError"), probe
             assert probe["structuredContent"]["result"]["data"]["name"] == "Café — テスト"
@@ -159,7 +163,8 @@ def run(executable, native=False):
                 profile = capabilities["structuredContent"]["result"]
                 assert profile["classicTextLists"] is True
                 assert profile["comfortXmlResourceEdits"] is True and profile["plcEngineering"]["available"] is True, profile
-                assert profile["projectLibraries"]["projectLibraryApiPresent"] and profile["projectLibraries"]["openGlobalLibrariesApiPresent"], profile
+                if host_version >= (0, 8, 0):
+                    assert profile["projectLibraries"]["projectLibraryApiPresent"] and profile["projectLibraries"]["openGlobalLibrariesApiPresent"], profile
                 api_major = int(profile["apiVersion"].split(".")[0])
                 if 16 <= api_major <= 19:
                     assert profile["unifiedDiscovery"] and profile["unifiedScreenInspection"] and profile["unifiedScreenEdits"], profile

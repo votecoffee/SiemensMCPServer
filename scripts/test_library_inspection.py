@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -124,6 +125,16 @@ def main():
                 assert {m['module'] for m in after['modules']} == {'comfort', 'unified', 'plc'}
                 assert len(client.send('tools/list', {})['tools']) == 51
                 checks.append('Previous 0.7.4 host accepts the newer existing PLC worker while retaining its three-module catalog and host PID')
+                registry_path = previous / 'external/active.json'
+                old_selection = registry_path.read_bytes()
+                stage(repo, bundle, previous)
+                assert 'incompatible' in client.rejected('tia_reload_extensions', module='project').lower()
+                restore = previous / 'external/restore.tmp'
+                restore.write_bytes(old_selection)
+                os.replace(restore, registry_path)
+                assert {m['module'] for m in client.call('tia_list_extensions')['modules']} == {'comfort', 'unified', 'plc'}
+                assert not client.call('tia_get_status')['attached']
+                checks.append('Previous host rejects the project route; restoring its staged registry keeps the existing module catalog usable')
             finally:
                 client.close()
     report = {'checks': checks, 'count': len(checks), 'executableSha256': hashlib.sha256(executable.read_bytes()).hexdigest(),

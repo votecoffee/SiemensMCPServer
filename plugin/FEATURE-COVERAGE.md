@@ -30,7 +30,8 @@ The MCP server has 51 tools. Five fixed extension tools provide discovery/read/p
 | Compile diagnostics | Software compile service | Software or bounded owning-device compile service | Reports selected scope; no retry after failure, included PLCs require Offline; does not save/download; Unified native acceptance pending |
 | Whole-project save | Implemented | Implemented | Exact project path; includes other editors' changes |
 | Project archive / reopen | Implemented | Shared project API | Exact attached path; native compressed archive, saved-state guards, preview invalidation on reopen |
-| Library faceplate definitions / project text XLSX | No dedicated adapter | No dedicated adapter | Outside HMI descendant/resource workflow |
+| Project/open global library metadata | Shared project module | Shared project module | Folders, types, versions and master-copy content descriptions; bounded read-only pages, no instance creation or library updates; [library guide](LIBRARY-INSPECTION.md) |
+| Library faceplate definitions / project text XLSX | No dedicated adapter | No dedicated adapter | Metadata browsing does not extract faceplate definitions; outside HMI descendant/resource workflow |
 | Download / running-device control | Not implemented | Not implemented | Engineering plugin scope |
 
 PLC tools add discovery, offline object/property/group operations, block/type/tag-table native XML reads/import/export, dependency-ordered bundles, reviewed SCL/STL generation and compile diagnostics. Only a verified native Offline state permits PLC export/mutation. Supported software roots exclude hardware, technology objects, watch/force tables and online services. Protected blocks may provide only public interfaces; generic imports/generation do not assert source-content equality. Source generation keeps a new external source and may replace declared blocks; its preview makes that scope explicit.

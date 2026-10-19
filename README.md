@@ -36,6 +36,7 @@ The server exposes engineering operations through the Model Context Protocol (MC
 | Unified HMI | API-visible objects and supported screen properties. Text lists require the native paired-YAML API; V19 does not expose that route. |
 | Siemens PLC | Offline blocks, data types, tags, native XML transfers, SCL/STL generation, readable-source export/search, API-supported cross-references and compile diagnostics. |
 | Desktop utility | Comfort / Advanced screens and resources; Unified native transfers where available; offline PLC XML resources. |
+| Libraries | Read-only project/open global library metadata: folders, types, versions and master-copy contents. No library updates or instance creation. |
 
 The server does not provide device download, runtime control, watch or force operations. See [feature coverage](plugin/FEATURE-COVERAGE.md) and [validation status](plugin/NATIVE-ACCEPTANCE.md) for supported routes and their limits.
 
@@ -122,6 +123,8 @@ The 0.7.2 host adds Unified compile-service lookup within the HMI's owning devic
 Host/worker 0.7.3 adds PLC `read_source`, `find_in_source` and `cross_references` through `tia_read_extension`. These use explicit PLC/object paths and verified Offline state. Native readable-source export supports SCL/STL, data blocks and PLC types; native cross-references require a matching API and object service (present in inspected V18/V19 APIs, absent in V15.1/V16/V17). The new broker read route requires a host upgrade/reconnect. Native project acceptance remains pending; see [PLC inspection](plugin/PLC-INSPECTION.md).
 
 Host 0.7.4 supports flat Unified screen discovery on V16/V17 and prepares explicit V21 module loading and project-graphics service access. It requires a host upgrade/reconnect. V15.1–V19 API builds are checked; V20/V21 native acceptance remains pending. See [API compatibility](plugin/API-COMPATIBILITY.md).
+
+Host/worker 0.8.0 adds `project` operations `list_libraries` and `browse_library` through `tia_read_extension`, with bounded metadata pages and explicit project/library paths. The new broker route requires a host upgrade/reconnect; the MCP tool count remains 51. See [library inspection](plugin/LIBRARY-INSPECTION.md) and its [Codex workflow](plugin/skills/inspect-libraries/SKILL.md). Attached-project library acceptance remains pending.
 
 ## Development
 
