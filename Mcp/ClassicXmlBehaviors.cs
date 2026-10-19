@@ -85,7 +85,8 @@ namespace SiemensMCPServer.Mcp
         {
             var canonical = new XDocument(document); NativeXmlIds.Normalize(canonical);
             var selected = canonical.XPathSelectElement(Path(node))!;
-            selected.DescendantsAndSelf().Where(e => e.HasElements).Nodes().OfType<XText>().Where(t => string.IsNullOrWhiteSpace(t.Value)).Remove();
+            selected.DescendantsAndSelf().Where(e => e.HasElements && !e.AncestorsAndSelf().Any(a => a.Name.LocalName == "Text"))
+                .Nodes().OfType<XText>().Where(t => string.IsNullOrWhiteSpace(t.Value)).Remove();
             return TextListDocument.Hash(selected.ToString(SaveOptions.DisableFormatting));
         }
     }

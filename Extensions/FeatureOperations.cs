@@ -22,6 +22,8 @@ namespace SiemensMCPServer.Extensions
                     Op("list_libraries", "List the attached project library and already-open global libraries with exact IDs and bounded metadata. Does not open, upgrade or save libraries.", "projectRead", false, LibraryInspectionOperations.Schema(false), "libraryCatalog"),
                     Op("browse_library", "Browse one returned library/path: folders, types, versions or master-copy content descriptions. Read-only metadata; no instance creation, dependency traversal or library updates.", "projectRead", false, LibraryInspectionOperations.Schema(true), "libraryCatalog") };
                 case "comfort": return new[] {
+                    Op("inspect_screen_texts", "Inspect/filter bounded multilingual classic screen text runs, retaining exact field fingerprints, cultures, run indexes and formatting. Supplied XML only; dynamic or unknown markup is inspection-only.", "local", false, ScreenTextSchema(false)),
+                    Op("edit_screen_texts", "Edit exact static text runs or existing empty slots in classic screen captions, including multiple styled runs. Requires the screenText contract and whitespace-preserving readback in host 0.10.0+.", "classicXml", true, ScreenTextSchema(true), "screenText"),
                     Op("inspect_screen_layout", "Inspect bounded stored geometry of classic XML screen items and return exact selection paths/bounds. Supplied XML only; no attachment or native acceptance claim.", "local", false, LayoutSchema(false)),
                     Op("arrange_screen_items", "Move, align, distribute equal gaps or resize selected classic screen items. Uses exact paths/expected bounds and the native resource fingerprint; returns exact geometry edits. Stored geometry only; does not evaluate runtime dynamizations.", "classicXml", true, LayoutSchema(true)),
                     Op("build_screen_package", "Build a sidecar-free classic screen/tag import bundle from native XML prototypes and a supplied PLC symbol manifest. Offline only; writes no files and does not establish native acceptance.", "local", false, ComfortPackage.Schema(true)),
@@ -51,16 +53,28 @@ namespace SiemensMCPServer.Extensions
             JsonElement args = input.TryGetProperty("arguments", out var nested) ? nested : input;
             if (module == "comfort")
             {
+                if (operation == "inspect_screen_texts")
+                {
+                    var request = ExtensionWire.Parse<ClassicScreenTextInspection>(args);
+                    RequireScreenXml(request.Xml);
+                    return ExtensionWire.Json(new ClassicXmlDocument(request.Xml).ScreenTextCatalog(request));
+                }
+                if (operation == "edit_screen_texts")
+                {
+                    string xml = input.GetProperty("snapshot").GetString()!;
+                    RequireScreenXml(xml);
+                    return ExtensionWire.Json(new ClassicXmlDocument(xml).EditScreenTexts(ExtensionWire.Parse<ClassicScreenTextRequest>(args)));
+                }
                 if (operation == "inspect_screen_layout")
                 {
                     var request = ExtensionWire.Parse<ClassicLayoutInspection>(args);
-                    RequireLayoutXml(request.Xml);
+                    RequireScreenXml(request.Xml);
                     return ExtensionWire.Json(new ClassicXmlDocument(request.Xml).LayoutCatalog(request.Offset, request.MaxItems));
                 }
                 if (operation == "arrange_screen_items")
                 {
                     string xml = input.GetProperty("snapshot").GetString()!;
-                    RequireLayoutXml(xml);
+                    RequireScreenXml(xml);
                     return ExtensionWire.Json(new ClassicXmlDocument(xml).ArrangeLayout(ExtensionWire.Parse<ClassicLayoutRequest>(args)));
                 }
                 if (operation == "build_screen_package") return ExtensionWire.Json(ComfortPackage.Build(ExtensionWire.Parse<ComfortPackageSpec>(args)));
@@ -105,9 +119,22 @@ namespace SiemensMCPServer.Extensions
             }
             throw new ArgumentException("Unsupported extension operation.");
         }
-        private static void RequireLayoutXml(string xml)
+        private static void RequireScreenXml(string xml)
         {
             if (xml == null || xml.Length == 0 || xml.Length > 16 * 1024 * 1024) throw new ArgumentException("Supply native screen XML within the 16 MiB limit.");
+        }
+        private static object ScreenTextSchema(bool edit)
+        {
+            if (!edit) return new { type = "object", additionalProperties = false, required = new[] { "xml" }, properties = new {
+                xml = new { type = "string", minLength = 1, maxLength = 16777216 }, offset = new { type = "integer", minimum = 0, maximum = 20000 },
+                maxRuns = new { type = "integer", minimum = 1, maximum = 200 }, maxCharacters = new { type = "integer", minimum = 1, maximum = 4096 },
+                culture = new { type = "string", maxLength = 128 }, query = new { type = "string", maxLength = 256 }, caseSensitive = new { type = "boolean" } } };
+            return new { type = "object", additionalProperties = false, required = new[] { "edits" }, properties = new {
+                edits = new { type = "array", minItems = 1, maxItems = 200, items = new { type = "object", additionalProperties = false, required = new[] { "selection", "newText" }, properties = new {
+                    selection = new { type = "object", additionalProperties = false, required = new[] { "xPath", "culture", "expectedTextFingerprint", "runIndex", "expectedText" }, properties = new {
+                        xPath = new { type = "string", minLength = 1, maxLength = 4096 }, culture = new { type = "string", minLength = 1, maxLength = 128 },
+                        expectedTextFingerprint = new { type = "string", pattern = "^[0-9a-f]{64}$" }, runIndex = new { type = "integer", minimum = 0, maximum = 19999 },
+                        expectedText = new { type = "string", maxLength = 4096 } } }, newText = new { type = "string", maxLength = 4096 } } } } } };
         }
         private static object LayoutSchema(bool arrange)
         {

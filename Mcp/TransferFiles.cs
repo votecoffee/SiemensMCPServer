@@ -94,8 +94,10 @@ namespace SiemensMCPServer.Mcp
                 NativeXmlIds.Normalize(doc);
                 foreach (var element in doc.Descendants())
                 {
-                    // Formatting whitespace only, never strip whitespace from authored scalar elements.
-                    if (element.HasElements) element.Nodes().OfType<XText>().Where(t => string.IsNullOrWhiteSpace(t.Value)).Remove();
+                    // Text may contain meaningful whitespace between styled runs.
+                    // Preserve it throughout the authored Text subtree, including body/p markup.
+                    if (element.HasElements && !element.AncestorsAndSelf().Any(e => e.Name.LocalName == "Text"))
+                        element.Nodes().OfType<XText>().Where(t => string.IsNullOrWhiteSpace(t.Value)).Remove();
                 }
                 return f.Path + ":" + doc.ToString(SaveOptions.DisableFormatting);
             })));

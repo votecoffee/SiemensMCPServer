@@ -8,6 +8,12 @@ using Xunit;
 
 public sealed class ClassicBehaviorTests
 {
+    [Fact] public void BehaviorFingerprintDetectsWhitespaceBetweenStyledTextRuns()
+    {
+        string xml = Xml.Replace("<Name>Press</Name>", "<Name>Press</Name><Text><body><p><b>A</b> <i>B</i></p></body></Text>");
+        string Fingerprint(string text) => JsonSerializer.SerializeToElement(new ClassicXmlDocument(text).BehaviorCatalog(true), JsonDefaults.Options).GetProperty("objects")[0].GetProperty("fingerprint").GetString()!;
+        Assert.NotEqual(Fingerprint(xml), Fingerprint(xml.Replace("</b> <i>", "</b><i>")));
+    }
     private const string Xml = "<Document><Hmi.Screen.Screen ID='0'><AttributeList><Name>S</Name></AttributeList><ObjectList><Hmi.Screen.Button ID='1' CompositionName='ScreenItems'><AttributeList><Name>A</Name></AttributeList><ObjectList><Hmi.Event.Event ID='2' CompositionName='Events'><AttributeList><Name>Press</Name></AttributeList><ObjectList><Hmi.Event.Function ID='3' CompositionName='Functions'><AttributeList><Name>SetTag</Name></AttributeList></Hmi.Event.Function></ObjectList><LinkList><Function TargetID='3'/><Control TargetID='1'/></LinkList></Hmi.Event.Event></ObjectList></Hmi.Screen.Button><Hmi.Screen.Button ID='4' CompositionName='ScreenItems'><AttributeList><Name>B</Name></AttributeList></Hmi.Screen.Button></ObjectList></Hmi.Screen.Screen></Document>";
     private static ClassicBehaviorChange Change(string action = "clone")
     {

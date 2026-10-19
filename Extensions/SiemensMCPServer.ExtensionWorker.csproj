@@ -3,7 +3,7 @@
     <OutputType>Exe</OutputType><TargetFramework>net48</TargetFramework><PlatformTarget>x64</PlatformTarget>
     <LangVersion>latest</LangVersion><Nullable>annotations</Nullable><AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType><RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <AssemblyName>SiemensMCPServer.ExtensionWorker</AssemblyName><Version>0.9.1</Version>
+    <AssemblyName>SiemensMCPServer.ExtensionWorker</AssemblyName><Version>0.10.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Text.Json" Version="10.0.10"/><PackageReference Include="YamlDotNet" Version="18.1.0"/>
@@ -16,6 +16,7 @@
     <Compile Include="../Mcp/ClassicXmlDocument.cs" Link="Features/ClassicXmlDocument.cs"/>
     <Compile Include="../Mcp/ClassicXmlBehaviors.cs" Link="Features/ClassicXmlBehaviors.cs"/>
     <Compile Include="../Mcp/ClassicXmlLayout.cs" Link="Features/ClassicXmlLayout.cs"/>
+    <Compile Include="../Mcp/ClassicScreenText.cs" Link="Features/ClassicScreenText.cs"/>
     <Compile Include="../Mcp/NativeXmlIds.cs" Link="Core/NativeXmlIds.cs"/>
     <Compile Include="../Mcp/TransferFiles.cs" Link="Core/TransferFiles.cs"/>
     <Compile Include="../Mcp/UnifiedTextListDocument.cs" Link="Features/UnifiedTextListDocument.cs"/>
