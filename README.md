@@ -32,7 +32,7 @@ The server exposes engineering operations through the Model Context Protocol (MC
 
 | Area | Scope |
 | --- | --- |
-| Comfort / classic HMI | Primary profile: V15.1. Styled caption-run edits, text lists, native XML resources, reviewed control arrangement, scalar properties, supported object creation/deletion, prototype-based screen/tag packages and bulk transfers. |
+| Comfort / classic HMI | Primary profile: V15.1. Styled caption-run edits, text lists, native XML resources, reviewed control arrangement/copy/removal, scalar properties, supported object creation/deletion, prototype-based screen/tag packages and bulk transfers. |
 | Unified HMI | API-visible objects and supported screen properties. Text lists require the native paired-YAML API; V19 does not expose that route. |
 | Siemens PLC | Offline blocks, data types, tags, native XML transfers, SCL/STL generation, readable-source export/search, API-supported cross-references and compile diagnostics. |
 | Desktop utility | Comfort / Advanced screens and resources; Unified native transfers where available; offline PLC XML resources. |
@@ -125,7 +125,7 @@ Project extensions provide bounded [library metadata browsing](plugin/LIBRARY-IN
 
 Project-text capture requires host 0.9.0 or newer. New native capture kinds require a host upgrade/reconnect; later worker formatting/search can reload on the same contract. See [API compatibility](plugin/API-COMPATIBILITY.md) and [native validation status](plugin/NATIVE-ACCEPTANCE.md) before treating build/metadata checks as attached-project acceptance.
 
-The [Comfort 0.9.1 layout bundle](plugin/COMFORT-LAYOUT.md) adds move, align, equal-gap distribution and resize previews that reload on checked 0.7.4/0.9.0 hosts. The current Comfort bundle also adds [styled caption-run editing](plugin/COMFORT-SCREEN-TEXTS.md) and requires host 0.10.0's corrected whitespace-preserving hash contract. Upgrade/reconnect that host first; subsequent caption workers can reload on the same contract.
+The [Comfort 0.9.1 layout bundle](plugin/COMFORT-LAYOUT.md) adds move, align, equal-gap distribution and resize previews that reload on checked 0.7.4/0.9.0 hosts. Current Comfort workers add [styled captions](plugin/COMFORT-SCREEN-TEXTS.md) and [prototype control/group cloning and removal](plugin/COMFORT-SCREEN-ITEMS.md) using host 0.10.0's whitespace-preserving hash contract. Upgrade/reconnect that host first; the newer control worker reloads on 0.10.0 without another host update.
 
 ## Development
 
