@@ -105,6 +105,7 @@ public sealed class NativeComfortXmlTests
             string file = Path.Combine(root, "payload.xml"); File.WriteAllText(file, Xml); string baseline = TransferFiles.SemanticHash(root);
             File.WriteAllText(file, renamed); Assert.Equal(baseline, TransferFiles.SemanticHash(root));
             File.WriteAllText(file, renamed.Replace("TargetID=\"#A0\"", "TargetID=\"#A1\"")); Assert.NotEqual(baseline, TransferFiles.SemanticHash(root));
+            File.WriteAllText(file, Xml.Replace("TargetID='#0'", "TargetID='#object-0'")); Assert.NotEqual(baseline, TransferFiles.SemanticHash(root));
             File.WriteAllText(file, Xml.Replace("</b> <i>", "</b>  <i>")); Assert.NotEqual(baseline, TransferFiles.SemanticHash(root));
         }
         finally { Directory.Delete(root, true); }
@@ -144,5 +145,7 @@ public sealed class NativeComfortXmlTests
     {
         var operations = FeatureOperations.Describe("comfort").Where(o => o.Route == "classicXml").ToArray(); Assert.Equal(6, operations.Length);
         Assert.All(operations, o => { Assert.Equal("classicReferences", o.SnapshotKind); Assert.True(o.IsCompatible("comfort")); Assert.False(o.IsCompatible("unified")); o.Preview = false; Assert.False(o.IsCompatible("comfort")); });
+        var recipe = new FeatureRecipes("comfort", "[{\"name\":\"set_left\",\"xPath\":\"//Left\",\"newValue\":\"20\"}]").Operations.Single();
+        Assert.Equal("classicReferences", recipe.SnapshotKind); Assert.True(recipe.IsCompatible("comfort"));
     }
 }

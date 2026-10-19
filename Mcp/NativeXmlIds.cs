@@ -22,7 +22,12 @@ namespace SiemensMCPServer.Mcp
         {
             var ids = Ids(document.Descendants());
             var map = ids.Select((a, i) => new { a.Value, Canonical = "#object-" + i.ToString(CultureInfo.InvariantCulture) }).ToDictionary(a => a.Value, a => a.Canonical, StringComparer.Ordinal);
-            foreach (var link in document.Descendants().Attributes("TargetID")) if (map.TryGetValue(TargetKey(link.Value), out var canonical)) link.Value = canonical;
+            foreach (var link in document.Descendants().Attributes("TargetID"))
+            {
+                if (map.TryGetValue(TargetKey(link.Value), out var canonical)) link.Value = canonical;
+                // Keep unresolved literals in a separate domain so they cannot mimic canonical targets.
+                else if (link.Value != "@OpenLink") link.Value = "!unresolved:" + link.Value;
+            }
             ids.Remove();
         }
         internal static XElement Clone(XElement template, XDocument document)

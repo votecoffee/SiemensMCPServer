@@ -25,7 +25,7 @@ namespace SiemensMCPServer.Extensions
                 || recipes.GroupBy(r => r.Name, StringComparer.Ordinal).Any(g => g.Count() > 1) || recipes.Any(r => FeatureOperations.Describe(module).Any(o => o.Name == r.Name)))
                 throw new ArgumentException("Invalid or conflicting classic XML recipe.");
         }
-        public ExtensionOperation[] Operations => recipes.Select(r => new ExtensionOperation { Name = r.Name, Description = r.Description, Route = "classicXml", Preview = true,
+        public ExtensionOperation[] Operations => recipes.Select(r => new ExtensionOperation { Name = r.Name, Description = r.Description, Route = "classicXml", Preview = true, SnapshotKind = "classicReferences",
             InputSchema = ExtensionWire.Json(new { type = "object", required = new[] { "expectedValue" }, properties = new { expectedValue = new { type = "string" } },
                 preset = new { xPath = r.XPath, newValue = r.NewValue } }) }).ToArray();
         public bool TryExecute(string name, JsonElement input, out JsonElement result)

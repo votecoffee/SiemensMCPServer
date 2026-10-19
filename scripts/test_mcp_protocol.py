@@ -96,17 +96,21 @@ def run(executable, native=False):
                 assert not layout.get("isError"), layout
                 assert layout["structuredContent"]["result"]["data"]["totalItems"] == 0
             if host_version >= (0, 10, 0):
+                classic_contract = "classicReferences" if host_version >= (0, 10, 4) else "screenText"
                 screen_text_op = next(o for o in modules["comfort"]["operations"] if o["name"] == "edit_screen_texts")
-                assert screen_text_op["route"] == "classicXml" and screen_text_op["snapshotKind"] == "screenText"
+                assert screen_text_op["route"] == "classicXml" and screen_text_op["snapshotKind"] == classic_contract
                 texts = call("tia_read_extension", module="comfort", operation="inspect_screen_texts", argumentsJson=json.dumps({"xml":"<Document><Hmi.Screen.Screen><AttributeList><Name>Text probe</Name></AttributeList></Hmi.Screen.Screen></Document>"}))
                 assert not texts.get("isError"), texts
                 assert texts["structuredContent"]["result"]["data"]["matchedRuns"] == 0
             if host_version >= (0, 10, 1):
                 item_op = next(o for o in modules["comfort"]["operations"] if o["name"] == "change_screen_items")
-                assert item_op["route"] == "classicXml" and item_op["snapshotKind"] == "screenText"
+                assert item_op["route"] == "classicXml" and item_op["snapshotKind"] == classic_contract
                 items = call("tia_read_extension", module="comfort", operation="inspect_screen_items", argumentsJson=json.dumps({"xml":"<Document><Hmi.Screen.Screen><AttributeList><Name>Item probe</Name></AttributeList></Hmi.Screen.Screen></Document>"}))
                 assert not items.get("isError"), items
                 assert items["structuredContent"]["result"]["data"]["matchedItems"] == 0
+            if host_version >= (0, 10, 4):
+                previews = [o for o in modules["comfort"]["operations"] if o["route"] == "classicXml"]
+                assert len(previews) >= 6 and all(o["preview"] and o["snapshotKind"] == "classicReferences" for o in previews)
             reloaded = call("tia_reload_extensions", module="comfort")
             assert not reloaded.get("isError"), reloaded
             reload_data = reloaded["structuredContent"]["result"]
