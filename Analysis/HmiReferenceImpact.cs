@@ -23,6 +23,7 @@ namespace SiemensMCPServer.Analysis
     {
         public int ChangeIndex { get; set; }
         public string Reason { get; set; } = "";
+        public string Certainty { get; set; } = "";
         public HmiReferenceOccurrence Reference { get; set; } = null!;
         public HmiBindingValidation? ProposedBinding { get; set; }
     }
@@ -89,8 +90,15 @@ namespace SiemensMCPServer.Analysis
                             || Names.Equals(reference.ControllerId, change.ControllerId) && reference.Resolution?.Dimensions.Length > 0
                                 && new[] { reference.Resolution.CanonicalSymbol }.Concat(reference.Resolution.AliasChain).Any(p => Within(change.Name, p))
                         : selected.Contains(reference.TagId) || change.Kind == "connection" && Names.Equals(reference.Connection, change.Name);
+                    bool possible = false;
+                    if (!match && new[] { "tag", "binding" }.Contains(change.Kind) && reference.LinkType == "Tag" && reference.TagId.Length == 0)
+                    {
+                        string name = HmiReferenceAnalyzer.Unquote(reference.ReferenceText);
+                        if (Names.Equals(name, change.Name) || name.StartsWith(change.Name + "[", StringComparison.OrdinalIgnoreCase)) { match = true; possible = true; }
+                    }
                     if (!match) continue;
                     items.Add(new HmiImpactItem { ChangeIndex = index, Reference = reference,
+                        Certainty = !possible && new[] { "valid", "internal", "connectionReference", "screenReference" }.Contains(reference.Status) ? "definite" : "possible",
                         Reason = change.Kind == "controllerSymbol" ? "Controller address/member or alias/base declaration dependency." : "HMI " + change.Kind + " dependency.",
                         ProposedBinding = proposed.TryGetValue(reference.TagId, out var binding) ? binding : null });
                 }

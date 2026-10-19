@@ -90,7 +90,7 @@ namespace SiemensMCPServer.Extensions
             return new { items, totalItems = all.Length, offset, nextOffset = next, hasMore = next < all.Length,
                 payloadLimited = items.Count < Math.Min(maxItems, Math.Max(0, all.Length - offset)) };
         }
-        public static object Summary(HmiAnalysisReport result) => new { result.EngineVersion, result.AnalysisSha256, resources = result.Sources.Length, controllers = result.Controllers.Length,
+        public static object Summary(HmiAnalysisReport result) => new { result.EngineVersion, result.EngineBuildId, result.AnalysisSha256, resources = result.Sources.Length, controllers = result.Controllers.Length,
             tags = result.Tags.Length, references = result.References.Length,
             bindingStatuses = result.Bindings.GroupBy(b => b.Status).ToDictionary(g => g.Key, g => g.Count()),
             referenceStatuses = result.References.GroupBy(r => r.Status).ToDictionary(g => g.Key, g => g.Count()),

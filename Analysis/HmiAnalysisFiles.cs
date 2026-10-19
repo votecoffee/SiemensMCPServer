@@ -179,21 +179,33 @@ namespace SiemensMCPServer.Analysis
             JsonFile(output, "bindings.json", report.Bindings);
             JsonFile(output, "references.json", report.References);
             JsonFile(output, "diagnostics.json", new { report.Diagnostics, report.ExportFailures, report.UnsupportedResources });
-            if (impact != null) JsonFile(output, "impact.json", impact);
+            if (impact != null)
+            {
+                JsonFile(output, "impact.json", impact);
+                using (var csv = new StreamWriter(Path.Combine(output, "impact.csv"), false, Utf8))
+                {
+                    csv.WriteLine("ChangeIndex,Certainty,HmiId,ResourcePath,Control,OwnerType,Owner,XPath,Reference,ControllerAddress,Reason,ProposedBindingStatus");
+                    foreach (var item in impact.Items) csv.WriteLine(string.Join(",", new[] { item.ChangeIndex.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        item.Certainty, item.Reference.HmiId, item.Reference.ResourcePath, item.Reference.ControlName, item.Reference.OwnerType, item.Reference.OwnerName,
+                        item.Reference.XPath, item.Reference.ReferenceText, item.Reference.ControllerAddress, item.Reason, item.ProposedBinding?.Status ?? "" }.Select(Csv)));
+                }
+            }
             using (var csv = new StreamWriter(Path.Combine(output, "references.csv"), false, Utf8))
             {
                 csv.WriteLine("HmiId,ResourcePath,Control,OwnerType,Owner,LinkType,Reference,Connection,ControllerId,ControllerAddress,Status");
                 foreach (var row in report.References) csv.WriteLine(string.Join(",", new[] { row.HmiId, row.ResourcePath, row.ControlName, row.OwnerType,
                     row.OwnerName, row.LinkType, row.ReferenceText, row.Connection, row.ControllerId, row.ControllerAddress, row.Status }.Select(Csv)));
             }
-            var summary = new { report.EngineVersion, report.AnalysisSha256, resources = report.Sources.Length, controllers = report.Controllers.Length, tags = report.Tags.Length, references = report.References.Length,
+            var summary = new { report.EngineVersion, report.EngineBuildId, report.AnalysisSha256, resources = report.Sources.Length, controllers = report.Controllers.Length, tags = report.Tags.Length, references = report.References.Length,
                 bindingStatuses = report.Bindings.GroupBy(b => b.Status).ToDictionary(g => g.Key, g => g.Count()),
                 referenceStatuses = report.References.GroupBy(r => r.Status).ToDictionary(g => g.Key, g => g.Count()),
                 diagnostics = report.Diagnostics.Length, report.ExportReportedComplete, exportFailures = report.ExportFailures.Length, unsupportedResources = report.UnsupportedResources.Length,
-                impactReferences = impact?.Items.Length ?? 0, report.NativeBindingVerified, report.Scope };
+                impactReferences = impact?.Items.Length ?? 0,
+                impactObjects = impact?.Items.Select(i => i.Reference.HmiId + "\n" + i.Reference.ResourcePath + "\n" + i.Reference.OwnerXPath).Distinct().Count() ?? 0,
+                report.NativeBindingVerified, report.Scope };
             JsonFile(output, "summary.json", summary);
             var files = Directory.GetFiles(output).OrderBy(f => f, StringComparer.Ordinal).Select(f => new { path = Path.GetFileName(f), bytes = new FileInfo(f).Length, sha256 = FileHash(f) }).ToArray();
-            JsonFile(output, "manifest.json", new { format = "tia-hmi-analysis-files-v1", report.EngineVersion, report.AnalysisSha256, files });
+            JsonFile(output, "manifest.json", new { format = "tia-hmi-analysis-files-v1", report.EngineVersion, report.EngineBuildId, report.AnalysisSha256, files });
             return new { outputDirectory = output, summaryPath = Path.Combine(output, "summary.json"), manifestPath = Path.Combine(output, "manifest.json"), summary };
         }
     }

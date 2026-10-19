@@ -149,6 +149,8 @@ namespace SiemensMCPServer.Analysis
                     if (targetId != "@OpenLink")
                     {
                         if (resource.Ids.TryGetValue(NativeXmlIds.TargetKey(targetId), out var target) && tagNodes.TryGetValue(target, out var known)) tag = known;
+                        else if (row.LinkType == "Screen" && target != null && target.Name.LocalName.StartsWith("Hmi.Screen.Screen", StringComparison.Ordinal))
+                        { row.Status = "screenReference"; row.Chain = new[] { "Resource:" + row.ResourceName, "Screen:" + ObjectName(target) }; }
                         else row.Issues = new[] { "Native-ID link target is unavailable or requires another reference adapter." };
                     }
                     else if (link.Elements().Count() != 1 || link.Element("Name") == null || link.Element("Name")!.HasElements)
@@ -157,13 +159,20 @@ namespace SiemensMCPServer.Analysis
                     {
                         var candidates = lookup.Find(row.HmiId, Unquote(row.ReferenceText), out suffix);
                         if (candidates.Length == 1) tag = candidates[0];
-                        else row.Issues = new[] { candidates.Length == 0 ? "HMI tag declaration is missing." : "HMI tag name is ambiguous." };
+                        else { row.Status = candidates.Length == 0 ? "missingHmiTag" : "ambiguousTag"; row.Issues = new[] { candidates.Length == 0 ? "HMI tag declaration is missing." : "HMI tag name is ambiguous." }; }
                     }
                     else if (new[] { "ControllerTag", "Connection" }.Contains(row.LinkType) && tagNodes.TryGetValue(owner, out var owningTag))
                         tag = owningTag;
                     else if (row.LinkType == "Connection")
                     {
                         row.Connection = Unquote(row.ReferenceText); row.Status = "connectionReference";
+                    }
+                    else if (row.LinkType == "Screen")
+                    {
+                        var screens = resources.Where(r => Names.Equals(r.Input.HmiId, row.HmiId) && r.Root.Name.LocalName.StartsWith("Hmi.Screen.Screen", StringComparison.Ordinal)
+                            && Names.Equals(ObjectName(r.Root), Unquote(row.ReferenceText))).ToArray();
+                        if (screens.Length == 1) { row.Status = "screenReference"; row.Chain = new[] { "Resource:" + row.ResourceName, "Screen:" + ObjectName(screens[0].Root), "Path:" + screens[0].Input.Path }; }
+                        else row.Issues = new[] { "Screen reference does not select one exported screen resource." };
                     }
                     else row.Issues = new[] { "Direct " + row.LinkType + " links require an owning HMI tag or another adapter." };
                     if (tag != null)
@@ -194,6 +203,7 @@ namespace SiemensMCPServer.Analysis
                 foreach (var tag in group) diagnostics.Add(new AnalysisDiagnostic { Code = "ambiguousTag", HmiId = tag.HmiId, ResourcePath = tag.ResourcePath, XPath = tag.XPath, Message = "Duplicate HMI tag qualified name." });
             var sources = resources.Select(r => (object)new { r.Input.HmiId, r.Input.Path, sha256 = TextListDocument.Hash(r.Input.Xml), nativeType = r.Root.Name.LocalName }).ToArray();
             string hash = TextListDocument.Hash(JsonSerializer.Serialize(new { format = "tia-hmi-reference-analysis-v1", engineVersion = typeof(HmiReferenceAnalyzer).Assembly.GetName().Version!.ToString(3),
+                engineBuildId = typeof(HmiReferenceAnalyzer).Module.ModuleVersionId.ToString("D"),
                 sources, controllers = controllers.Select(c => new { c.Id, c.SourceSha256 }), input.ConnectionMappings,
                 input.ConnectionDefinitions, input.ConnectionMetadataAvailable, input.ExportReportedComplete, input.ExportFailures, input.UnsupportedResources }, JsonDefaults.Options));
             return new HmiAnalysisReport { AnalysisSha256 = hash, Sources = sources, Controllers = controllers, Tags = tags.ToArray(), Bindings = bindings, References = references.ToArray(),

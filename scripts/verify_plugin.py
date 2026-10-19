@@ -57,6 +57,9 @@ def validate(files):
         assert "COMFORT-REFERENCES.md" in files
     if version >= (0, 10, 3):
         assert "COMFORT-BEHAVIORS.md" in files
+    if version >= (0, 11, 0):
+        assert "HMI-REFERENCE-ANALYSIS.md" in files
+        assert "scripts/Analyze-HmiReferences.ps1" in files
     return len(manifest)
 
 

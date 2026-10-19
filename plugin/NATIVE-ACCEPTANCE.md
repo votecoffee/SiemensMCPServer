@@ -22,6 +22,7 @@ This document summarizes public validation scope. Project-specific exports, scre
 | V21 module loading and project graphics | Synthetic identity/service-routing tests pass. SDK compilation and native project acceptance remain pending. |
 | Other API versions/devices | Require their own builds and native acceptance; exact V15.0, V20 and V21 are not established by these checks. Native V16/V17/V18 installations were not exercised. |
 | Runtime/device behavior | Not established by engineering tests; no download, watch or force workflow is provided. |
+| Project HMI/declaration analysis | Unit and net48 worker/file-command/reload checks cover L5X/PLCopen import, static graphs, binding checks and hash-bound impacts. A fresh complete V15.1 API-visible export and supplied L5X were analyzed read-only using explicit WinCC addressing; native project content remained unmodified. Native partners, unresolved predefined types, opaque code and runtime remain separate. Raw reports/source hashes stay outside this repository. |
 
 Earlier native checks used earlier release binaries. Passing them does not certify every later binary, device category, operation or API version. Build success, native API signature checks and exported-file comparisons do not establish runtime behavior or complete project preservation.
 

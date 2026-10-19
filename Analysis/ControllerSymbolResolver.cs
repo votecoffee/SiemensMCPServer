@@ -138,6 +138,7 @@ namespace SiemensMCPServer.Analysis
             }
             string dataType = symbol.DataType, canonical = symbol.QualifiedName;
             var dimensions = symbol.Dimensions; var declarations = new List<string> { canonical }; string access = symbol.ExternalAccess;
+            result.CanonicalSymbol = canonical; result.DeclarationPaths = declarations.ToArray();
             var typeStack = new HashSet<string>(ControllerDeclarations.Names);
             bool Unwrap()
             {
@@ -160,7 +161,7 @@ namespace SiemensMCPServer.Analysis
                     for (int axis = 0; axis < dimensions.Length; axis++)
                         if (segment.Indices[axis] < dimensions[axis].Lower || segment.Indices[axis] > dimensions[axis].Upper) return Fail("arrayBounds", "Array index is outside the declared bounds.");
                     canonical += "[" + string.Join(",", segment.Indices) + "]"; dimensions = Array.Empty<DeclarationDimension>();
-                    declarations.Add(canonical); continue;
+                    declarations.Add(canonical); result.CanonicalSymbol = canonical; result.DeclarationPaths = declarations.ToArray(); continue;
                 }
                 if (dimensions.Length != 0) return Fail("arrayIndexRequired", "Select an array element before addressing a member.");
                 string atomic = Atomic(dataType);
@@ -169,13 +170,17 @@ namespace SiemensMCPServer.Analysis
                     int bits = new[] { "SINT", "USINT", "BYTE" }.Contains(atomic) ? 8 : new[] { "INT", "UINT", "WORD" }.Contains(atomic) ? 16
                         : new[] { "DINT", "UDINT", "DWORD" }.Contains(atomic) ? 32 : new[] { "LINT", "ULINT", "LWORD" }.Contains(atomic) ? 64 : 0;
                     if (bit < 0 || bit >= bits) return Fail("bitBounds", "Bit selector is invalid for the declared atomic type.");
-                    dataType = "BOOL"; canonical += "." + bit.ToString(CultureInfo.InvariantCulture); declarations.Add(canonical); continue;
+                    dataType = "BOOL"; canonical += "." + bit.ToString(CultureInfo.InvariantCulture); declarations.Add(canonical);
+                    result.CanonicalSymbol = canonical; result.DeclarationPaths = declarations.ToArray(); continue;
                 }
-                if (!types.TryGetValue(dataType, out var type) || type.Kind != "struct") return Fail("unknownType", "Member declarations for this controller type are unavailable.");
+                if (!types.TryGetValue(dataType, out var type) || type.Kind != "struct")
+                    return Fail(IsAtomic(dataType) && atomic != "STRING" && atomic != "WSTRING" ? "missingMember" : "unknownType",
+                        "Member declarations for this controller type are unavailable or the type has no such member.");
                 var member = type.Members.SingleOrDefault(m => ControllerDeclarations.Names.Equals(m.Name, segment.Name));
                 if (member == null) return Fail("missingMember", "Controller member is absent from the supplied type declaration.");
                 if (member.Hidden) return Fail("hiddenMember", "The selected controller member is hidden.");
                 canonical += "." + member.Name; declarations.Add(canonical); dataType = member.DataType; dimensions = member.Dimensions;
+                result.CanonicalSymbol = canonical; result.DeclarationPaths = declarations.ToArray();
                 access = Restricted(access, member.ExternalAccess); typeStack.Clear();
             }
             if (!Unwrap()) return Fail("unresolved", "Unsupported or cyclic controller type alias.");

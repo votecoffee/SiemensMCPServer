@@ -132,6 +132,8 @@ Comfort workers support [layout](plugin/COMFORT-LAYOUT.md), [styled captions](pl
 
 Comfort worker 0.10.5 adds layout for horizontal/vertical lines with one zero extent, updates their primary endpoints and dependent bounds together, exposes control `TabIndex` values for reviewed copies, and preserves exported composition positions when copying behaviors. Inconsistent line geometry is rejected before scalar-edit staging. These worker changes reload on host 0.10.4 or newer. The 0.10.5 host additionally owns runtime shutdown cleanup and records failed readback artifact paths; obtaining those host changes requires an upgrade/reconnect.
 
+Comfort worker 0.11.0 adds [project reference analysis](plugin/HMI-REFERENCE-ANALYSIS.md), Rockwell L5X/PLCopen declaration import, member/type/array/alias binding checks and proposed-change impact reports. A companion command reads complete export folders and large controller files directly. These read-only operations reload on host 0.10.4 or newer; native connection partners and runtime behavior require separate checks.
+
 ## Development
 
 Run the offline tests from the repository root:

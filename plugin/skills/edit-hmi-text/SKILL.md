@@ -1,9 +1,11 @@
 ---
 name: edit-hmi-text
-description: Inspect and edit Comfort/classic or Unified HMI engineering objects, text lists and screens through local Siemens TIA Portal Openness, including supported object creation and native resource import/export. Use for an open TIA engineering project; excludes running-device control.
+description: Inspect and edit Comfort/classic or Unified HMI engineering objects, text lists and screens through local Siemens TIA Portal Openness, and analyze exported HMI/controller references and binding impacts. Excludes running-device control.
 ---
 
 Use the SiemensMCPServer tools to work directly with the selected engineering project. Preserve the user's authorized scope across the workflow.
+
+For project reference/binding analysis, use the Comfort worker's read-only `import_controller_declarations`, `analyze_hmi_references`, `validate_hmi_bindings` and `reference_impact` operations. Export the exact selected HMI, retain its index and use supplied Rockwell L5X or PLCopen metadata with explicit connection mappings. Large files/complete exports use the bundled `scripts/Analyze-HmiReferences.ps1` command, which constructs project inputs directly from files. Use `addressSyntax="wincc-rockwell"` for documented program-name/colon addressing. Preserve native array descriptors; native Length is not necessarily element count. Retain source/analysis hashes, unresolved results and opaque/dynamic coverage limits; reports do not apply edits or establish native/runtime validity. Read [reference analysis arguments and limits](../../HMI-REFERENCE-ANALYSIS.md) for schemas and file-command usage. These 0.11.0 operations reload on host 0.10.4 or newer.
 
 For feature updates, use `tia_list_extensions` to inspect module versions, generations and operation schemas. Stage trusted bundles with the packaged `Install-Extension.ps1`, then use `tia_reload_extensions` for the selected module (empty string reloads all). Successful reload preserves attachment and unsaved project edits but invalidates all previews; re-read before new previews. Failed reload retains the previous workers/previews. Existing tools use these same workers. New operations on supported broker routes use `tia_read_extension`, `tia_preview_extension` and `tia_apply_extension_plan` with advertised JSON arguments and exact target/fingerprint. Keep the user's existing authorization; reload never authorizes engineering edits. See [extension workflow](../../EXTENSIONS.md). A 0.6.x installation needs an initial 0.7.0 host upgrade before worker reload is available.
 

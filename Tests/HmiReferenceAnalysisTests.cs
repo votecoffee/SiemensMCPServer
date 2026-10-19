@@ -147,4 +147,21 @@ public sealed class HmiReferenceAnalysisTests
         input.Resources[1].Xml = HmiReferenceFixture.Screen(@"HMI\Axis\Position[1]"); report = HmiReferenceAnalyzer.Analyze(input);
         Assert.DoesNotContain(HmiReferenceImpact.Report(input, report, report.AnalysisSha256, change).Items, i => i.Reference.LinkType == "Tag");
     }
+    [Fact] public void UnresolvedNamedTagsAndPartialControllerPathsRemainPossibleImpacts()
+    {
+        var input = HmiReferenceFixture.Input(screen: HmiReferenceFixture.Screen(@"HMI\Missing"));
+        var report = HmiReferenceAnalyzer.Analyze(input);
+        var result = HmiReferenceImpact.Report(input, report, report.AnalysisSha256, new[] { new HmiProposedChange { Kind = "tag", Name = @"HMI\Missing" } });
+        Assert.Equal("possible", Assert.Single(result.Items).Certainty);
+        input = HmiReferenceFixture.Input(HmiReferenceFixture.Table("Axes[1].Missing")); report = HmiReferenceAnalyzer.Analyze(input);
+        result = HmiReferenceImpact.Report(input, report, report.AnalysisSha256, new[] { new HmiProposedChange { Kind = "controllerSymbol", ControllerId = "plc", Name = "Axes" } });
+        Assert.NotEmpty(result.Items); Assert.All(result.Items, i => Assert.Equal("possible", i.Certainty));
+    }
+    [Fact] public void ExactExportedScreenLinksAreReportedWithoutInferringRuntimeNavigation()
+    {
+        var input = HmiReferenceFixture.Input();
+        input.Resources[1].Xml = input.Resources[1].Xml.Replace("</LinkList>", "<Screen TargetID='#0'/></LinkList>");
+        var report = HmiReferenceAnalyzer.Analyze(input);
+        Assert.Equal("screenReference", report.References.Single(r => r.LinkType == "Screen").Status);
+    }
 }

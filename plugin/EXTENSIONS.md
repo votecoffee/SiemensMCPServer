@@ -1,4 +1,4 @@
-# Reloadable feature extensions — 0.10.5
+# Reloadable feature extensions — 0.11.0
 
 The MCP host retains its connection to Codex and owns the Siemens attachment, single STA queue, transactions, offline checks, preview stores, candidate hashes and native readback. Pure feature workers receive JSON snapshots, never Siemens CLR objects. The host copies complete, hash-checked bundles into private generation directories before starting workers, so they do not lock the source of the next update.
 
@@ -45,6 +45,8 @@ Host 0.10.5 registers the runtime through a container-owned factory so normal sh
 
 ## Classic native XML
 
+Comfort worker 0.11.0 adds `import_controller_declarations`, `analyze_hmi_references`, `validate_hmi_bindings` and `reference_impact` through the existing read-only `local` route. These use serialized snapshots and reload on host 0.10.4 or newer. The separate file-command mode handles complete export folders/large L5X files and is not reachable through filesystem-path arguments in MCP operations. See [reference analysis](HMI-REFERENCE-ANALYSIS.md).
+
 Host/worker 0.10.4 accepts the native `AttributeList/ObjectName` used by V15.1 screen controls, while retaining unambiguous `Name` fixtures/adapters. Copies rename the existing field rather than adding a second name. Missing, complex or ambiguous name fields make control operations unavailable. Layout, captions and reference/behavior catalogs use the same name reader.
 
 Internal `TargetID` values use `#` followed by the target object's `ID`; symbolic targets use `@OpenLink`. Siemens documents this format in its [Openness system manual](https://cache.industry.siemens.com/dl/files/802/109773802/att_1007204/v1/TIAPortalOpenness_en-US.pdf). The shared adapter resolves prefixed links, remaps cloned internal links, preserves external link values and the original prefix on explicit owner remapping, and checks retained references before removal. Bare-ID links remain accepted for existing adapters. Unknown targets and unsupported `UId` formats stay protected.
@@ -79,7 +81,7 @@ For development, rebuild only the worker and stage the selected module:
 ```powershell
 powershell.exe -NoProfile -File build\Build-Extensions.ps1 `
   -Destination "$env:LOCALAPPDATA\SiemensMCPServer\Extensions" `
-  -WorkerVersion '0.10.5' -Modules comfort
+  -WorkerVersion '0.11.0' -Modules comfort
 ```
 
 Then call `tia_reload_extensions(module="comfort")`. This does not rebuild or replace the host. Use an isolated destination and matching host `--extensions-root` for test versions. Normal MCP builds automatically build bundled workers; `build\Build-Plugin.ps1` creates a complete release package with fresh bundled generations.

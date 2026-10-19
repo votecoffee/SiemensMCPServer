@@ -112,6 +112,7 @@ namespace SiemensMCPServer.Analysis
     {
         public string Format => "tia-hmi-reference-analysis-v1";
         public string EngineVersion => typeof(HmiReferenceAnalyzer).Assembly.GetName().Version!.ToString(3);
+        public string EngineBuildId => typeof(HmiReferenceAnalyzer).Module.ModuleVersionId.ToString("D");
         public string AnalysisSha256 { get; set; } = "";
         public object[] Sources { get; set; } = Array.Empty<object>();
         public ControllerDeclaration[] Controllers { get; set; } = Array.Empty<ControllerDeclaration>();
