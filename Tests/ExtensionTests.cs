@@ -9,6 +9,20 @@ using Xunit;
 
 public sealed class ExtensionTests
 {
+    [Theory]
+    [InlineData("comfort", "edit_text_list", true, "literalTextV1", true)]
+    [InlineData("comfort", "change_text_list", true, "literalTextV1", true)]
+    [InlineData("comfort", "edit_text_list", false, "literalTextV1", false)]
+    [InlineData("unified", "edit_text_list", true, "literalTextV1", false)]
+    [InlineData("comfort", "edit_xml", true, "literalTextV1", false)]
+    [InlineData("comfort", "edit_text_list", true, "", false)]
+    public void LiteralTextRouteRequiresTheExactInternalContract(string module, string name, bool preview, string kind, bool valid)
+    {
+        var operation = new ExtensionOperation { Name = name, Route = "internalText", Preview = preview, SnapshotKind = kind,
+            InputSchema = ExtensionWire.Json(new { type = "object" }) };
+        Assert.Equal(valid, operation.IsCompatible(module));
+    }
+
     [Fact] public void RenamedRootPreservesLegacySelectionUntilNewRootExists()
     {
         using var fixture = new Fixture();

@@ -39,6 +39,8 @@ The server exposes engineering operations through the Model Context Protocol (MC
 | Libraries | Read-only project/open global library metadata: folders, types, versions and master-copy contents. No library updates or instance creation. |
 | Project texts | Active-language discovery, native XLSX extraction/search, language-aware comment/description/text records and reviewed existing-translation updates. Native import acceptance pending. |
 
+Host/Comfort worker 0.14.1 preserves literal CR/LF values in classic text-list XML and fingerprints. Upgrade/reconnect the host before loading this worker; older hosts reject its new internal text contract and retain their prior generation. Native multiline import acceptance remains separate.
+
 The server does not provide device download, runtime control, watch or force operations. See [feature coverage](plugin/FEATURE-COVERAGE.md) and [validation status](plugin/NATIVE-ACCEPTANCE.md) for supported routes and their limits.
 
 ## Install

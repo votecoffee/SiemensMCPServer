@@ -109,7 +109,16 @@ namespace SiemensMCPServer
             return candidate;
         }
 
-        public string ToXml() { return document.ToString(SaveOptions.DisableFormatting); }
+        public string ToXml() { return ExactXml(document); }
+        private static string ExactXml(XNode node)
+        {
+            // Literal CR/CRLF in an XML text node must be entitized. XML 1.0
+            // normalizes raw CR on reparsing; ToString's default writer loses it.
+            var text = new StringBuilder();
+            using (var writer = XmlWriter.Create(text, new XmlWriterSettings {
+                OmitXmlDeclaration = true, Indent = false, NewLineHandling = NewLineHandling.Entitize })) node.WriteTo(writer);
+            return text.ToString();
+        }
         private IEnumerable<XElement> Entries() { return list.Element("ObjectList")?.Elements("Hmi.TextGraphicList.TextListEntry") ?? Enumerable.Empty<XElement>(); }
         private static IEnumerable<XElement> Items(XElement entry)
         {
@@ -162,7 +171,7 @@ namespace SiemensMCPServer
                 var attributes = element.Attributes().OrderBy(a => a.Name.ToString(), StringComparer.Ordinal).Select(a => new XAttribute(a)).ToArray();
                 element.RemoveAttributes(); element.Add(attributes);
             }
-            return clone.ToString(SaveOptions.DisableFormatting);
+            return ExactXml(clone);
         }
         public static string Hash(string text)
         {

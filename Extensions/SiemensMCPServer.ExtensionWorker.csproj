@@ -3,7 +3,7 @@
     <OutputType>Exe</OutputType><TargetFramework>net48</TargetFramework><PlatformTarget>x64</PlatformTarget>
     <LangVersion>latest</LangVersion><Nullable>annotations</Nullable><AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType><RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <AssemblyName>SiemensMCPServer.ExtensionWorker</AssemblyName><Version>0.13.0</Version>
+    <AssemblyName>SiemensMCPServer.ExtensionWorker</AssemblyName><Version>0.14.1</Version>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Analysis/*.cs" Link="Analysis/%(Filename)%(Extension)"/>

@@ -33,6 +33,35 @@ public sealed class TextListTests
         Entry = "7", Culture = "en-US", ExpectedText = "Old & ready", NewText = newText
     };
 
+    [Theory]
+    [InlineData("First\r\nSecond")]
+    [InlineData("First\rSecond")]
+    [InlineData("First\nSecond")]
+    [InlineData("\tCafé テスト 😀\r\n\r\nEnd\r")]
+    public void LiteralNewlinesSurviveXmlAndWorkerReparsing(string value)
+    {
+        var original = new TextListDocument(Fixture());
+        var edited = original.Edit(new[] { Edit(value) });
+        var parsed = new TextListDocument(edited.Serialize());
+        Assert.Equal(value, parsed.Read().Single(v => v.Entry == "7" && v.Culture == "en-US").Text);
+        Assert.Equal(edited.Fingerprint, parsed.Fingerprint);
+        Assert.Equal(parsed.Serialize(), new TextListDocument(parsed.Serialize()).Serialize());
+        Assert.Equal("Español intacto", parsed.Read().Single(v => v.Entry == "7" && v.Culture == "es-ES").Text);
+        Assert.Equal("Old & ready", original.Read().Single(v => v.Entry == "7" && v.Culture == "en-US").Text);
+    }
+
+    [Fact]
+    public void FingerprintsDistinguishCarriageReturnsFromLineFeeds()
+    {
+        var original = new TextListDocument(Fixture());
+        var cr = original.Edit(new[] { Edit("First\rSecond") });
+        var lf = original.Edit(new[] { Edit("First\nSecond") });
+        var crlf = original.Edit(new[] { Edit("First\r\nSecond") });
+        Assert.NotEqual(cr.Fingerprint, lf.Fingerprint);
+        Assert.NotEqual(crlf.Fingerprint, lf.Fingerprint);
+        Assert.NotEqual(cr.Fingerprint, crlf.Fingerprint);
+    }
+
     [Fact]
     public void EditsOnlySelectedLanguageAndPreservesMetadataAndOriginal()
     {

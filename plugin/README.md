@@ -1,8 +1,10 @@
-# SiemensMCPServer plugin 0.14.0
+# SiemensMCPServer plugin 0.14.1
 
 The project and GitHub repository are now **SiemensMCPServer**. The plugin/MCP ID is `siemens-mcp-server`, the local marketplace is `siemens-mcp-server-local`, and the host is `SiemensMCPServer.Mcp.exe`. Remove the old `siemens-tia-openness` plugin or direct MCP registration through Codex before installing the renamed plugin. The installer refuses to register a second copy while the old server is enabled. Do not remove its cache manually while it is running. This rename needs a host upgrade; feature-worker reload remains available afterward.
 
 This local Windows plugin provides Comfort/classic and Unified engineering object tools, native resource import/export, bulk transfers, and specialized text-list and screen-caption workflows. It uses the official C# MCP SDK and .NET Framework 4.8. No OpenAI API key is needed to connect it to Codex. The separately built desktop WinForms application retains its classic HMI workflow and also supports API-visible Unified and offline PLC native resource transfers. The plugin package contains the MCP server and workers. See [feature coverage](FEATURE-COVERAGE.md) for implemented MCP routes and remaining boundaries.
+
+Host/Comfort worker 0.14.1 preserves literal carriage returns and mixed CR/LF values in classic text-list XML and fingerprints. This needs a host upgrade/reconnect: the new `internalText` / `literalTextV1` worker contract is rejected by older hosts, retaining their previous generation. Native acceptance of exact multiline values remains separate.
 
 ## Install the built package
 

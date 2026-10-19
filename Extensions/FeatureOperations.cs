@@ -42,8 +42,8 @@ namespace SiemensMCPServer.Extensions
                     Op("inspect_xml", "Inspect supplied classic XML without attaching to TIA.", "local", false, xmlSchema),
                     Op("edit_xml", "Edit existing scalar XML fields in the selected native resource.", "classicXml", true, new { type = "object", required = new[] { "edits" }, properties = new { edits = new { type = "array", items = new { type = "object", required = new[] { "xPath", "expectedValue", "newValue" }, properties = new { xPath = new { type = "string" }, expectedValue = new { type = "string" }, newValue = new { type = "string" } } } } } }, "classicReferences"),
                     Op("change_behaviors", "Clone/remove frozen native event/animation prototypes. Clone owner types must match; explicit same-type Owner/Control maps may retarget external native links. Combined removals guard retained references; scalar edits preserve identity metadata.", "classicXml", true, BehaviorSchema(true), "classicReferences"),
-                    Op("edit_text_list", "Transform supplied classic text-list translations.", "internal", true, new { type = "object" }),
-                    Op("change_text_list", "Transform supplied classic text-list structure.", "internal", true, new { type = "object" }) };
+                    Op("edit_text_list", "Transform supplied classic text-list translations, preserving literal CR/LF text. Requires host 0.14.1+.", "internalText", true, new { type = "object" }, "literalTextV1"),
+                    Op("change_text_list", "Transform supplied classic text-list structure, preserving literal CR/LF text. Requires host 0.14.1+.", "internalText", true, new { type = "object" }, "literalTextV1") };
                 case "unified": return new[] {
                     Op("edit_object", "Edit supported static fields/captions of a selected Unified screen/item. arguments: screenPath, itemPath, edits.", "unifiedObject", true, new { type = "object", required = new[] { "screenPath", "itemPath", "edits" } }),
                     Op("edit_text_list", "Transform a supplied paired-YAML text-list document.", "internal", true, new { type = "object" }) };

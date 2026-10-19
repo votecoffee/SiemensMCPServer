@@ -126,3 +126,7 @@ Extensions are trusted executable code running under the user's Windows account.
 A 0.6.x installation first needs the 0.7.0 host and five new tools. An already loaded 0.6.x executable cannot gain the loader through a worker update. Windows can keep the old cache locked until its processes close. This initial host installation is separate from subsequent worker reloads; package/manifest/skill changes are not guaranteed to load in place in Codex.
 
 Pure tests and the persistent-STDIO upgrade test cover worker replacement, a new operation, Unicode, rejected-update rollback, payload tampering, crash/deadline recovery and shutdown. See [validation status](NATIVE-ACCEPTANCE.md) for native-check scope. Unified and PLC native writes require separate acceptance. Keep raw evidence outside the public repository or under `.local/`.
+
+## Literal classic text values (0.14.1)
+
+Comfort text-list edits and structure operations use the `internalText` / `literalTextV1` contract. Host and worker 0.14.1 serialize CR characters as XML entities, preserve CR/LF mixtures on reparse and distinguish those values in fingerprints. Older hosts reject this route during catalog validation and retain their existing workers/plans. Upgrade/reconnect the host before staging the new Comfort worker. Ordinary feature reload remains available afterward. Native import/readback of specific multiline values requires its own acceptance.
