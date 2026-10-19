@@ -21,7 +21,7 @@ namespace SiemensMCPServer.Mcp
             Type? software = ResolveType(SoftwareType);
             Type? screen = ResolveType(ScreenType);
             Type? button = ResolveType(ButtonType);
-            bool screens = Has(software, "Screens") && Has(software, "ScreenGroups") && Has(screen, "ScreenItems");
+            bool screens = Has(software, "Screens") && Has(screen, "ScreenItems");
             bool edits = screens && Has(button, "Text") && Has(button, "Left") && Has(button, "Top") && Has(button, "Width") && Has(button, "Height") && Has(button, "Dynamizations");
             return new {
                 apiAssembly = assembly.GetName().Name, apiVersion = assembly.GetName().Version!.ToString(),
@@ -34,7 +34,7 @@ namespace SiemensMCPServer.Mcp
                     scope = "Offline blocks, PLC data types, tag tables/groups, native XML import/export, SCL/STL source generation and compile diagnostics. Native trials pending.",
                     downloadOrRuntimeControl = false },
                 plcInspection = PlcInspectionNative.Capabilities(),
-                unifiedScreenEdits = edits,
+                unifiedScreenEdits = edits, unifiedScreenGroups = Has(software, "ScreenGroups"),
                 unifiedTextListNativeApiPresent = Has(software, "HmiTextLists"), unifiedTextListEditing = UnifiedTextListNative.Supports(software),
                 engineeringObjectTools = new { browse = true, typedScalarEdits = true, nativeCreationAndDeletion = "per-object self-description", nativeImportExport = "per-object method presence", bulkImport = "native resources and supported folder hierarchy only" },
                 unifiedRootNavigators = software == null ? Array.Empty<string>() : software.GetProperties().Where(p => p.Name != "Parent").Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray(),
@@ -42,7 +42,7 @@ namespace SiemensMCPServer.Mcp
             };
         }
 
-        public static bool CanInspect(object software) => Has(software.GetType(), "Screens") && Has(software.GetType(), "ScreenGroups");
+        public static bool CanInspect(object software) => Has(software.GetType(), "Screens");
         private static Type? ResolveType(string name) => SiemensApiTypes.Resolve(typeof(Project).Assembly, name, TiaPortalAssemblyResolver.LoadOptionalModule);
         private static bool Has(Type? type, string name) => type?.GetProperty(name, BindingFlags.Public | BindingFlags.Instance) != null;
         private static PropertyInfo Property(object target, string name) => target.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.Instance)
@@ -60,23 +60,7 @@ namespace SiemensMCPServer.Mcp
         public static IList<NamedObject> Screens(object software)
         {
             if (!CanInspect(software)) throw new NotSupportedException("This installed Unified API does not expose screen discovery.");
-            var result = new List<NamedObject>();
-            AddScreens(software, "", result);
-            foreach (object group in Each(Get(software, "ScreenGroups"))) AddGroup(group, "groups", result, 0);
-            if (result.GroupBy(s => s.Path, StringComparer.Ordinal).Any(g => g.Count() > 1)) throw new InvalidOperationException("Ambiguous Unified screen paths.");
-            return result;
-        }
-        private static void AddScreens(object owner, string prefix, List<NamedObject> result)
-        {
-            foreach (object screen in Each(Get(owner, "Screens")))
-                result.Add(new NamedObject { Path = prefix + "screens/" + Uri.EscapeDataString((string)Get(screen, "Name")), Native = screen });
-        }
-        private static void AddGroup(object group, string prefix, List<NamedObject> result, int depth)
-        {
-            if (depth >= 32) throw new InvalidOperationException("Unified screen group nesting exceeds 32 levels.");
-            string path = prefix + "/" + Uri.EscapeDataString((string)Get(group, "Name")) + "/";
-            AddScreens(group, path, result);
-            foreach (object child in Each(Get(group, "Groups"))) AddGroup(child, path + "groups", result, depth + 1);
+            return UnifiedScreenCatalog.Read(software).Select(s => new NamedObject { Path = s.Path, Native = s.Native }).ToList();
         }
         public static object FindScreen(object software, string path) => Screens(software).SingleOrDefault(s => s.Path == path)?.Native
             ?? throw new InvalidOperationException("Unified screen path does not exist. Use hmi_list_screens.");

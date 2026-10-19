@@ -11,6 +11,7 @@
     <Compile Include="../Shared/CompileServiceResolver.cs" Link="CompileServiceResolver.cs" />
     <Compile Include="../Shared/SiemensApiTypes.cs" Link="SiemensApiTypes.cs" />
     <Compile Include="../Shared/ProjectGraphicsAccess.cs" Link="ProjectGraphicsAccess.cs" />
+    <Compile Include="../Shared/UnifiedScreenCatalog.cs" Link="UnifiedScreenCatalog.cs" />
     <Compile Include="../Mcp/JsonDefaults.cs" Link="JsonDefaults.cs" />
     <Compile Include="../Mcp/ExtensionManager.cs" Link="ExtensionManager.cs" />
     <Compile Include="../Mcp/ExtensionPlanStore.cs" Link="ExtensionPlanStore.cs" />

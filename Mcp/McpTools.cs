@@ -67,7 +67,7 @@ namespace SiemensMCPServer.Mcp
         public Task<CallToolResult> Capabilities(CancellationToken token) => Result(() => runtime.Invoke(s => s.ApiCapabilities(), token));
 
         [McpServerTool(Name = "hmi_list_screens", ReadOnly = true, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
-        [Description("List Unified screens recursively through screen groups. Returns exact screen paths for the Unified read/edit tools.")]
+        [Description("List Unified screens, recursively through screen groups when the installed API exposes them (flat composition on V16/V17). Returns exact screen paths for the Unified read/edit tools.")]
         public Task<CallToolResult> Screens(string hmiId, CancellationToken token) => Result(() => runtime.Invoke(s => s.ListScreens(hmiId), token));
 
         [McpServerTool(Name = "hmi_list_screen_items", ReadOnly = true, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
