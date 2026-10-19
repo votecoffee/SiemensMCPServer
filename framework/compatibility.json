@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "status": "awaiting-compatible-framework-package",
+  "requiredMcpPythonSeries": "2.3",
+  "acceptedFrameworkVersion": null,
+  "productionAdoption": false,
+  "historicalReference": {
+    "frameworkVersion": "0.13.0",
+    "mcpPythonVersion": "1.30.0",
+    "scope": "Disposable compatibility tests only; not an approved installation target"
+  }
+}

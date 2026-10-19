@@ -1,26 +1,18 @@
 # Experimental shared app framework profile
 
-SiemensMCPServer retains its fully functional standalone Codex plugin and .NET MCP endpoint. The primary shared-code direction is an app-owned host using the separately packaged `universal_tools.framework`, with the Siemens executable as an out-of-process backend. Universal Tools aggregation is optional; this profile does not require installing its Codex plugin or changing existing registrations.
+SiemensMCPServer retains its fully functional standalone Codex plugin and .NET MCP endpoint. The shared-code direction is an app-owned host using the separately packaged `universal_tools.framework`, with Siemens as an out-of-process backend. Universal Tools aggregation is optional. Existing installed plugins, registrations and native workflows are not migrated by this profile.
 
-The current profile is **experimental preparation and isolated compatibility validation**, rather than an installed replacement for the standard Siemens plugin. The framework's stable fourteen-tool discovery/invocation surface can route the existing 54 Siemens tools. App-native targets, previews, candidate hashes, write policy and native operations stay in the existing .NET services. There is no shipped native .NET/NuGet framework binding; the .NET MCP SDK is not downgraded to the framework's Python SDK.
+**The target framework must use MCP Python 2.3.** The previously tested framework 0.13.0/MCP Python 1.30.0 combination is historical disposable-test evidence, not the proposed installation target. The Siemens application's existing .NET MCP SDK remains unchanged at 2.2.0; SDK versions in different languages have separate lifecycles. No native .NET/NuGet framework binding is assumed.
 
-## Pinned dependency and private state
+## Dependency acceptance gate
 
-The optional runtime/test dependency is `universal-codex-tools==0.13.0`, importing `universal_tools.framework`. The repository's `framework/requirements-lock.txt` pins its tested Windows/Python 3.13 dependency snapshot, including MCP Python 1.30.0. The MCP ZIP includes that lock for explicit local preparation; it does not contain or install Python, the framework wheel, a framework daemon or copied framework implementation.
+`framework/compatibility.json` records the required MCP Python series and currently has no accepted framework package version. `scripts/test_app_framework.py` refuses to start the compatibility run until a compatible framework package is explicitly pinned. The production package contains no older SDK dependency lock or framework installer. It does not install Python, a framework daemon or another Codex plugin.
 
-Obtain a verified local wheel from the framework project. No public package feed is assumed. Inspect its version, dependencies, SHA-256 and wheel RECORD, then install it in a dedicated virtual environment:
-
-```powershell
-py -3.13 -m venv .local/framework
-& .local/framework/Scripts/python.exe -m pip install -r framework/requirements-lock.txt --find-links 'C:\path\to\verified-wheel-directory'
-& .local/framework/Scripts/python.exe -m pip check
-```
-
-For coordinated development, an explicit editable installation of the framework checkout can replace the wheel after preparing the same locked environment. Record the tested source revision and rerun the compatibility profile. Do not copy framework source into this repository, use a Git submodule, install dependencies during a tool call, or reuse a universal broker's existing state.
+After the updated framework package is published locally, inspect/verify its wheel version, dependencies, SHA-256 and RECORD. Pin that exact framework version and its compatible transitive dependencies in normal dependency management, then run the profile in a dedicated environment. Do not downgrade the app SDK or force incompatible dependency resolution. Explicit editable/local dependencies can support coordinated development after the compatible baseline is established; do not copy framework implementation source or use a Git submodule.
 
 ## Prepare a versioned backend publication
 
-Start from a verified, freshly extracted Siemens plugin ZIP. From its root:
+The preparation helper remains available independently of framework installation. From a verified extracted Siemens package:
 
 ```powershell
 powershell.exe -NoProfile -File scripts/New-FrameworkPublication.ps1 `
@@ -30,33 +22,24 @@ powershell.exe -NoProfile -File scripts/New-FrameworkPublication.ps1 `
   -ExtensionsRoot 'C:\private\siemens-framework\extensions'
 ```
 
-From source, the helper is under `build/`. Preparation validates all payload manifest members, rejects extra/linked/tampered/unsafe paths, binds the entrypoint hash and derives the backend revision from the payload manifest plus launch policy. Existing publication files are retained and cannot be overwritten. Use immutable deployment directories and keep publications/settings outside them. The framework verifies the entrypoint on metadata/dispatch; complete dependency/resource closure remains an app deployment responsibility.
+From source, the helper is under `build/`. It validates all payload manifest members, rejects extra/linked/tampered/unsafe paths and existing output files, binds the entrypoint hash, and derives the backend revision from the payload manifest plus launch policy. Keep publications/settings outside immutable deployment directories. Full dependency/resource closure remains an app deployment responsibility; the framework's entrypoint hash is not full closure authentication.
 
-The default publication denies writes. `-AllowedWriteTools` requires exact outer Siemens tool names and enables only that reviewed list, together with the host launch flag. The [shared safeguard policy](SAFEGUARDS.md) remains an independent ceiling. The `exclusive` session mode and stable `siemens-tia-openness` resource ID retain selection/review ownership. Shared mode is unsuitable for this backend's process-owned current project and pending plans.
+The default publication denies writes. `-AllowedWriteTools` accepts exact outer Siemens tool names for an explicitly reviewed list, together with host launch permission. [Shared safeguards](SAFEGUARDS.md) remain an independent ceiling. The `exclusive` session mode and stable `siemens-tia-openness` resource ID preserve selection/review ownership. Shared mode is unsuitable for this backend's process-owned current project and pending plans.
 
-Preparation does not start a host, install a plugin, change a live registration or connect to TIA. An explicitly selected disposable profile can use the framework package's reference host with **dedicated private app state**:
+Preparation does not start a host, select a framework version, install a plugin, change a live registration or connect to TIA. Starting the updated framework requires its compatible accepted package and dedicated private app state. Never reuse an existing universal broker's state or automatically switch a live frontend.
 
-```powershell
-& .local/framework/Scripts/python.exe -m universal_tools --state .local/siemens-framework-state init --port 8894
-& .local/framework/Scripts/python.exe -m universal_tools --state .local/siemens-framework-state app-serve --publication 'C:\private\siemens-framework\application.json'
-```
+## Stable surface, updates and recovery
 
-The host owns its loopback authentication/private settings. Its package provides the `RemoteBackend`/stdio adapter for independent frontends. Do not use the universal broker's automatic-start command with app state or silently switch an existing frontend. Host startup, actual frontend/plugin packaging and route-aware guidance require explicit deployment acceptance.
+The framework's discovery/invocation front door can route Siemens tools while keeping app-native targets, preview revisions, candidate hashes and native operations in the .NET domain services. A new backend publication must preserve app authorization and original result/media semantics. Native skills or front-door schemas still require plugin update/reload; arbitrary in-process DLL replacement is outside this contract.
 
-## Updates, ownership and authorization
+Complete work and release the exclusive context before refreshing a backend revision. Owned contexts defer replacement. Preserve request receipts and uncertainty barriers: neither refresh, renaming a resource, a new request ID nor a direct-route retry reconciles an unknown outcome. Inspect independent app evidence before any local administrative acknowledgement.
 
-Backend deployment/publication and the native Codex skill package have separate versions. With unchanged front-end definitions, finish work and release the exclusive context before refreshing a new publication. An owned context defers replacement. Reload does not transfer another frontend's attachment or plans. Native skill/schema or framework-runtime changes still require the corresponding plugin update/reconnect; this profile does not establish arbitrary in-process DLL reload.
+Chat settings such as Full access or Ask for approval are not an app authorization adapter. No model-provided mode argument bypasses Siemens safeguards, launch permission, client/broker policy or uncertain-outcome handling. The [optional broker route](BROKER-INTEGRATION.md) remains a separate assessment.
 
-Retain request receipts and uncertainty barriers. An app-error receipt can block replacement even when the error appears harmless. Reconcile through the app's independent evidence before any explicit local administrative acknowledgement; neither refresh, a new backend revision, a renamed resource nor a direct-route retry is reconciliation.
+## Verification and remaining gaps
 
-Chat settings such as Full access or Ask for approval are not an app authorization adapter. No tool argument can claim those modes to bypass Siemens safeguards, launch permissions, client/broker policy or an uncertain outcome. The [broker contract](BROKER-INTEGRATION.md) remains separate from framework adoption and optional nested aggregation.
+The historical 0.13.0/1.30.0 disposable profile compared complete direct/routed read results, discovered the 54 Siemens tools, enforced independent ownership, deferred/applied backend publications, rejected stale catalogs, preserved fourteen front-end definitions and retained an app-error barrier after the Siemens write policy denied a request. Preparation overwrite, bad-hash, extra-file and unsafe-path controls passed. This does not establish compatibility with MCP Python 2.3.
 
-## Verification and gaps
+Once a compatible framework package and dependency lock are accepted, rerun `scripts/test_app_framework.py` against a verified extracted Siemens payload. Retain explicit direct/routed comparisons and measured latency; no production performance claim follows from small local samples.
 
-```powershell
-& .local/framework/Scripts/python.exe -B -X utf8 scripts/test_app_framework.py 'C:\packages\verified-siemens-payload' --report .local/framework-check.json
-```
-
-The test imports the pinned framework package's `ApplicationHost` around the production .NET backend in disposable state. It compares complete direct/routed read results, discovers all 54 backend tools, verifies independent owner denial, defers an owned publication, applies it after release, rejects stale catalogs, compares all fourteen front-end definitions, and verifies that the Siemens policy denial retains an app-error receipt that blocks further replacement. It also tests publication overwrite and malformed/tampered payload rejection. Direct/host timings are small local samples, not native performance or throughput acceptance.
-
-This establishes an isolated API compatibility profile. It does **not** establish a persistent native Codex connection across refresh, chat isolation, media/progress parity, native imports/rollback, complete deployment-closure checks on every invocation, production performance, standalone framework-plugin activation, or nested universal aggregation. Keep the standard standalone plugin available and existing live routes unchanged until those applicable gates pass. See the framework project's [design](https://github.com/votecoffee/CodexMCPBroker/blob/main/docs/app-framework.md) and [acceptance guidance](https://github.com/votecoffee/CodexMCPBroker/blob/main/docs/server-development/acceptance.md).
+Acceptance still includes the updated framework runtime, persistent native MCP sessions across refresh, standalone framework-plugin/Codex activation, actual chat isolation, media/progress parity, native import/rollback, deployment closure and optional nested aggregation. Keep the standard standalone plugin available and live routes unchanged until applicable gates pass. The framework project's [design](https://github.com/votecoffee/CodexMCPBroker/blob/main/docs/app-framework.md) and [acceptance guidance](https://github.com/votecoffee/CodexMCPBroker/blob/main/docs/server-development/acceptance.md) describe the shared direction; each actual package must be assessed at its pinned version.

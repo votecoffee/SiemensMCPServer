@@ -124,7 +124,7 @@ tia_get_api_capabilities()
 
 Keep a persistent MCP connection for engineering workflows: attachments, preview plans and worker generations belong to the running host. A transport that starts a fresh host for each call cannot carry an attach/preview/apply sequence. Inspect current native state and retained artifacts before retrying an uncertain write.
 
-The optional [shared app framework profile](plugin/APP-FRAMEWORK.md) pins `universal-codex-tools==0.13.0` and keeps the .NET server behind a versioned out-of-process publication. Preparation and isolated compatibility checks are implemented; standalone framework-plugin/Codex/native acceptance and nested aggregation remain pending. The standard standalone Siemens plugin remains fully available, and Universal Tools is optional. No native .NET framework package or public Python package feed is assumed.
+The optional [shared app framework profile](plugin/APP-FRAMEWORK.md) targets a framework package using MCP Python **2.3**, with the .NET server behind a versioned out-of-process publication. Its compatible package/dependency acceptance remains gated; the older Python SDK is not an installation target. The Siemens .NET MCP SDK and fully available standalone plugin are unchanged, and Universal Tools is optional. No native .NET framework package or public package feed is assumed.
 
 ### Reload feature workers
 

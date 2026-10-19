@@ -12,13 +12,6 @@ import subprocess
 import tempfile
 import time
 
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
-from universal_tools.cli import initialize
-from universal_tools.framework import ApplicationHost
-from universal_tools.models import atomic_json
-
-
 def data(result):
     assert not result.isError, result.model_dump_json()
     return result.structuredContent or json.loads(result.content[0].text)
@@ -29,9 +22,22 @@ def wire(result):
 
 
 async def run(plugin_root):
-    assert version("universal-codex-tools") == "0.13.0"
-    assert version("mcp") == "1.30.0"
     plugin_root = plugin_root.resolve()
+    profile_path = plugin_root / "framework/compatibility.json"
+    if not profile_path.exists():
+        profile_path = Path(__file__).resolve().parents[1] / "framework/compatibility.json"
+    profile = json.loads(profile_path.read_bytes())
+    accepted = profile["acceptedFrameworkVersion"]
+    if not accepted:
+        raise RuntimeError("Framework acceptance is gated: publish and pin a framework package using MCP Python "
+                           + profile["requiredMcpPythonSeries"] + ". No older SDK dependency will be installed or selected.")
+    assert version("universal-codex-tools") == accepted
+    assert ".".join(version("mcp").split(".")[:2]) == profile["requiredMcpPythonSeries"]
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+    from universal_tools.cli import initialize
+    from universal_tools.framework import ApplicationHost
+    from universal_tools.models import atomic_json
     server = plugin_root / "server/SiemensMCPServer.Mcp.exe"
     helper = plugin_root / "scripts/New-FrameworkPublication.ps1"
     if not helper.exists():  # Source-development check against an earlier verified payload.

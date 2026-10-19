@@ -10,7 +10,7 @@ A selected V15.1 broker pilot passed single-line English/German Unicode edits, n
 
 Host 0.15.0 and desktop 1.3.0 share [GUI-editable safeguards](SAFEGUARDS.md): write ceilings, operation restrictions, confirmations, preview limits, project scope and request limits. Permissions are rechecked for subsequent operations; scheduling/location changes require a host restart. Local settings do not grant client/broker or Siemens permission.
 
-An experimental [shared app framework profile](APP-FRAMEWORK.md) uses a pinned Python package and versioned .NET MCP backend publication. It prepares private app-owned state without requiring the Universal Tools plugin; the standard standalone plugin remains supported. This is an isolated compatibility foundation, with actual Codex/native deployment acceptance still pending.
+The experimental [shared app framework profile](APP-FRAMEWORK.md) targets MCP Python 2.3 and keeps the current .NET MCP SDK unchanged behind a versioned backend publication. A compatible framework package must be verified/pinned before acceptance; no older Python dependency lock is shipped. Universal Tools is optional and the standard standalone plugin remains supported. Actual Codex/native deployment acceptance is pending.
 
 ## Install the built package
 

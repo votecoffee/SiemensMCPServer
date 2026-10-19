@@ -66,7 +66,7 @@ try {
     }
     $stream = [IO.File]::Open($output, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
     try { $bytes = [Text.UTF8Encoding]::new($false).GetBytes(($publication | ConvertTo-Json -Depth 16)); $stream.Write($bytes, 0, $bytes.Length) } finally { $stream.Dispose() }
-    @{ state = 'framework-publication-prepared'; frameworkVersion = '0.13.0'; publication = $output; backendRevision = $revision;
+    @{ state = 'framework-publication-prepared'; frameworkVersion = $null; requiredMcpPythonSeries = '2.3'; compatibilityAcceptance = 'pending compatible framework package'; publication = $output; backendRevision = $revision;
        writesEnabled = $service.allow_writes; standalonePluginChanged = $false; liveRegistrationChanged = $false; nativeProjectChanged = $false } | ConvertTo-Json
 } finally {
     if (Test-Path -LiteralPath $descriptor) { Remove-Item -LiteralPath $descriptor }

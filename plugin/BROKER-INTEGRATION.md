@@ -79,4 +79,4 @@ Host 0.15.0 shares [desktop-editable app safeguards](SAFEGUARDS.md) for writes, 
 
 ## Shared framework direction
 
-The primary shared-code path is the [app-owned framework profile](APP-FRAMEWORK.md), pinned to `universal-codex-tools==0.13.0` with .NET behind its MCP worker boundary. Universal aggregation is an optional separate route. The profile retains the standard standalone plugin, app policy and versioned publication/recovery boundaries; no native .NET framework binding or installed migration is claimed.
+The primary shared-code path is the [app-owned framework profile](APP-FRAMEWORK.md), targeting a compatible MCP Python 2.3 framework package with the current .NET SDK behind its MCP worker boundary. Framework package acceptance is pending; the older Python SDK is not an installation target. Universal aggregation is optional. The standalone plugin, app policy and versioned publication/recovery boundaries remain; no native .NET binding or installed migration is claimed.

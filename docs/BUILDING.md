@@ -156,4 +156,4 @@ These use isolated settings files. They verify production-host permission gates 
 
 ## Optional shared framework profile
 
-Use the pinned `framework/requirements-lock.txt` in a separate virtual environment with a verified local framework wheel, then run `scripts/test_app_framework.py` against a verified extracted Siemens package. See [the preparation and acceptance guide](../plugin/APP-FRAMEWORK.md). The normal GUI/.NET server has no Python dependency. This profile starts a disposable app-owned `ApplicationHost` with the .NET backend, preserves app write policy and exclusive ownership, and leaves live plugins, registrations and native projects unchanged.
+The target is a framework package using MCP Python 2.3. `framework/compatibility.json` currently leaves the accepted framework version unset, and `scripts/test_app_framework.py` fails before starting a host until that package is verified/pinned. See [preparation and acceptance](../plugin/APP-FRAMEWORK.md). No older Python dependency lock is shipped. The GUI/.NET SDK is unchanged and has no Python dependency; live plugins, registrations and native projects stay untouched.
