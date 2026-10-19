@@ -17,6 +17,7 @@
     <Compile Include="../Mcp/ClassicXmlBehaviors.cs" Link="Features/ClassicXmlBehaviors.cs"/>
     <Compile Include="../Mcp/ClassicXmlLayout.cs" Link="Features/ClassicXmlLayout.cs"/>
     <Compile Include="../Mcp/ClassicScreenText.cs" Link="Features/ClassicScreenText.cs"/>
+    <Compile Include="../Mcp/ClassicScreenItems.cs" Link="Features/ClassicScreenItems.cs"/>
     <Compile Include="../Mcp/NativeXmlIds.cs" Link="Core/NativeXmlIds.cs"/>
     <Compile Include="../Mcp/TransferFiles.cs" Link="Core/TransferFiles.cs"/>
     <Compile Include="../Mcp/UnifiedTextListDocument.cs" Link="Features/UnifiedTextListDocument.cs"/>

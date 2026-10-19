@@ -22,6 +22,8 @@ namespace SiemensMCPServer.Extensions
                     Op("list_libraries", "List the attached project library and already-open global libraries with exact IDs and bounded metadata. Does not open, upgrade or save libraries.", "projectRead", false, LibraryInspectionOperations.Schema(false), "libraryCatalog"),
                     Op("browse_library", "Browse one returned library/path: folders, types, versions or master-copy content descriptions. Read-only metadata; no instance creation, dependency traversal or library updates.", "projectRead", false, LibraryInspectionOperations.Schema(true), "libraryCatalog") };
                 case "comfort": return new[] {
+                    Op("inspect_screen_items", "Inspect exact exported classic screen control prototypes, fingerprints and existing destination containers. Reports clone eligibility and standalone removal references; supplied XML only.", "local", false, ScreenItemSchema(false)),
+                    Op("change_screen_items", "Clone/remove exported classic controls or groups within one screen. Requires explicit names for all copied controls, remaps native IDs and guards retained references. Uses host 0.10.0+ whitespace-preserving screenText contract.", "classicXml", true, ScreenItemSchema(true), "screenText"),
                     Op("inspect_screen_texts", "Inspect/filter bounded multilingual classic screen text runs, retaining exact field fingerprints, cultures, run indexes and formatting. Supplied XML only; dynamic or unknown markup is inspection-only.", "local", false, ScreenTextSchema(false)),
                     Op("edit_screen_texts", "Edit exact static text runs or existing empty slots in classic screen captions, including multiple styled runs. Requires the screenText contract and whitespace-preserving readback in host 0.10.0+.", "classicXml", true, ScreenTextSchema(true), "screenText"),
                     Op("inspect_screen_layout", "Inspect bounded stored geometry of classic XML screen items and return exact selection paths/bounds. Supplied XML only; no attachment or native acceptance claim.", "local", false, LayoutSchema(false)),
@@ -53,6 +55,18 @@ namespace SiemensMCPServer.Extensions
             JsonElement args = input.TryGetProperty("arguments", out var nested) ? nested : input;
             if (module == "comfort")
             {
+                if (operation == "inspect_screen_items")
+                {
+                    var request = ExtensionWire.Parse<ClassicScreenItemInspection>(args);
+                    RequireScreenXml(request.Xml);
+                    return ExtensionWire.Json(new ClassicXmlDocument(request.Xml).ScreenItemCatalog(request));
+                }
+                if (operation == "change_screen_items")
+                {
+                    string xml = input.GetProperty("snapshot").GetString()!;
+                    RequireScreenXml(xml);
+                    return ExtensionWire.Json(new ClassicXmlDocument(xml).ChangeScreenItems(ExtensionWire.Parse<ClassicScreenItemRequest>(args)));
+                }
                 if (operation == "inspect_screen_texts")
                 {
                     var request = ExtensionWire.Parse<ClassicScreenTextInspection>(args);
@@ -135,6 +149,24 @@ namespace SiemensMCPServer.Extensions
                         xPath = new { type = "string", minLength = 1, maxLength = 4096 }, culture = new { type = "string", minLength = 1, maxLength = 128 },
                         expectedTextFingerprint = new { type = "string", pattern = "^[0-9a-f]{64}$" }, runIndex = new { type = "integer", minimum = 0, maximum = 19999 },
                         expectedText = new { type = "string", maxLength = 4096 } } }, newText = new { type = "string", maxLength = 4096 } } } } } };
+        }
+        private static object ScreenItemSchema(bool edit)
+        {
+            if (!edit) return new { type = "object", additionalProperties = false, required = new[] { "xml" }, properties = new {
+                xml = new { type = "string", minLength = 1, maxLength = 16777216 }, rootXPath = new { type = "string", maxLength = 4096 },
+                offset = new { type = "integer", minimum = 0, maximum = 2000 }, maxItems = new { type = "integer", minimum = 1, maximum = 200 } } };
+            var selection = new { type = "object", additionalProperties = false, required = new[] { "xPath", "expectedFingerprint" }, properties = new {
+                xPath = new { type = "string", minLength = 1, maxLength = 4096 }, expectedFingerprint = new { type = "string", pattern = "^[0-9a-f]{64}$" } } };
+            var edits = new { type = "array", maxItems = 100, items = new { type = "object", additionalProperties = false, required = new[] { "xPath", "expectedValue", "newValue" }, properties = new {
+                xPath = new { type = "string", maxLength = 4096 }, expectedValue = new { type = "string", maxLength = 4096 }, newValue = new { type = "string", maxLength = 4096 } } } };
+            return new { type = "object", additionalProperties = false, required = new[] { "changes" }, properties = new {
+                changes = new { type = "array", minItems = 1, maxItems = 50, items = new { type = "object", additionalProperties = false, required = new[] { "action", "selection" }, properties = new {
+                    action = new { type = "string", @enum = new[] { "clone", "remove" } }, selection,
+                    destinationXPath = new { type = "string", maxLength = 4096 },
+                    names = new { type = "array", minItems = 1, maxItems = 500, items = new { type = "object", additionalProperties = false, required = new[] { "sourceXPath", "newName" }, properties = new {
+                        sourceXPath = new { type = "string", maxLength = 4096 }, newName = new { type = "string", minLength = 1, maxLength = 128 } } } }, edits },
+                    oneOf = new object[] { new { properties = new { action = new { @enum = new[] { "clone" } } }, required = new[] { "destinationXPath", "names" } },
+                        new { properties = new { action = new { @enum = new[] { "remove" } } }, not = new { anyOf = new[] { new { required = new[] { "destinationXPath" } }, new { required = new[] { "names" } }, new { required = new[] { "edits" } } } } } } } } } };
         }
         private static object LayoutSchema(bool arrange)
         {

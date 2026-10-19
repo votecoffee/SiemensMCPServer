@@ -48,6 +48,7 @@
     <Compile Include="../Mcp/ClassicXmlBehaviors.cs" Link="ClassicXmlBehaviors.cs" />
     <Compile Include="../Mcp/ClassicXmlLayout.cs" Link="ClassicXmlLayout.cs" />
     <Compile Include="../Mcp/ClassicScreenText.cs" Link="ClassicScreenText.cs" />
+    <Compile Include="../Mcp/ClassicScreenItems.cs" Link="ClassicScreenItems.cs" />
     <Compile Include="../Mcp/NativeXmlIds.cs" Link="NativeXmlIds.cs" />
     <Compile Include="../Mcp/ClassicXmlWorkflow.cs" Link="ClassicXmlWorkflow.cs" />
     <Compile Include="../Mcp/ClassicExportBundle.cs" Link="ClassicExportBundle.cs" />
