@@ -149,7 +149,7 @@ def main():
     checks += ['New host reload retains PID/binary and fixed tools; rejected worker update preserves working caption inspection',
                'Mutation via read tool and native preview without explicit attachment remain blocked']
     if args.previous_host:
-        checks.append('Older hosts reject screenText contract and retain their previous working Comfort generation')
+        checks.append('Older hosts reject the current classic-XML contract and retain their previous working Comfort generation')
     report = {'checks': checks, 'count': len(checks), 'hosts': hosts, 'projectAttached': False, 'nativeCaptionAcceptance': False}
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)

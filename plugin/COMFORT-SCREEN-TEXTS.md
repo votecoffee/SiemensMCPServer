@@ -4,9 +4,9 @@ Host/worker 0.10.0 adds `comfort:inspect_screen_texts` and `comfort:edit_screen_
 
 ## Host update
 
-Install the 0.10.0 host and reconnect before installing this Comfort worker. Earlier hosts ignore whitespace between styled runs when comparing exported XML. The new host preserves all whitespace inside authored `Text` subtrees in resource hashes and behavior fingerprints. This lets previews and native readback distinguish `<b>A</b> <i>B</i>` from `<b>A</b><i>B</i>`.
+Install host 0.10.4 or newer and reconnect before installing the current Comfort worker. It preserves all whitespace inside authored `Text` subtrees in resource hashes and behavior fingerprints, distinguishing `<b>A</b> <i>B</i>` from `<b>A</b><i>B</i>`. It also resolves native `#ID` links when comparing freshly exported readback XML.
 
-The preview operation declares `route="classicXml"`, `snapshotKind="screenText"`. This is a compatibility marker for the corrected hash contract, not a new native capture or Siemens service. Older hosts reject the entire new Comfort bundle and retain their previous active generation. Subsequent workers using this contract can reload through the existing five extension tools without another host update. See [extensions](EXTENSIONS.md).
+The preview operation declares `route="classicXml"`, `snapshotKind="classicReferences"`. This is a compatibility marker for the shared hash contract. Older hosts reject the entire current Comfort bundle and retain their previous active generation. Subsequent workers using this contract can reload through the existing five extension tools. See [native XML compatibility](EXTENSIONS.md#classic-native-xml).
 
 ## Inspect captions
 

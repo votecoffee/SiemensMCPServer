@@ -2,7 +2,7 @@
 
 Comfort worker 0.10.2 adds `inspect_references` and `rebind_references`. They show exported symbolic/native links and change exact existing symbolic names, including tag links inherited by [copied controls](COMFORT-SCREEN-ITEMS.md) and PLC symbols/connections in native tag tables.
 
-The worker uses the existing `local` and `classicXml`/`screenText` routes. It reloads on the checked 0.10.0 host with the same executable, process and 51 MCP tools. Stage the trusted bundle and call `tia_reload_extensions(module="comfort")`; successful reload invalidates outstanding previews. Hosts earlier than 0.10.0 require the [whitespace-preserving host update](COMFORT-SCREEN-TEXTS.md#host-update). These are MCP extension operations; the desktop GUI keeps its existing transfer workflows.
+The current worker uses `local` inspection and `classicXml` previews with `snapshotKind="classicReferences"`. Upgrade/reconnect to host 0.10.4 or newer before staging this bundle, then call `tia_reload_extensions(module="comfort")`. Successful reload invalidates outstanding previews. Older hosts reject this contract and keep their previous generation. See [native XML compatibility](EXTENSIONS.md#classic-native-xml).
 
 ## Inspect references
 
@@ -59,12 +59,11 @@ Only selected `Name` values change. IDs, link roles, other references, captions,
 
 Inspection allows 16 MiB of supplied XML, 50,000 resource elements, 64 XML levels and 5,000 exported links. Pages contain 1–200 rows and stay within a 256 KiB escaped-JSON response budget. Root/link paths are limited to 4096 characters. Candidate XML stays within 16 MiB; link-name edits do not create or delete objects.
 
-Unit tests cover symbolic/native distinctions, exact owner/type filters, batch validation, quoting/Unicode/XML escaping, clone-then-rebind isolation, ID normalization, preservation, payload limits and staged companion hashes. The real net48 worker/MCP check also verifies reload on an unchanged 0.10.0 host, rejection paths and preservation of the previous generation after an invalid update:
+Unit tests cover symbolic/native distinctions, exact owner/type filters, batch validation, quoting/Unicode/XML escaping, clone-then-rebind isolation, ID normalization, preservation, payload limits and staged companion hashes. The real net48 worker/MCP check also verifies current-host reload, rejection paths and preservation of the previous generation after an invalid update:
 
 ```powershell
 py -3 -B -X utf8 scripts/test_comfort_references.py `
   Mcp/bin/Release/V15.1/net48/SiemensMCPServer.Mcp.exe `
-  --previous-host C:/path/to/0.10.0/server/SiemensMCPServer.Mcp.exe `
   --report artifacts/comfort-references.json
 ```
 

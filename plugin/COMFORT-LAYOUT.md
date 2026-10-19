@@ -4,7 +4,7 @@ Comfort worker 0.9.1 adds `inspect_screen_layout` and `arrange_screen_items`. Th
 
 The operations work with exported classic screen XML, prioritizing V15.1. The desktop GUI retains its transfer workflows; these layout commands are MCP extension operations. Unified uses its separate native object/property workflow.
 
-The newer 0.10.0 Comfort bundle also contains [screen text-run edits](COMFORT-SCREEN-TEXTS.md) and therefore requires host 0.10.0 for its corrected rich-text hash contract. The older-host compatibility above applies to the 0.9.1 layout bundle.
+The current 0.10.4 Comfort bundle uses native control `ObjectName` fields and `#ID`-aware host readback hashes. It requires host 0.10.4 and the `classicReferences` contract. The older-host compatibility above applies only to the 0.9.1 layout bundle; see [native XML compatibility](EXTENSIONS.md#classic-native-xml).
 
 ## Select controls
 

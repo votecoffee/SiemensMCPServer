@@ -2,7 +2,7 @@
 
 Comfort worker 0.10.3 adds paged `inspect_behaviors` and extends `change_behaviors` with explicit external `Owner`/`Control` ID-link mappings. It copies existing native event/animation/binding objects, or removes selected behaviors after checking retained native-ID references. It does not construct behavior schemas or execute scripts.
 
-The operations use existing `local` and whitespace-preserving `classicXml`/`screenText` routes. The new worker reloads on the checked 0.10.0 host with unchanged PID, executable, 51 tool schemas and other module generations. Stage the trusted bundle and call `tia_reload_extensions(module="comfort")`. Successful reload invalidates outstanding previews. Older hosts require the [0.10.0 host update](COMFORT-SCREEN-TEXTS.md#host-update).
+The current worker uses `local` inspection and `classicXml` previews with `snapshotKind="classicReferences"`. Upgrade/reconnect to host 0.10.4 or newer before staging this bundle, then call `tia_reload_extensions(module="comfort")`. Successful reload invalidates outstanding previews. Older hosts reject this contract and keep their previous generation. See [native XML compatibility](EXTENSIONS.md#classic-native-xml).
 
 ## Inspect prototypes
 
@@ -78,7 +78,6 @@ Unit tests cover frozen batches, reserved IDs, explicit ownership, internal link
 ```powershell
 py -3 -B -X utf8 scripts/test_comfort_behaviors.py `
   Mcp/bin/Release/V15.1/net48/SiemensMCPServer.Mcp.exe `
-  --previous-host C:/path/to/0.10.0/server/SiemensMCPServer.Mcp.exe `
   --report artifacts/comfort-behaviors.json
 ```
 

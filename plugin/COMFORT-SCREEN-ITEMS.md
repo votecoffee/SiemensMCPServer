@@ -2,7 +2,7 @@
 
 Comfort worker 0.10.1 adds `inspect_screen_items` and `change_screen_items`. It copies existing exported controls/groups into an explicit container in the same screen, or removes explicitly selected controls after reference checks. It uses native XML prototypes rather than constructing control schemas.
 
-The worker uses the existing `classicXml` route and `screenText` contract. Stage the trusted Comfort bundle and call `tia_reload_extensions(module="comfort")` on host 0.10.0 or newer. Reload compatibility is checked on 0.10.0 with an unchanged host executable, PID and 51-tool interface. Earlier hosts require the [0.10.0 host update](COMFORT-SCREEN-TEXTS.md#host-update). Successful reload invalidates outstanding previews; read again afterward. These are MCP extension operations; the desktop GUI retains its existing transfer workflows.
+The current worker uses `classicXml` with the `classicReferences` contract and requires host 0.10.4 or newer. Upgrade/reconnect the host first, then stage the trusted Comfort bundle and call `tia_reload_extensions(module="comfort")`. Successful reload invalidates outstanding previews; read again afterward. See [native XML compatibility](EXTENSIONS.md#classic-native-xml). These are MCP extension operations; the desktop GUI retains its existing transfer workflows.
 
 ## Inspect prototypes
 
@@ -71,4 +71,4 @@ The preview reports the selected sources, mappings/edits, affected control count
 
 Limits are 16 MiB of supplied/candidate XML characters, 50,000 resource elements, 64 XML levels, 2,000 exported controls, 1–200 catalog rows per page, 1–50 changes per preview, 500 copied controls, 5,000 elements per prototype and a 4 MiB aggregate prototype/copy budget. Catalog replies have an escaped JSON budget and continuation offset. Each copy permits up to 100 scalar edits with paths/values bounded to 4096 characters.
 
-Unit and real net48 worker tests cover cloning, group naming, frozen batches, references, preservation, companions and preview guards. MCP tests verify reload on the existing 0.10.0 host and rollback after a rejected worker update. Native control import/compile/save acceptance remains pending. Objects absent from Siemens' native export surface cannot be assessed through export/readback equality; see [validation status](NATIVE-ACCEPTANCE.md).
+Unit and real net48 worker tests cover cloning, group naming, frozen batches, references, preservation, companions and preview guards. Native-shaped `ObjectName`/`#ID` fixtures and retained V15.1 exports exercise the corrected adapter. MCP checks verify current-host reload and atomic rejection on 0.10.0/0.10.3. Native control import/compile/save acceptance remains pending. Objects absent from Siemens' native export surface cannot be assessed through export/readback equality; see [validation status](NATIVE-ACCEPTANCE.md).

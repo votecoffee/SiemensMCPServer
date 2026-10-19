@@ -128,7 +128,7 @@ Project extensions provide bounded [library metadata browsing](plugin/LIBRARY-IN
 
 Project-text capture requires host 0.9.0 or newer. New native capture kinds require a host upgrade/reconnect; later worker formatting/search can reload on the same contract. See [API compatibility](plugin/API-COMPATIBILITY.md) and [native validation status](plugin/NATIVE-ACCEPTANCE.md) before treating build/metadata checks as attached-project acceptance.
 
-The [Comfort 0.9.1 layout bundle](plugin/COMFORT-LAYOUT.md) adds move, align, equal-gap distribution and resize previews that reload on checked 0.7.4/0.9.0 hosts. Current Comfort workers add [styled captions](plugin/COMFORT-SCREEN-TEXTS.md), [control/group copies](plugin/COMFORT-SCREEN-ITEMS.md), [symbolic tag/connection rebinding](plugin/COMFORT-REFERENCES.md) and [event/animation copies with explicit owner links](plugin/COMFORT-BEHAVIORS.md) using host 0.10.0's whitespace-preserving hash contract. Upgrade/reconnect that host first; subsequent operations on this contract reload on 0.10.0 without another host update.
+Comfort workers support [layout](plugin/COMFORT-LAYOUT.md), [styled captions](plugin/COMFORT-SCREEN-TEXTS.md), [control/group copies](plugin/COMFORT-SCREEN-ITEMS.md), [symbolic tag/connection rebinding](plugin/COMFORT-REFERENCES.md) and [event/animation copies with explicit owner links](plugin/COMFORT-BEHAVIORS.md). The 0.10.4 host/worker fixes native V15.1 `ObjectName` controls and `#ID` references, including import readback comparisons. Upgrade/reconnect the host before staging this Comfort bundle; subsequent compatible workers can reload through the same `classicReferences` contract. See [native XML compatibility](plugin/EXTENSIONS.md#classic-native-xml).
 
 ## Development
 

@@ -1,4 +1,4 @@
-"""Check real symbolic-link workers and unchanged 0.10.0+ hosts without attachment."""
+"""Check real symbolic-link workers and compatible hosts without attachment."""
 import argparse
 import copy
 import hashlib

@@ -1,4 +1,4 @@
-"""Check real control clone/remove workers and 0.10.0 host compatibility without attachment."""
+"""Check real control clone/remove workers and current host compatibility without attachment."""
 import argparse
 import copy
 import hashlib
