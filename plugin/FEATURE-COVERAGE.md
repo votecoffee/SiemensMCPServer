@@ -27,7 +27,7 @@ The MCP server has 51 tools. Five fixed extension tools provide discovery/read/p
 | Nested controls/parts | Screen XML where exported | Available native navigators | Complex CLR values excluded from scalar tools |
 | Bulk export | API-visible resources and metadata | API-visible resources and metadata | Explicit failures, native companions; not a full backup |
 | Bulk import | Dependency order, supported folders, skip existing cycles; legacy WinForms export conversion | Serializable resources and supported folders/groups | Indexed bundles; selected legacy categories converted with XML/sidecars and folder-name overrides; metadata-only objects not restored |
-| Compile diagnostics | Implemented | Where compile service exists | Does not save or download |
+| Compile diagnostics | Software compile service | Software or bounded owning-device compile service | Reports selected scope; no retry after failure, included PLCs require Offline; does not save/download; Unified native acceptance pending |
 | Whole-project save | Implemented | Implemented | Exact project path; includes other editors' changes |
 | Project archive / reopen | Implemented | Shared project API | Exact attached path; native compressed archive, saved-state guards, preview invalidation on reopen |
 | Library faceplate definitions / project text XLSX | No dedicated adapter | No dedicated adapter | Outside HMI descendant/resource workflow |

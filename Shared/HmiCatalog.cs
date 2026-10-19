@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Siemens.Engineering;
 using Siemens.Engineering.Hmi;
 using Siemens.Engineering.HW;
@@ -14,6 +15,7 @@ namespace SiemensMCPServer
         public Software Software { get; set; }
         public HmiTarget Target { get { return Software as HmiTarget; } }
         public string Family { get; set; }
+        public CompileScope[] CompileOwners { get; set; } = Array.Empty<CompileScope>();
     }
 
     // Shared by the desktop interface and the headless service.
@@ -43,18 +45,20 @@ namespace SiemensMCPServer
         private static void VisitDevice(Device device, string path, List<HmiReference> result, HashSet<Software> seen, bool includeUnified)
         {
             path += "/" + Uri.EscapeDataString(device.Name);
-            foreach (DeviceItem item in device.DeviceItems) VisitItem(item, path, result, seen, includeUnified);
+            var owners = new[] { new CompileScope(device, "device", path) };
+            foreach (DeviceItem item in device.DeviceItems) VisitItem(item, path, result, seen, includeUnified, owners);
         }
 
-        private static void VisitItem(DeviceItem item, string path, List<HmiReference> result, HashSet<Software> seen, bool includeUnified)
+        private static void VisitItem(DeviceItem item, string path, List<HmiReference> result, HashSet<Software> seen, bool includeUnified, CompileScope[] owners)
         {
             path += "/" + Uri.EscapeDataString(item.Name);
+            owners = new[] { new CompileScope(item, "deviceItem", path) }.Concat(owners).ToArray();
             var container = item.GetService<SoftwareContainer>();
             var software = container == null ? null : container.Software;
             string family = software is HmiTarget ? "classic" : software != null && IsUnifiedType(software.GetType()) ? "unified" : null;
             if (family != null && (family == "classic" || includeUnified) && seen.Add(software))
-                result.Add(new HmiReference { Id = path, Label = Uri.UnescapeDataString(path), Software = software, Family = family });
-            foreach (DeviceItem child in item.DeviceItems) VisitItem(child, path, result, seen, includeUnified);
+                result.Add(new HmiReference { Id = path, Label = Uri.UnescapeDataString(path), Software = software, Family = family, CompileOwners = owners });
+            foreach (DeviceItem child in item.DeviceItems) VisitItem(child, path, result, seen, includeUnified, owners);
         }
 
         internal static bool IsUnifiedType(Type type)

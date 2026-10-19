@@ -1,4 +1,4 @@
-# Reloadable feature extensions — 0.7.1
+# Reloadable feature extensions — 0.7.2
 
 The MCP host retains its connection to Codex and owns the Siemens attachment, single STA queue, transactions, offline checks, preview stores, candidate hashes and native readback. Pure feature workers receive JSON snapshots, never Siemens CLR objects. The host copies complete, hash-checked bundles into private generation directories before starting workers, so they do not lock the source of the next update.
 
@@ -22,6 +22,8 @@ flowchart LR
 Dedicated HMI/PLC tools remain available. New operations appear in the extension catalog and use the same five facade tools, so Codex need not discover new MCP tool names. Its existing connection stays open.
 
 Worker 0.7.2 adds Comfort `build_screen_package` and `validate_package_bindings` as local operations on the existing 0.7.1 host. They consume supplied native XML and PLC declarations without an attachment. See [Comfort packages](COMFORT-PACKAGES.md) for generation, reviewed file materialization and native import steps.
+
+The 0.7.2 host also adds Unified owning-device compile-service lookup and reports its native scope. That change is broker code and requires a host upgrade/reconnect. It cannot be delivered by worker reload.
 
 Reload uses the native engineering queue and waits for active operations to finish. All replacements must pass file-integrity checks, protocol negotiation and worker startup/self-tests before activation. Successful reload invalidates **all** outstanding previews, including those from dedicated tools. Re-read and preview afterward. Rejected replacements retain the old workers and previews. Reload never detaches, saves, discards changes or reopens the project. Crashed or timed-out pure workers require reload; the host never replays a native write automatically. Replies have a 30-second deadline and 32 MiB frame limit.
 

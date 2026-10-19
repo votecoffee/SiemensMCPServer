@@ -124,7 +124,7 @@ namespace SiemensMCPServer.Mcp
             => Result(() => runtime.Invoke(s => s.PreviewClassicTextStructure(hmiId, listName, expectedFingerprint, changes), token));
 
         [McpServerTool(Name = "hmi_compile", ReadOnly = false, Destructive = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
-        [Description("Compile the selected HMI with Siemens Openness and return native error/warning diagnostics. Does not save or download. Requires --allow-writes.")]
+        [Description("Compile the selected HMI with Siemens Openness and return native diagnostics plus compileScope. Unified may use the nearest owning device item/device's compiler when its software has no service; that compiler covers its owning scope. Any included PLC must be Offline. Lookup/compile failures are not retried at a broader scope. Does not save or download. Requires --allow-writes.")]
         public Task<CallToolResult> Compile(string hmiId, CancellationToken token) => Result(() => runtime.Invoke(s => s.Compile(hmiId), token, writes: true));
 
         [McpServerTool(Name = "tia_save_project", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]

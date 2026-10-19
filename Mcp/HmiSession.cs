@@ -236,23 +236,38 @@ namespace SiemensMCPServer.Mcp
 
         public object Compile(string hmiId)
         {
-            var target = FindReference(hmiId).Software;
+            CheckProject();
             using (var exclusive = portal!.ExclusiveAccess("Codex HMI compile"))
             {
-                CheckProject(); return CompileSoftware(hmiId, target);
+                var reference = FindReference(hmiId);
+                var selection = CompileServiceResolver.Resolve(reference.Software, reference.Id, reference.Family == "unified",
+                    CompileService, () => reference.CompileOwners);
+                if (selection.OwnerFallback)
+                {
+                    // A native device compiler can include sibling PLC software. Keep
+                    // the PLC offline policy even when compilation starts at an HMI.
+                    foreach (var plc in SoftwareCatalog.Discover(project!).Where(s => s.Family == "plc"
+                        && (s.Id == selection.Scope.Path || s.Id.StartsWith(selection.Scope.Path + "/", StringComparison.Ordinal))))
+                        PlcPolicy.RequireOffline(OnlineStateOf(plc));
+                }
+                return CompileSelected(hmiId, selection);
             }
         }
+        private static ICompilable CompileService(object target) => (target as IEngineeringServiceProvider)?.GetService<ICompilable>();
         private static object CompileSoftware(string targetId, Siemens.Engineering.HW.Software target)
         {
-            var provider = target as IEngineeringServiceProvider;
-            var compilable = provider?.GetService<ICompilable>();
-            if (compilable == null) throw new NotSupportedException("The selected engineering target does not expose an Openness compile service.");
-            CompilerResult result = compilable.Compile();
+            return CompileSelected(targetId, CompileServiceResolver.Resolve(target, targetId, false, CompileService, () => Array.Empty<CompileScope>()));
+        }
+        private static object CompileSelected(string targetId, CompileSelection<ICompilable> selected)
+        {
+            CompilerResult result = selected.Service.Compile();
             var messages = new List<object>();
             int count = 0;
             AddMessages(result.Messages, messages, ref count);
             return new { targetId, state = result.State.ToString(), errors = result.ErrorCount, warnings = result.WarningCount,
-                messages, messagesTruncated = count > messages.Count, totalMessages = count, projectSaved = false };
+                messages, messagesTruncated = count > messages.Count, totalMessages = count, projectSaved = false,
+                compileScope = new { kind = selected.Scope.Kind, path = selected.Scope.Path, nativeType = selected.Scope.Target.GetType().FullName,
+                    ownerFallback = selected.OwnerFallback, includesOwningScope = selected.OwnerFallback } };
         }
 
         private static void AddMessages(IEnumerable<CompilerResultMessage> source, List<object> destination, ref int count)

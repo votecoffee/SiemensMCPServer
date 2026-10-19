@@ -40,6 +40,12 @@ foreach ($name in @('SW.ExternalSources.PlcExternalSource', 'SW.ExternalSources.
     Assert-Contract ($null -eq $export.Invoke($null, [object[]]@($type)) -and $null -eq $import.Invoke($null, [object[]]@($type))) "$name has no generic native transfer route"
 }
 $hmi = $api.GetType('Siemens.Engineering.Hmi.HmiTarget', $true)
+$provider = $api.GetType('Siemens.Engineering.IEngineeringServiceProvider', $true)
+foreach ($name in @('Hmi.HmiTarget', 'SW.PlcSoftware', 'HW.DeviceItem', 'HW.Device')) {
+    Assert-Contract ($provider.IsAssignableFrom($api.GetType("Siemens.Engineering.$name", $true))) "$name supports native compile-service lookup"
+}
+$compiler = $api.GetType('Siemens.Engineering.Compiler.ICompilable', $true)
+Assert-Contract ($null -ne $compiler.GetMethod('Compile', [Type[]]@())) 'Compile service has a parameterless native invocation'
 Assert-Contract ($null -ne $hmi.GetMethod('ImportScreenOverview', [Type[]]@([IO.FileInfo], $importOptions))) 'HmiTarget imports the permanent-area singleton'
 $slidein = $api.GetType('Siemens.Engineering.Hmi.Screen.ScreenSlidein', $true)
 Assert-Contract ($null -ne $slidein.GetProperty('SlideinType') -and $null -eq $slidein.GetProperty('Name')) 'Slide-in identity is its side/type, not a name'

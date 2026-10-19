@@ -1,4 +1,4 @@
-# SiemensMCPServer plugin 0.7.1
+# SiemensMCPServer plugin 0.7.2
 
 The project and GitHub repository are now **SiemensMCPServer**. The plugin/MCP ID is `siemens-mcp-server`, the local marketplace is `siemens-mcp-server-local`, and the host is `SiemensMCPServer.Mcp.exe`. Remove the old `siemens-tia-openness` plugin or direct MCP registration through Codex before installing the renamed plugin. The installer refuses to register a second copy while the old server is enabled. Do not remove its cache manually while it is running. This rename needs a host upgrade; feature-worker reload remains available afterward.
 
@@ -79,6 +79,8 @@ Use `hmi_list_screens` to discover screens recursively through screen groups, th
 Text properties include `Text`, `AlternateText`, `ToolTipText`, and `DisplayName` where present. Existing languages and simple rich text with one text run can be edited; styling and other language resources are preserved. Assignments are formatted as required by the Unified screen API. Multi-run text, dynamic fields, complex markup, and properties with dynamizations remain inspection-only. The snapshot fingerprint covers the returned fields and binding names, not every setting or event handler of the native object. The backend changes only selected properties.
 
 Apply with `hmi_apply_unified_edits`, then use the common `hmi_compile` and, if authorized, `tia_save_project`. Screen edits use a Siemens transaction and verify the returned-field fingerprint before committing.
+
+The 0.7.2 host first looks for a compile service on the selected HMI software. For Unified only, an absent service permits lookup on up to eight owning device items, starting with the nearest, and finally their containing device. Lookup stays within the native owner chain captured during discovery; project and sibling services are excluded. The selected native compiler runs once, and lookup/compile failures are never retried at a broader scope. A device compiler can cover other software in that owning scope, so included PLCs must be natively Offline. Results identify `compileScope` (kind, path, native type and `ownerFallback`). This broker change requires upgrading/reconnecting the host; a worker-only reload cannot add it. Native Unified compile acceptance remains pending.
 
 ## Comfort and Unified object tools
 

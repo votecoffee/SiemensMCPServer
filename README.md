@@ -117,6 +117,8 @@ Stage a trusted worker bundle, then call `tia_reload_extensions` for its module.
 
 Comfort worker 0.7.2 adds offline screen/tag package generation from native XML prototypes and validation of supplied PLC bindings. These operations load through the existing 0.7.1 host. Review the generated package before native import; see the [Comfort package workflow](plugin/COMFORT-PACKAGES.md).
 
+The 0.7.2 host adds Unified compile-service lookup within the HMI's owning device when its software has no compiler. Results report the selected native scope. This broker change requires a host upgrade/reconnect; native Unified compile acceptance remains pending.
+
 ## Development
 
 Run the offline tests from the repository root:

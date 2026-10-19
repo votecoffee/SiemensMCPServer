@@ -59,6 +59,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="TiaPortalAssemblyResolver.cs" />
     <Compile Include="Shared\HmiCatalog.cs" />
+    <Compile Include="Shared\CompileServiceResolver.cs" />
     <Compile Include="Shared\SoftwareCatalog.cs" />
     <Compile Include="Shared\ITextListDocument.cs" />
     <Compile Include="Shared\TextListDocument.cs" />
