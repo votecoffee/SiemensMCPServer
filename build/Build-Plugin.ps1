@@ -4,6 +4,13 @@ param(
     [string]$TiaPublicApiDir = ''
 )
 $ErrorActionPreference = 'Stop'
+# Match extension packaging: hashing must not depend on shell module auto-loading.
+function Get-PluginHash([string]$Path) {
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    $stream = [IO.File]::OpenRead($Path)
+    try { return [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
+    finally { $stream.Dispose(); $algorithm.Dispose() }
+}
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $sourcePaths = @(& git -C $repoRoot -c core.quotepath=false ls-files --cached | Sort-Object -Unique)
 if ($LASTEXITCODE -ne 0 -or $sourcePaths.Count -eq 0) { throw 'Cannot read the tracked public source inventory.' }
@@ -65,13 +72,13 @@ $metadata | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $packageRoot 'b
 $sourceFiles = @($sourcePaths | ForEach-Object {
     $sourcePath = Join-Path $repoRoot $_
     if (Test-Path -LiteralPath $sourcePath -PathType Leaf) {
-        [ordered]@{ path = $_; sha256 = (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash.ToLowerInvariant() }
+        [ordered]@{ path = $_; sha256 = (Get-PluginHash $sourcePath) }
     }
 })
 ConvertTo-Json -InputObject $sourceFiles -Depth 4 | Set-Content -LiteralPath (Join-Path $packageRoot 'source-manifest.json') -Encoding UTF8
 $files = @(Get-ChildItem -LiteralPath $packageRoot -File -Recurse -Force | Sort-Object FullName | ForEach-Object {
     [ordered]@{ path = $_.FullName.Substring($packageRoot.Length + 1).Replace('\', '/');
-        bytes = $_.Length; sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
+        bytes = $_.Length; sha256 = (Get-PluginHash $_.FullName) }
 })
 ConvertTo-Json -InputObject $files -Depth 5 | Set-Content -LiteralPath (Join-Path $packageRoot 'manifest.json') -Encoding UTF8
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -84,7 +91,7 @@ try {
         [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $file.FullName, $entryName, [IO.Compression.CompressionLevel]::Optimal) | Out-Null
     }
 } finally { $zip.Dispose() }
-$zipHash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$zipHash = Get-PluginHash $zipPath
 ($zipHash + '  ' + [IO.Path]::GetFileName($zipPath)) | Set-Content -LiteralPath ($zipPath + '.sha256') -Encoding ASCII
 Write-Output ('Plugin ZIP: ' + $zipPath)
 Write-Output ('SHA256: ' + $zipHash)
