@@ -5,12 +5,15 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using SiemensMCPServer.Extensions;
 
 namespace SiemensMCPServer.Mcp
 {
     internal static class Program
     {
-        public static async Task<int> Main(string[] args)
+        public static Task<int> Main(string[] args) => RunAsync(args);
+
+        internal static async Task<int> RunAsync(string[] args, Func<string, IFeatureEngine, IHmiSession>? sessionFactory = null)
         {
             try
             {
@@ -35,9 +38,9 @@ namespace SiemensMCPServer.Mcp
                 builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
                 builder.Logging.SetMinimumLevel(LogLevel.Warning);
                 // Container ownership drains the STA queue and disposes workers before host exit.
-                builder.Services.AddSingleton(_ => new OpennessRuntime(version, root, writes, extensionsRoot, analysisParallelism));
+                builder.Services.AddSingleton(_ => new OpennessRuntime(version, root, writes, extensionsRoot, analysisParallelism, sessionFactory));
                 builder.Services.AddMcpServer(options => {
-                    options.ServerInfo = new ModelContextProtocol.Protocol.Implementation { Name = "siemens-mcp-server", Version = typeof(Program).Assembly.GetName().Version!.ToString(3) };
+                    options.ServerInfo = new ModelContextProtocol.Protocol.Implementation { Name = sessionFactory == null ? "siemens-mcp-server" : "siemens-mcp-server-fixture", Version = typeof(Program).Assembly.GetName().Version!.ToString(3) };
                     options.ServerInstructions = "Use explicit TIA process, project path, and HMI IDs. Read a text list, preview edits, and inspect the diff before applying authorized changes. Apply never saves; compile and save are separate tools. Classic and capability-checked Unified operations; use tia_get_api_capabilities and the target family. Do not retry an uncertain write; inspect current state first.";
                 }).WithStdioServerTransport().WithTools<McpTools>().WithTools<BrokerTools>();
                 using (var host = builder.Build()) await host.RunAsync().ConfigureAwait(false);

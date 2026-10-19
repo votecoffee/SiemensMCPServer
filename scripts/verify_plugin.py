@@ -67,6 +67,7 @@ def validate(files):
     if version >= (0, 14, 0):
         assert "BROKER-INTEGRATION.md" in files
         assert "scripts/New-BrokerRegistration.ps1" in files
+    assert not any('fixture' in name.lower() or '/fixtures/' in name.lower() for name in files), 'Test fixtures must not be distributed'
     return len(manifest)
 
 

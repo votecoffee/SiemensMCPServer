@@ -61,10 +61,13 @@ namespace SiemensMCPServer.Mcp
         private string? requestedVersion;
         private int disposed;
         private readonly ExtensionManager extensions;
+        private readonly Func<string, IFeatureEngine, IHmiSession>? sessionFactory;
 
-        public OpennessRuntime(string? version, string artifactRoot, bool allowWrites, string? extensionsRoot = null, int analysisParallelism = 2)
+        public OpennessRuntime(string? version, string artifactRoot, bool allowWrites, string? extensionsRoot = null, int analysisParallelism = 2,
+            Func<string, IFeatureEngine, IHmiSession>? sessionFactory = null)
         {
             requestedVersion = version; this.artifactRoot = Path.GetFullPath(artifactRoot); this.allowWrites = allowWrites;
+            this.sessionFactory = sessionFactory;
             extensions = new ExtensionManager(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "extensions"),
                 extensionsRoot ?? ExtensionPaths.DefaultRoot(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)),
                 Path.Combine(this.artifactRoot, "extension-workers"), localParallelism: analysisParallelism);
@@ -136,6 +139,9 @@ namespace SiemensMCPServer.Mcp
         private IHmiSession EnsureSession()
         {
             if (session != null) return session;
+            // Internal provider seam for the separate adapter acceptance harness.
+            // Production startup never supplies a factory or exposes a test option.
+            if (sessionFactory != null) return session = sessionFactory(artifactRoot, extensions);
             var versions = TiaPortalAssemblyResolver.GetCompatibleEngineeringVersions();
             string? selected = string.IsNullOrWhiteSpace(requestedVersion) ? (versions.Count == 1 ? versions[0] : null) : Normalize(requestedVersion!);
             if (selected == null) throw new InvalidOperationException("Select a compatible engineering version with tia_select_version first.");

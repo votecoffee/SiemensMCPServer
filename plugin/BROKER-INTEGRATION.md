@@ -14,13 +14,15 @@ These tools never load Siemens APIs, start extension workers, inspect user files
 
 ## Installation choices
 
-The default installer route remains **Standalone** during migration assessment:
+The installer defaults to **Preserve**: reuse the selected preparation/install route from its local `integration-choice.json`; first use falls back to **Standalone** during migration assessment. Use an explicit choice to override it:
 
 ```powershell
 powershell.exe -NoProfile -File scripts/Install-CodexPlugin.ps1 -Package 'C:\packages\siemens.zip' -Integration Standalone
 ```
 
 It installs the Siemens plugin using the existing verified package/marketplace procedure. `-PrepareOnly` stages the source without changing Codex settings. The repository equivalent is `build/Install-CodexPlugin.ps1`. Desktop installation is independent of both Codex routes.
+
+Host package 0.14.1 records explicit successful selections atomically, retains the previous record, and rejects concurrent installers using the same root before extraction/settings changes. A standalone dry run or broker `-PrepareOnly` cannot replace the selection. This record describes installer intent, not a live registration, accepted migration or permission to change routes during a workflow. Invalid records are retained for inspection rather than silently switching integrations.
 
 To prepare the broker route while skipping installation of the Siemens plugin:
 
@@ -62,3 +64,11 @@ $env:PYTHONPATH = 'C:\source\CodexMCPBroker\src'
 ```
 
 This checks metadata/read-only compatibility. Fresh Codex chat activation, Siemens security/approval behavior, native preview/apply continuity, save/reopen, payload/media parity and failure recovery need selected-workflow acceptance before migration. Keep standalone integrations during those gates. See [native acceptance](NATIVE-ACCEPTANCE.md) and the broker's [coexistence policy](https://github.com/votecoffee/CodexMCPBroker/blob/main/docs/plugin-coexistence.md).
+
+For the stateful adapter gate, host 0.14.1 adds an internal provider seam consumed only by the separately compiled `SiemensMCPServer.Mcp.Fixture.exe`. Production startup has no fake-provider argument. The fixture refuses loaded Siemens assemblies and substitutes `IHmiSession`; production MCP handlers, queues, `TextListWorkflow` and pure feature workers remain in use. It does not exercise native `HmiSession` target/transaction checks or Siemens import/compile/save behavior.
+
+```powershell
+& 'C:\source\CodexMCPBroker\.local\development\Scripts\python.exe' -B -X utf8 scripts/test_broker_adapter.py 'C:\packages\extracted\server\SiemensMCPServer.Mcp.exe' --previous-host 'C:\packages\previous\server\SiemensMCPServer.Mcp.exe'
+```
+
+Run from the repository with the same broker source/dependencies as above. The optional previous host must predate 0.14.1. This check compares complete direct/broker text-list read results, preserves a 49,152-character multilingual payload, rejects wrong-owner/hash/consumed/stale plans, tests reload success/failure, and keeps fixture compile/save/reopen separate. It proves release discards process-owned plans/selection and records exactly three independent fixture import effects, including one lost reply with an uncertain broker receipt. The recovery barrier survives broker restart; explicit reconciliation after inspecting that isolated test state adds no effect. No cross-route write retry occurs. These fixture results cannot establish native or Codex UI acceptance.

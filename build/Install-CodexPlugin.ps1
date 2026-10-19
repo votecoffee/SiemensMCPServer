@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$Package,
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'SiemensMCPServer\CodexMarketplace'),
-    [ValidateSet('Standalone', 'Broker')][string]$Integration = 'Standalone',
+    [ValidateSet('Preserve', 'Standalone', 'Broker')][string]$Integration = 'Preserve',
     [switch]$PrepareOnly
 )
 $ErrorActionPreference = 'Stop'
@@ -56,6 +56,31 @@ foreach ($file in $manifest) {
 $plugin = $utf8.GetString($payload['plugin.json']) | ConvertFrom-Json
 $build = $utf8.GetString($payload['build-info.json']).TrimStart([char]0xFEFF) | ConvertFrom-Json
 if ($plugin.name -cne 'siemens-mcp-server' -or $plugin.version -notmatch '^\d+\.\d+\.\d+$' -or $build.tiaPortalApi -notmatch '^V\d+(\.\d+)?$' -or $build.pluginVersion -cne $plugin.version) { throw 'Unexpected plugin identity/build metadata.' }
+$installMutex = [Threading.Mutex]::new($false, ('Local\SiemensMCPServer-Install-' + (Get-BytesHash ([Text.Encoding]::UTF8.GetBytes($root.ToLowerInvariant())))))
+$installOwned = $false
+try {
+try { $installOwned = $installMutex.WaitOne(0) } catch [Threading.AbandonedMutexException] { $installOwned = $true }
+if (-not $installOwned) { throw 'Another installation is using this InstallRoot. Existing selection and settings were preserved.' }
+$requestedIntegration = $Integration
+$choicePath = Join-Path $root 'integration-choice.json'
+$previousIntegration = $null
+if (Test-Path -LiteralPath $choicePath) {
+    if ((Get-Item -LiteralPath $choicePath).Length -gt 16KB) { throw 'Integration choice exceeds its size limit; retained for inspection.' }
+    $choice = Get-Content -LiteralPath $choicePath -Raw | ConvertFrom-Json
+    if ($choice.schemaVersion -ne 1 -or $choice.integration -cnotin @('Standalone', 'Broker') -or $choice.selectionOnly -ne $true) { throw 'Invalid integration choice; retained for inspection.' }
+    $previousIntegration = $choice.integration
+}
+if ($Integration -eq 'Preserve') {
+    $Integration = if ($previousIntegration) { $previousIntegration } else { 'Standalone' }
+}
+function Save-IntegrationChoice {
+    $selection = [ordered]@{ schemaVersion = 1; integration = $Integration; selectionOnly = $true;
+        version = $plugin.version; api = $build.tiaPortalApi; packageSha256 = $zipHash; selectedUtc = [DateTime]::UtcNow.ToString('o') }
+    $temporaryChoice = $choicePath + '.' + [Guid]::NewGuid().ToString('N') + '.tmp'
+    [IO.File]::WriteAllText($temporaryChoice, ($selection | ConvertTo-Json), $utf8)
+    if (Test-Path -LiteralPath $choicePath) { [IO.File]::Replace($temporaryChoice, $choicePath, ($choicePath + '.previous')) }
+    else { [IO.File]::Move($temporaryChoice, $choicePath) }
+}
 $slug = $plugin.version + '-' + $build.tiaPortalApi.Replace('.', '_') + '-' + $zipHash.Substring(0, 12)
 $destination = Join-Path $root ('plugins\' + $slug)
 if (Test-Path -LiteralPath $destination) {
@@ -79,7 +104,12 @@ if ($Integration -eq 'Broker') {
     # broker state. Presence alone is insufficient to accept a migration.
     $helper = Join-Path $PSScriptRoot 'New-BrokerRegistration.ps1'
     $registration = Join-Path $root ('broker\siemens-' + $slug + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8) + '.json')
-    & $helper -PluginRoot $destination -OutputPath $registration
+    $prepared = & $helper -PluginRoot $destination -OutputPath $registration | ConvertFrom-Json
+    if (-not $PrepareOnly) { Save-IntegrationChoice }
+    $prepared | Add-Member -NotePropertyName integration -NotePropertyValue $Integration
+    $prepared | Add-Member -NotePropertyName selectionRecorded -NotePropertyValue (-not $PrepareOnly)
+    $prepared | Add-Member -NotePropertyName previousSelectionPreserved -NotePropertyValue ($requestedIntegration -eq 'Preserve' -and $null -ne $previousIntegration)
+    $prepared | ConvertTo-Json -Depth 12
     exit 0
 }
 [IO.Directory]::CreateDirectory($catalogDirectory) | Out-Null
@@ -121,6 +151,8 @@ $installation = & $codex plugin add 'siemens-mcp-server@siemens-mcp-server-local
 if ($LASTEXITCODE -ne 0) { throw 'Codex plugin installation failed. Verified source and configuration backup were retained.' }
 $result = @{ state = 'installed'; version = $plugin.version; api = $build.tiaPortalApi; packageSha256 = $zipHash;
     marketplaceRoot = $root; pluginSource = $destination; configurationBackup = $backupDirectory;
-    codex = ($installation | ConvertFrom-Json); nativeProjectChanged = $false;
+    codex = ($installation | ConvertFrom-Json); nativeProjectChanged = $false; integration = $Integration;
     nextStep = 'Start a new Codex chat to load the plugin skills/tools. Native project attachment and edits require an explicit target.' }
+Save-IntegrationChoice
 $result | ConvertTo-Json -Depth 12 | Tee-Object -FilePath (Join-Path $root 'installation.json')
+} finally { if ($installOwned) { $installMutex.ReleaseMutex() }; $installMutex.Dispose() }

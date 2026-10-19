@@ -72,6 +72,8 @@ powershell.exe -NoProfile -File build/Install-CodexPlugin.ps1 -Package 'C:\path\
 
 Use `-PrepareOnly` to verify and stage a package without changing Codex settings. Load the installed tools and skills in a new Codex chat. The standalone plugin remains supported independently of Universal Tools. `-Integration Broker` stages a verified server and read-only exclusive-session registration descriptor while skipping Siemens plugin installation; it does not change live registrations. Automatic broker preference remains gated on workflow migration acceptance. See [broker integration and installation choices](plugin/BROKER-INTEGRATION.md) and the [plugin guide](plugin/README.md).
 
+Reinstall defaults to `-Integration Preserve`: a recorded Broker or Standalone choice is retained; first use selects Standalone. Explicit choices remain available. `-PrepareOnly` leaves that choice intact, and concurrent installers using one root are rejected before settings changes.
+
 ## Usage
 
 ### Desktop GUI
