@@ -59,6 +59,19 @@ namespace SiemensMCPServer.Mcp
         private static bool BehaviorOwnerLink(XElement node) => node.Name.NamespaceName.Length == 0 && (node.Name.LocalName == "Owner" || node.Name.LocalName == "Control")
             && node.Parent?.Name == "LinkList" && node.Attribute("TargetID") != null && !node.HasElements
             && node.Nodes().All(n => n is XText t && string.IsNullOrWhiteSpace(t.Value)) && node.Attributes().All(a => a.Name == "TargetID");
+        private static void InsertBehaviorCopy(XElement list, XElement clone, XElement source)
+        {
+            if (!list.HasElements) { list.Add(clone); return; }
+            string? composition = (string?)clone.Attribute("CompositionName");
+            var peer = list.Elements().LastOrDefault(e => composition != null && (string?)e.Attribute("CompositionName") == composition);
+            if (peer != null) { peer.AddAfterSelf(clone); return; }
+            var order = source.Parent!.Elements().Select(e => (string?)e.Attribute("CompositionName")).Where(c => c != null).Distinct(StringComparer.Ordinal).ToArray();
+            int position = Array.IndexOf(order, composition);
+            if (composition == null || position < 0 || list.Elements().Any(e => Array.IndexOf(order, (string?)e.Attribute("CompositionName")) < 0))
+                throw new NotSupportedException("Destination composition order is absent from the prototype; choose an existing matching composition or use a reviewed native import.");
+            var following = list.Elements().FirstOrDefault(e => Array.IndexOf(order, (string?)e.Attribute("CompositionName")) > position);
+            if (following != null) following.AddBeforeSelf(clone); else list.Add(clone);
+        }
         private BehaviorState ReviewedBehaviorState()
         {
             if (!NativeReferenceOwner(resource)) throw new ArgumentException("Expected an unnamespaced native classic HMI resource.");
@@ -197,7 +210,7 @@ namespace SiemensMCPServer.Mcp
                 if (clone.Parent != null) clone.Remove();
                 var list = plan.Destination!.Element("ObjectList");
                 if (list == null) { list = new XElement("ObjectList"); plan.Destination.Add(list); }
-                list.Add(clone);
+                InsertBehaviorCopy(list, clone, plan.Source.Node);
             }
             foreach (var node in removed) node.Remove();
             NativeXmlIds.VerifyReferences(candidate.resource, candidate.document); candidate.ReviewedBehaviorState();

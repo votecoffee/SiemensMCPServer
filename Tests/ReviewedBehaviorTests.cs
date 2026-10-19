@@ -134,4 +134,27 @@ public sealed class ReviewedBehaviorTests
         var row = Row(); Assert.Throws<JsonException>(() => FeatureOperations.Execute("comfort", "change_behaviors", ExtensionWire.Json(new { snapshot = Xml, arguments = new { changes = new[] { new {
             action = "clone", xPath = row.GetProperty("xPath").GetString(), expectedFingerprint = row.GetProperty("fingerprint").GetString(), destinationXPath = TargetPath(Xml, "B"), unknown = true } } } })));
     }
+    [Fact] public void ReplacingAnEventRetainsItsCompositionPositionBeforeOtherNativeCompositions()
+    {
+        var document = XDocument.Parse(Xml); var target = document.Descendants("Hmi.Screen.Button").Last();
+        target.Element("ObjectList")!.Add(new XElement("Hmi.Screen.Property", new XAttribute("ID", "7"), new XAttribute("CompositionName", "Properties")));
+        string xml = document.ToString(); var remove = Operation(Inspect(xml).GetProperty("objects")[2], "remove"); var clone = Clone(xml);
+        clone.Edits = new[] { new ClassicXmlEdit { XPath = "/Document/Hmi.Event.Event/AttributeList/Name", ExpectedValue = "Press", NewValue = "CopiedPress" } };
+        var result = XDocument.Parse(Change(xml, remove, clone)); var list = result.Descendants("Hmi.Screen.Button").Last().Element("ObjectList")!;
+        Assert.Equal(new[] { "Events", "Properties" }, list.Elements().Select(e => (string?)e.Attribute("CompositionName")));
+        Assert.Equal("CopiedPress", list.Elements().First().Element("AttributeList")!.Element("Name")!.Value);
+    }
+    [Fact] public void MissingCompositionCanUseThePrototypeOwnersExistingCompositionOrder()
+    {
+        var document = XDocument.Parse(Xml); var buttons = document.Descendants("Hmi.Screen.Button").ToArray();
+        buttons[0].Element("ObjectList")!.Add(new XElement("Hmi.Screen.Property", new XAttribute("ID", "7"), new XAttribute("CompositionName", "Properties")));
+        buttons[1].Element("ObjectList")!.ReplaceNodes(new XElement("Hmi.Screen.Property", new XAttribute("ID", "8"), new XAttribute("CompositionName", "Properties")));
+        string xml = document.ToString(); var result = XDocument.Parse(Change(xml, Clone(xml)));
+        Assert.Equal(new[] { "Events", "Properties" }, result.Descendants("Hmi.Screen.Button").Last().Element("ObjectList")!.Elements().Select(e => (string?)e.Attribute("CompositionName")));
+    }
+    [Fact] public void UnknownDestinationCompositionOrderIsNotGuessed()
+    {
+        var document = XDocument.Parse(Xml); document.Descendants("Hmi.Screen.Button").Last().Element("ObjectList")!.ReplaceNodes(new XElement("Hmi.Screen.Property", new XAttribute("ID", "7"), new XAttribute("CompositionName", "Properties")));
+        string xml = document.ToString(); Assert.Throws<NotSupportedException>(() => Change(xml, Clone(xml)));
+    }
 }
