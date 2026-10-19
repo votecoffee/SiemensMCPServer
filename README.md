@@ -37,7 +37,7 @@ The server exposes engineering operations through the Model Context Protocol (MC
 | Siemens PLC | Offline blocks, data types, tags, native XML transfers, SCL/STL generation, readable-source export/search, API-supported cross-references and compile diagnostics. |
 | Desktop utility | Comfort / Advanced screens and resources; Unified native transfers where available; offline PLC XML resources. |
 | Libraries | Read-only project/open global library metadata: folders, types, versions and master-copy contents. No library updates or instance creation. |
-| Project texts | Native XLSX export, active-language discovery and bounded cell read/search. No workbook editing or translation import. |
+| Project texts | Active-language discovery, native XLSX extraction/search, language-aware comment/description/text records and reviewed existing-translation updates. Native import acceptance pending. |
 
 The server does not provide device download, runtime control, watch or force operations. See [feature coverage](plugin/FEATURE-COVERAGE.md) and [validation status](plugin/NATIVE-ACCEPTANCE.md) for supported routes and their limits.
 
@@ -124,9 +124,9 @@ Comfort extensions build screen/tag packages from native XML prototypes and vali
 
 PLC extensions export readable native SCL/STL/DB/UDT source, search it and read API-supported cross-references. They require explicit PLC/object paths and verified Offline state; see [PLC inspection](plugin/PLC-INSPECTION.md).
 
-Project extensions provide bounded [library metadata browsing](plugin/LIBRARY-INSPECTION.md) and [project-text XLSX export/read/search](plugin/PROJECT-TEXTS.md). Text export requires two explicit active cultures and retains the original workbook/hash; translation import is not implemented. The bundled [library](plugin/skills/inspect-libraries/SKILL.md) and [project-text](plugin/skills/inspect-project-texts/SKILL.md) skills describe selection and paging.
+Project extensions provide bounded [library metadata browsing](plugin/LIBRARY-INSPECTION.md) and [multilingual project texts](plugin/PROJECT-TEXTS.md). Version 0.12.0 extracts comments, descriptions, captions and text values by category/path and explicit active culture pair, then previews exact translation updates with native workbook evidence. Source-language changes require opt-in; apply uses a fresh snapshot and native import/readback. The companion `build/Edit-ProjectTexts.ps1` extracts complete retained workbooks or prepares disk-only candidates. The bundled [library](plugin/skills/inspect-libraries/SKILL.md) and [project-text](plugin/skills/inspect-project-texts/SKILL.md) skills describe selection and paging.
 
-Project-text capture requires host 0.9.0 or newer. New native capture kinds require a host upgrade/reconnect; later worker formatting/search can reload on the same contract. See [API compatibility](plugin/API-COMPATIBILITY.md) and [native validation status](plugin/NATIVE-ACCEPTANCE.md) before treating build/metadata checks as attached-project acceptance.
+The project-text import route requires a 0.12.0 host upgrade/reconnect once; later translation logic can reload on the same contract. V15.1 native extraction has been exercised; import/rollback and Unified/PLC category acceptance remain pending. The desktop GUI does not yet expose this project-text workflow. See [API compatibility](plugin/API-COMPATIBILITY.md) and [native validation status](plugin/NATIVE-ACCEPTANCE.md).
 
 Comfort workers support [layout](plugin/COMFORT-LAYOUT.md), [styled captions](plugin/COMFORT-SCREEN-TEXTS.md), [control/group copies](plugin/COMFORT-SCREEN-ITEMS.md), [symbolic tag/connection rebinding](plugin/COMFORT-REFERENCES.md) and [event/animation copies with explicit owner links](plugin/COMFORT-BEHAVIORS.md). The 0.10.4 host/worker fixes native V15.1 `ObjectName` controls and `#ID` references, including import readback comparisons. Upgrade/reconnect the host before staging this Comfort bundle; subsequent compatible workers can reload through the same `classicReferences` contract. See [native XML compatibility](plugin/EXTENSIONS.md#classic-native-xml).
 

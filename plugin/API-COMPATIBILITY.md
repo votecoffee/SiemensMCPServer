@@ -24,6 +24,8 @@ Host 0.8.0 adds read-only [library inspection](LIBRARY-INSPECTION.md). Its MCP b
 
 Host 0.9.0 adds [project-text XLSX export/read/search](PROJECT-TEXTS.md). V15.1–V19 expose the explicit culture-pair export signature and active/reference/editing language metadata used by this adapter; MCP builds and unattached checks pass. This does not establish native attached-project export, text-category completeness or translation import. V20/V21 SDK validation remains pending.
 
+Host 0.12.0 adds reviewed native project-text translation imports using the installed `ImportProjectTexts(FileInfo, bool)` signature. V15.1 native extraction has been exercised. The schema-1.3 editor preserves identities and metadata, but native import/readback/rollback and Unified/PLC category acceptance remain pending. The new import route needs a host upgrade/reconnect; later worker transformations can reload.
+
 ## API version versus engineering version
 
 `TiaPortalVersion` selects the compile-time API; `TiaPortalInstallVersion` selects the installation supplying it. For example:

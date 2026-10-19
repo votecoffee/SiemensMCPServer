@@ -31,6 +31,7 @@
     <Compile Include="../Mcp/ProjectTextTranslations.cs" Link="Features/ProjectTextTranslations.cs"/>
     <Compile Include="../Extensions/ProjectTranslationOperations.cs" Link="Extensions/ProjectTranslationOperations.cs"/>
     <Compile Include="../Mcp/ProjectTranslationWorkflow.cs" Link="ProjectTranslationWorkflow.cs"/>
+    <Compile Include="../Mcp/ProjectTranslationFiles.cs" Link="ProjectTranslationFiles.cs"/>
 
     <Compile Include="../Mcp/PlcReferenceReader.cs" Link="PlcReferenceReader.cs" />
     <Compile Include="../Extensions/FeatureRecipes.cs" Link="FeatureRecipes.cs" />

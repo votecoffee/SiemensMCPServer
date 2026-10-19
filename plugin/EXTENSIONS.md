@@ -1,4 +1,4 @@
-# Reloadable feature extensions — 0.11.0
+# Reloadable feature extensions — 0.12.0
 
 The MCP host retains its connection to Codex and owns the Siemens attachment, single STA queue, transactions, offline checks, preview stores, candidate hashes and native readback. Pure feature workers receive JSON snapshots, never Siemens CLR objects. The host copies complete, hash-checked bundles into private generation directories before starting workers, so they do not lock the source of the next update.
 
@@ -32,6 +32,8 @@ The 0.7.4 host changes API loading, project graphics access and older Unified sc
 The 0.8.0 host adds `projectRead` and a fourth bundled `project` module for [library inspection](LIBRARY-INSPECTION.md). Upgrade/reconnect the host before installing that module; pre-0.8.0 hosts reject its route. Existing routes are unchanged; the newer PLC worker was checked on a 0.7.4 host. Discovery/reload-all includes module names from both bundled and external registries. Future project worker operations may format the same bounded library snapshot without another native route.
 
 The 0.9.0 host adds `projectLanguages` and `projectTexts` snapshots for [native project-text XLSX inspection](PROJECT-TEXTS.md). This requires another host upgrade/reconnect; 0.8.0 rejects the new kinds and keeps its previous project worker. The existing library capture contract is unchanged. Subsequent workbook formatting/search operations can reload on the same snapshot contract.
+
+Host 0.12.0 adds the `projectTexts` preview/import route for [multilingual comments, descriptions and text values](PROJECT-TEXTS.md). Its project worker requires a host upgrade/reconnect once; 0.11.0 rejects the new route and retains its previous worker. Later extraction/translation logic can reload. `read_translation_units` uses the existing read snapshot; `edit_project_texts` uses the new native import route. The companion `Edit-ProjectTexts.ps1` reads retained files without an attachment.
 
 Comfort worker 0.9.1 adds [screen-layout inspection and reviewed move/align/distribute/resize operations](COMFORT-LAYOUT.md) using the existing `local` and `classicXml` routes. These operations reload on the checked 0.7.4 and 0.9.0 hosts with unchanged host PID/binary and MCP schemas. No new native capture kind or host reconnect is required for this Comfort update.
 
@@ -81,7 +83,7 @@ For development, rebuild only the worker and stage the selected module:
 ```powershell
 powershell.exe -NoProfile -File build\Build-Extensions.ps1 `
   -Destination "$env:LOCALAPPDATA\SiemensMCPServer\Extensions" `
-  -WorkerVersion '0.11.0' -Modules comfort
+  -WorkerVersion '0.12.0' -Modules comfort
 ```
 
 Then call `tia_reload_extensions(module="comfort")`. This does not rebuild or replace the host. Use an isolated destination and matching host `--extensions-root` for test versions. Normal MCP builds automatically build bundled workers; `build\Build-Plugin.ps1` creates a complete release package with fresh bundled generations.
@@ -90,7 +92,7 @@ Then call `tia_reload_extensions(module="comfort")`. This does not rebuild or re
 
 A bundle contains `extension.json`, `SiemensMCPServer.ExtensionWorker.exe`, dependencies and optional feature data. The host and installer also accept the former `SiemensTiaOpenness.ExtensionWorker.exe` entry point for existing protocol-1 bundles, with the same integrity and handshake checks. The manifest is `tia-extension-v1`, protocol `1`, with a module name, three-part version and exact relative file inventory (`path`, `bytes`, `sha256`). Its handshake must return the same module/version/protocol and a bounded operation catalog. Workers include no Siemens engineering DLLs.
 
-UTF-8 JSON-line requests contain `id`, `operation`, `input`; responses return the same `id` and `result` or `error`. `$hello` advertises operations. Supported routes are local inspection, internal transformations for existing tools, classic XML, Unified objects, PLC sources, PLC read snapshots and project read snapshots. The host controls native target selection and mutation scope. New routes require a host update; new operations using an existing route and the same capability contract do not.
+UTF-8 JSON-line requests contain `id`, `operation`, `input`; responses return the same `id` and `result` or `error`. `$hello` advertises operations. Supported routes are local inspection, internal transformations for existing tools, classic XML, Unified objects, PLC sources, PLC read snapshots, project read snapshots and project-text previews/imports. The host controls native target selection and mutation scope. New routes require a host update; new operations using an existing route and the same capability contract do not.
 
 An existing route may also declare a capability contract that older hosts cannot validate. `classicXml` previews with `snapshotKind="classicReferences"` require module `comfort`, `preview=true` and host 0.10.4+. This includes whitespace-preserving text comparison and native `#ID` reference normalization. All bundled Comfort classic-XML previews, including scalar recipes and layout, declare this marker. The host also recognizes the earlier `screenText` contract for older workers. Neither marker adds native services; incompatible bundles are rejected before activation.
 
@@ -98,7 +100,9 @@ An existing route may also declare a capability contract that older hosts cannot
 
 `projectRead` operations must belong to module `project`, set `preview=false` and declare a known snapshot kind. `libraryCatalog` arguments contain exact `expectedProjectPath`, host-validated `capture` (`libraryId`, `path`, `offset`, `maxRows`) and worker-specific `options`. Empty `libraryId` lists libraries; a returned ID selects a library/path. The broker restricts capture to documented metadata compositions and scalar fields; it does not open/upgrade/save libraries, instantiate contents, traverse dependencies or expose native handles.
 
-`projectLanguages` takes empty capture and returns active culture metadata. `projectTexts` requires explicit active `sourceLanguage`/`targetLanguage`, exports a new native XLSX to a host-owned artifact directory and supplies bounded base64url bytes plus the exact file length/hash. Workers verify the snapshot and inspect it without file extraction, Excel, formula evaluation or external-link access. These kinds use the same validate/capture/snapshot phases. No native project-text import or language activation is exposed. Client-supplied snapshot/destination fields are rejected. Project reads do not require `--allow-writes`.
+`projectLanguages` takes empty capture and returns active culture metadata. The `projectTexts` read snapshot requires explicit active `sourceLanguage`/`targetLanguage`, exports a new native XLSX to a host-owned artifact directory and supplies bounded base64url bytes plus length/hash. Workers verify and inspect it without file extraction, Excel, formula evaluation or external-link access. These kinds use validate/capture/snapshot phases. Client-supplied snapshot/destination fields are rejected. Project reads do not require `--allow-writes` or activate languages.
+
+The separate `projectTexts` preview route requires module `project`, `preview=true` and no snapshot kind. It uses `targetId=project`, empty path and the exact attached-project path in arguments. The worker receives validate/snapshot phases and returns bounded candidate bytes plus before/after text fingerprints. The host owns candidate evidence, expiry, generation binding, active-language/Offline checks, native import results, transaction and complete text readback. Apply requires `--allow-writes` and never saves. Read [the project-text guide](PROJECT-TEXTS.md) for supported schema/selection boundaries and pending native acceptance.
 
 Comfort supports optional `recipes.json` presets covered by the bundle manifest and loaded at startup. This example adds an operation without changing host code:
 

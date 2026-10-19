@@ -35,7 +35,7 @@ The MCP server has 51 tools. Five fixed extension tools provide discovery/read/p
 | Whole-project save | Implemented | Implemented | Exact project path; includes other editors' changes |
 | Project archive / reopen | Implemented | Shared project API | Exact attached path; native compressed archive, saved-state guards, preview invalidation on reopen |
 | Project/open global library metadata | Shared project module | Shared project module | Folders, types, versions and master-copy content descriptions; bounded read-only pages, no instance creation or library updates; [library guide](LIBRARY-INSPECTION.md) |
-| Project-text XLSX | Native project export/read/search | Shared project API where native export supports its texts | Explicit active culture pair; bounded raw-cell/cache view, original XLSX/hash retained; no translation import or text-category completeness claim; [project-text guide](PROJECT-TEXTS.md) |
+| Multilingual project texts | Native project export/read/search; schema-1.3 comments/descriptions/text records and reviewed existing-translation previews/imports | Shared project API where native export supports its texts; category acceptance pending | Explicit active culture pair; exact selections, IDs/metadata/substitutions preserved, source opt-in and full text readback; native import trials pending; [project-text guide](PROJECT-TEXTS.md) |
 | Library faceplate definitions | No dedicated adapter | No dedicated adapter | Metadata browsing does not extract faceplate definitions; outside HMI descendant/resource workflow |
 | Download / running-device control | Not implemented | Not implemented | Engineering plugin scope |
 

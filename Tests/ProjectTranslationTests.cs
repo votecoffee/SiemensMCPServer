@@ -136,4 +136,23 @@ public sealed class ProjectTranslationTests
         Assert.True(operation.IsCompatible("project")); Assert.False(operation.IsCompatible("comfort")); operation.Preview = false; Assert.False(operation.IsCompatible("project"));
         Assert.Throws<JsonException>(() => ExtensionWire.Parse<ProjectTranslationEdits>(ExtensionWire.Json(new { expectedProjectPath = Project, capture = Capture(), edits = Array.Empty<object>(), destination = "unsafe" })));
     }
+    [Fact] public void FileCommandPreservesInputsAndWritesVerifiableExtractionAndCandidateArtifacts()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")); Directory.CreateDirectory(directory);
+        try {
+            string source = Path.Combine(directory, "source.xlsx"), request = Path.Combine(directory, "request.json"), output = Path.Combine(directory, "output");
+            byte[] bytes = Workbook("=old"); File.WriteAllBytes(source, bytes); var book = new ProjectTextWorkbook(bytes);
+            File.WriteAllText(request, JsonSerializer.Serialize(new ProjectTranslationFileRequest { WorkbookPath = source, Capture = Capture(),
+                ExpectedWorkbookFingerprint = book.Fingerprint, Edits = Request(book, "=literal").Edits }, JsonDefaults.Options));
+            ProjectTranslationFiles.Run(request, output); Assert.Equal(bytes, File.ReadAllBytes(source));
+            Assert.Equal("=literal", Assert.Single(new ProjectTextWorkbook(File.ReadAllBytes(Path.Combine(output, "candidate.xlsx"))).TranslationUnits(Capture())).TargetText);
+            Assert.Contains("\"'=old\"", File.ReadAllText(Path.Combine(output, "translation-units.csv")));
+            using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(output, "manifest.json")));
+            foreach (var file in manifest.RootElement.GetProperty("files").EnumerateArray()) {
+                byte[] content = File.ReadAllBytes(Path.Combine(output, file.GetProperty("path").GetString()!));
+                Assert.Equal(content.Length, file.GetProperty("bytes").GetInt32()); Assert.Equal(TextListDocument.Hash(content), file.GetProperty("sha256").GetString());
+            }
+            Assert.Throws<IOException>(() => ProjectTranslationFiles.Run(request, output));
+        } finally { Directory.Delete(directory, true); }
+    }
 }

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using SiemensMCPServer.Analysis;
+using SiemensMCPServer.Mcp;
 
 namespace SiemensMCPServer.Extensions
 {
@@ -13,6 +14,11 @@ namespace SiemensMCPServer.Extensions
         private static int Main(string[] args)
         {
             Console.InputEncoding = new UTF8Encoding(false, true); Console.OutputEncoding = new UTF8Encoding(false, true);
+            if (args.Length == 2 && args[0].StartsWith("--project-texts=", StringComparison.Ordinal) && args[1].StartsWith("--output=", StringComparison.Ordinal))
+            {
+                try { Console.WriteLine(JsonSerializer.Serialize(ProjectTranslationFiles.Run(args[0].Substring(16), args[1].Substring(9)), ExtensionWire.Options)); return 0; }
+                catch (Exception ex) { Console.Error.WriteLine(ex.GetBaseException().Message); return 1; }
+            }
             if (args.Length == 2 && args[0].StartsWith("--analyze-project=", StringComparison.Ordinal) && args[1].StartsWith("--output=", StringComparison.Ordinal))
             {
                 try { Console.WriteLine(JsonSerializer.Serialize(HmiAnalysisFiles.Run(args[0].Substring(18), args[1].Substring(9)), ExtensionWire.Options)); return 0; }

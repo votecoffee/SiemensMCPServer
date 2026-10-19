@@ -100,7 +100,7 @@ def main():
             project = next(m for m in catalog['modules'] if m['module'] == 'project')
             assert {'list_project_languages', 'read_project_texts', 'find_in_project_texts'} <= {o['name'] for o in project['operations']}
             capabilities = client.call('tia_get_api_capabilities')['projectTexts']
-            assert capabilities['nativeExportApiPresent'] and capabilities['activeLanguageApiPresent'] and not capabilities['importImplemented']
+            assert capabilities['nativeExportApiPresent'] and capabilities['activeLanguageApiPresent'] and capabilities['nativeImportApiPresent'] and capabilities['importImplemented']
             request = {'expectedProjectPath': str(root / 'synthetic.ap15_1'), 'capture': {}, 'options': {}}
             assert 'attach' in client.rejected('tia_read_extension', module='project', operation='list_project_languages', argumentsJson=json.dumps(request)).lower()
             request['capture'] = {'sourceLanguage': 'en-US', 'targetLanguage': 'de-DE'}

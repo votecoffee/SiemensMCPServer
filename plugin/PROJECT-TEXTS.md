@@ -1,8 +1,8 @@
-# Project-text XLSX export and inspection
+# Multilingual project texts
 
-Host/worker **0.9.0** adds three `project` operations through `tia_read_extension`: `list_project_languages`, `read_project_texts` and `find_in_project_texts`. This addresses native text export/inspection for Comfort/classic V15.1 and matching APIs. It is a project-wide text workflow; it does not create/edit alarm definitions, change workbook cells or import translations. The MCP interface remains 51 tools.
+Host/worker **0.12.0** extracts and previews updates to existing comments, descriptions, captions and other text values exposed by Siemens' native project-text export. Records retain categories, object paths, source/target cultures and exact selection fingerprints. The shared engine powers MCP and a file command. The MCP interface remains 51 tools.
 
-The new `projectLanguages`/`projectTexts` snapshot kinds require a host upgrade/reconnect. A 0.8.0 host rejects the newer project worker and retains its existing generation. After upgrading, operations that format/search the same native workbook snapshot may reload independently. See [extension updates](EXTENSIONS.md).
+The new `projectTexts` preview/import route requires a **0.12.0 host upgrade and MCP reconnect once**. Older hosts reject the project worker and retain their previous generation. Subsequent translation logic can reload on this contract. See [extension updates](EXTENSIONS.md).
 
 ## Discover active languages
 
@@ -63,7 +63,7 @@ Search scans decoded cells and formula caches within the workbook limits, includ
 | ZIP contents | At most 512 entries, 16 MiB per file and 64 MiB total declared uncompressed file bytes |
 | Workbook metadata | At most 128 worksheets, 512 relationships per inspected relationships part and 100,000 shared strings |
 | Cell inspection | At most 200,000 explicit cells total and 200,000 explicit rows per sheet |
-| Decoded text | 65,536 UTF-16 characters per value; 16,777,216 characters across shared-string storage, cell values and formula expressions, counting repeated cell uses |
+| Decoded text | 65,536 UTF-16 characters per value; separate 16,777,216-character budgets for shared-string storage and expanded cell/formula values, counting repeated cell uses |
 | Read page | Offset 0–200,000; 1–200 cells; 1–4,096 returned characters per value |
 | Read-page text budget | 262,144 characters across returned cell identity/text/formula fields; `payloadLimited` and `nextOffset` report continuation |
 | Search | Single-line query of 1–256 characters; 1–200 matches; contexts at most 512 characters |
@@ -72,10 +72,77 @@ ZIP traversal/case collisions, missing/external worksheet relationships, ambiguo
 
 This is a bounded OOXML cell view, not a complete spreadsheet or Siemens workbook validator. If native export or inspection fails, the error retains the artifact location and, when available, the original file hash. Native files may contain private engineering data; retain them outside the public tree or under ignored `.local/`.
 
+## Extract translation records
+
+Call `tia_read_extension` with `module="project"`, `operation="read_translation_units"` and the same `expectedProjectPath`/`capture` used above. Use `options` such as:
+
+```json
+{ "sheet": "User Texts", "query": "Motor", "missingOnly": false, "offset": 0, "maxUnits": 50, "maxCharacters": 4096 }
+```
+
+Optional `category` filters an exact returned category. `query` searches source/target text, category and path without case sensitivity. Empty `sheet` includes supported worksheets. `missingOnly=true` selects empty targets; it does not judge translation quality or whether an empty source requires translation.
+
+`data.data` contains `workbookFingerprint`, `units`, total/matched/editable/missing counts, a bounded category summary, `nextOffset` and `hasMore`. Units expose category, object path, row, cultures, values, clipping/editability flags, plus `targetSelection`/`sourceSelection` where eligible. Clipped values have no editable selection. Each read performs a fresh export; use the retained workbook and file command for a stable, complete extraction.
+
+## Preview and apply updates
+
+Copy an exact returned selection. Call `tia_preview_extension` with `module="project"`, `operation="edit_project_texts"`, `targetId="project"`, `path=""`, `expectedFingerprint=<workbookFingerprint>` and `argumentsJson` containing:
+
+```json
+{
+  "expectedProjectPath": "<exact attached-project path>",
+  "capture": { "sourceLanguage": "en-US", "targetLanguage": "de-DE" },
+  "updateSourceLanguage": false,
+  "edits": [{
+    "selection": {
+      "sheet": "User Texts", "row": 42, "culture": "de-DE",
+      "expectedUnitFingerprint": "<returned unit fingerprint>",
+      "expectedText": "<exact existing target text>"
+    },
+    "newText": "<reviewed translation without rich markup>"
+  }]
+}
+```
+
+The preview checks a fresh full workbook fingerprint, exact row context and old text. It retains `before.xlsx`, `candidate.xlsx` and `preview.json` without editing TIA. Source-language selections require explicit `updateSourceLanguage=true`. Use separate captures for additional target cultures. Existing empty target slots can be filled; rows, text identities and language slots cannot be added or deleted here.
+
+Review the old/new values, cultures and import scope. Apply an authorized plan once with `tia_apply_extension_plan`, its plan ID and candidate hash. Apply requires `--allow-writes`, the same worker generation, an unexpired 30-minute plan and unchanged candidate bytes. Under native exclusive access it checks the original project, active languages, Offline state of every PLC in the project, and a fresh full text snapshot. It imports with Siemens `ImportProjectTexts`, records native status/log location, re-exports the pair, and commits its transaction only if the complete decoded cell fingerprint matches the candidate. Failed attempts retain evidence and consume the plan; inspect the project before retrying.
+
+Import processes the native workbook, including unchanged rows. This is not an arbitrary edited-workbook upload endpoint. No automatic translation, language activation, compile, save, download or runtime operation occurs. Compile affected targets and save separately within the user's scope.
+
+## Supported translation schema
+
+The adapter recognizes native `TIA_Version=1.3` workbooks with exact headers `Category`, `ViewPath`, `Internal ID`, `Substitutions`, `<sourceCulture>*`, `<targetCulture>` and optional `ref="N"` columns. Unknown layouts remain available through raw inspection; translation roles are never guessed.
+
+Only existing plain-string cells in `User Texts` are editable. System/unknown sheets, styled string runs, formulas, detected external package/workbook relationships, nonempty substitution/reference fields, possible rich/dynamic markup containing `<`, and oversized values are inspection-only. New rich/dynamic markup also requires a specialized adapter. Use the existing [screen-text](COMFORT-SCREEN-TEXTS.md), text-list or capability-checked Unified workflows for their supported structured text.
+
+Multiline Unicode and literal OOXML escape-like sequences are preserved. Formula-leading text is stored as a string. Shared strings are appended for selected cells, so one shared value update cannot change another cell. Untouched ZIP parts retain their bytes; changed worksheet/string parts retain unrelated XML and cell styles. Native file hashes and decoded text fingerprints are separate evidence.
+
+Translation reads return 1–100 units, with 1–32,767 characters per source/target and a 258,048-character serialized row budget. Category summaries are capped at 128 categories. Previews accept 1–200 exact selections and at most 32,767 UTF-16 characters per new value.
+
+## File extraction and candidate preparation
+
+After building the worker, run:
+
+```powershell
+powershell.exe -NoProfile -File build/Edit-ProjectTexts.ps1 -RequestPath 'C:\Engineering\texts-request.json' -OutputDirectory 'C:\Engineering\texts-report'
+```
+
+Extracted plugins include the command under `scripts/`. `-WorkerDirectory` selects an explicit built worker. An extraction request is:
+
+```json
+{
+  "workbookPath": "C:\\Engineering\\project-texts.xlsx",
+  "capture": { "sourceLanguage": "en-US", "targetLanguage": "de-DE" }
+}
+```
+
+Outputs are `translation-units.json`, `translation-units.csv`, `summary.json` and a completion `manifest.json` with all report hashes. To prepare a candidate, add `expectedWorkbookFingerprint` from the summary, optional `updateSourceLanguage`, and `edits` using the same selections/schema as the MCP preview. This also writes `before.xlsx`, `candidate.xlsx` and `changes.json`. It performs no native import. The input workbook/request are rehashed and preserved; choose a new output directory each run. A failed run may leave partial output without a completion manifest. Requests are limited to 2 MiB. CSV formula-leading fields are escaped for spreadsheet viewing; JSON/XLSX retain exact text.
+
 ## Import and validation boundaries
 
-Native **import is not implemented**, and `tia_get_api_capabilities().projectTexts.importImplemented` reports false. Siemens ties project-text exports to the originating project and existing text identities; Save As or object replacement can invalidate import. A future reviewed import workflow needs source/target protection, original-project binding, native results and independent readback. Do not pass an edited workbook to unrelated resource-import tools.
+Native import is implemented through reviewed project-text plans. Siemens ties exports to the originating project and existing text identities; Save As or object replacement can invalidate import. Do not pass a workbook to unrelated resource-import tools. Coverage comes from the actual categories exported by the selected API/project; this does not claim every property, protected block, PLC language construct, faceplate or Unified object is represented.
 
-V15.1–V19 builds, installed export/language signatures and unattached protocol checks pass; V16–V18 used V19 compatibility APIs. Synthetic workbook tests and the real net48 worker/MCP probe cover Unicode, hashes, paging/search, malformed data, guards, reload and older-host rejection. These do not establish native export from an attached project or coverage of every HMI/PLC text category. V20/V21 SDK and attached-project acceptance remain pending. No new desktop GUI workflow is included.
+V15.1 native extraction has been exercised. Live import/rollback trials and Unified/PLC category acceptance remain pending. Static tests cover exact edits, preserved source/metadata, hashes, Unicode, blank targets, source opt-in, protected fields, reload and older-host rejection. Build/protocol checks are separate from native import, rendered HMI appearance or runtime acceptance; V20/V21 SDK validation remains pending. No new desktop GUI workflow is included.
 
 Primary references: [Siemens project-text export](https://docs.tia.siemens.cloud/r/en-us/v21/tia-portal-openness-api-for-automation-of-engineering-workflows/export/import/import/export-of-project-data/project-texts/export-of-project-texts), [Siemens import restrictions](https://docs.tia.siemens.cloud/r/en-us/v21/tia-portal-openness-api-for-automation-of-engineering-workflows/export/import/import/export-of-project-data/project-texts/import-of-project-texts), [Microsoft cell-value model](https://learn.microsoft.com/en-us/office/open-xml/spreadsheet/how-to-retrieve-the-values-of-cells-in-a-spreadsheet) and [shared strings](https://learn.microsoft.com/en-us/office/open-xml/spreadsheet/working-with-the-shared-string-table). Earlier-version observations were checked against installed API metadata separately.

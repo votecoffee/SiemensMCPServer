@@ -136,6 +136,7 @@ namespace SiemensMCPServer.Mcp
                     || edit!.NewText == null || edit.NewText.Length > 32767 || edit.NewText.Any(c => char.IsControl(c) && c != '\r' && c != '\n' && c != '\t'))
                     throw new ArgumentException("Every translation needs an exact bounded selection and literal new text of at most 32767 characters.");
                 XmlConvert.VerifyXmlChars(edit.NewText);
+                if (edit.NewText.IndexOf('<') >= 0) throw new ArgumentException("Possible rich/dynamic markup requires a specialized text adapter.");
                 if (!index.TryGetValue(selection.Sheet + "\0" + selection.Row.ToString(CultureInfo.InvariantCulture), out var unit) || !unit.Editable)
                     throw new ArgumentException("Select an editable User Texts unit returned by read_translation_units.");
                 bool source = selection.Culture == request.Capture.SourceLanguage;

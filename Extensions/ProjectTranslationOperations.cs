@@ -77,7 +77,7 @@ namespace SiemensMCPServer.Extensions
             }
             return ExtensionWire.Json(new { workbookFingerprint = workbook.Fingerprint, schema = "TIA project texts 1.3", capture.SourceLanguage, capture.TargetLanguage,
                 units = rows, totalUnits = all.Length, matchedUnits = units.Length, editableUnits = all.Count(u => u.Editable), missingTranslations = all.Count(u => u.TargetEmpty),
-                categories = all.GroupBy(u => u.Category).Select(g => new { category = g.Key, count = g.Count() }).ToArray(),
+                categories = all.GroupBy(u => u.Category).Take(128).Select(g => new { category = Prefix(g.Key, 256), categoryClipped = g.Key.Length > 256, count = g.Count() }).ToArray(), categoriesTruncated = all.Select(u => u.Category).Distinct().Take(129).Count() > 128,
                 offset = options.Offset, nextOffset = options.Offset + rows.Count, hasMore = options.Offset + rows.Count < units.Length,
                 scope = "Native exported project texts: categories and object paths retain comments, descriptions, captions and text values. Existing User Texts language slots only; system texts, substitutions and complex markup are inspection-only. No automatic translation or language activation." });
         }
