@@ -48,6 +48,7 @@ namespace SiemensMCPServer.Mcp
     {
         private const int LayoutLimit = 1000000;
         private static readonly string[] GeometryFields = { "Left", "Top", "Width", "Height" };
+        private static readonly string[] LineEndpointFields = { "StartLeft", "StartTop", "EndLeft", "EndTop" };
         private static bool LayoutDimensionsValid(XElement node, int width, int height) => width <= LayoutLimit && height <= LayoutLimit
             && (node.Name == "Hmi.Screen.Line" ? width >= 0 && height >= 0 && (width != 0 || height != 0) : width > 0 && height > 0);
         private sealed class LayoutItem
@@ -57,6 +58,8 @@ namespace SiemensMCPServer.Mcp
             public string? UnsupportedReason;
             public ClassicLayoutBounds? Bounds;
             public XElement[] Fields = Array.Empty<XElement>();
+            public XElement[] EndpointFields = Array.Empty<XElement>();
+            public int[]? Endpoints;
         }
         private LayoutItem[] LayoutItems()
         {
@@ -93,6 +96,27 @@ namespace SiemensMCPServer.Mcp
                                 item.UnsupportedReason = "Geometry must contain bounded integers (absolute limit 1000000).";
                         if (item.UnsupportedReason == null && !LayoutDimensionsValid(node, values[2], values[3]))
                             item.UnsupportedReason = "Dimensions must be positive, except native Line controls may have one zero extent and one positive extent.";
+                        if (item.UnsupportedReason == null && node.Name == "Hmi.Screen.Line")
+                        {
+                            var endpoints = LineEndpointFields.Select(name => attributes[0].Elements(name).ToArray()).ToArray();
+                            var coordinates = new int[4];
+                            if (endpoints.Any(f => f.Length != 1 || f[0].HasAttributes || f[0].HasElements || f[0].Nodes().Any(n => !(n is XText))))
+                                item.UnsupportedReason = "Native Line geometry requires four existing scalar endpoint fields; no endpoints are synthesized.";
+                            else
+                            {
+                                item.EndpointFields = endpoints.Select(f => f[0]).ToArray();
+                                for (int i = 0; i < 4; i++)
+                                    if (!int.TryParse(item.EndpointFields[i].Value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out coordinates[i])
+                                        || coordinates[i] < -LayoutLimit || coordinates[i] > LayoutLimit)
+                                        item.UnsupportedReason = "Line endpoints must contain bounded integers (absolute limit 1000000).";
+                                if (item.UnsupportedReason == null && (values[0] != Math.Min(coordinates[0], coordinates[2])
+                                    || values[1] != Math.Min(coordinates[1], coordinates[3])
+                                    || values[2] != Math.Abs((long)coordinates[2] - coordinates[0])
+                                    || values[3] != Math.Abs((long)coordinates[3] - coordinates[1])))
+                                    item.UnsupportedReason = "Native Line bounds must agree with its primary endpoints.";
+                                if (item.UnsupportedReason == null) item.Endpoints = coordinates;
+                            }
+                        }
                         if (item.UnsupportedReason == null) item.Bounds = new ClassicLayoutBounds { Left = values[0], Top = values[1], Width = values[2], Height = values[3] };
                     }
                 }
@@ -107,7 +131,7 @@ namespace SiemensMCPServer.Mcp
             foreach (var item in all.Skip(offset).Take(maxItems))
             {
                 var row = new { xPath = item.XPath, item.Name, nativeType = item.Node.Name.LocalName, containerXPath = item.ContainerXPath,
-                    bounds = item.Bounds, geometryAvailable = item.Bounds != null, unsupportedReason = item.UnsupportedReason,
+                    bounds = item.Bounds, endpoints = EndpointSnapshot(item.Endpoints), geometryAvailable = item.Bounds != null, unsupportedReason = item.UnsupportedReason,
                     selection = item.Bounds == null ? null : new ClassicLayoutSelection { XPath = item.XPath, ExpectedBounds = item.Bounds } };
                 // Count escaped JSON, including repeated selection paths and non-ASCII names.
                 int cost = JsonSerializer.Serialize(row, JsonDefaults.Options).Length;
@@ -183,19 +207,34 @@ namespace SiemensMCPServer.Mcp
                 }
             }
             var edits = new List<ClassicXmlEdit>();
+            var afterEndpoints = new Dictionary<string, int[]>(StringComparer.Ordinal);
             foreach (var item in selected)
             {
                 var b = after[item.XPath]; int[] values = { b.Left, b.Top, b.Width, b.Height };
                 if (!LayoutDimensionsValid(item.Node, b.Width, b.Height)) throw new ArgumentException("Resulting dimensions must be positive; only native Line controls allow one zero extent. A zero-length line is not supported.");
                 int[] old = { item.Bounds!.Left, item.Bounds.Top, item.Bounds.Width, item.Bounds.Height };
+                if (item.Endpoints != null)
+                {
+                    // Endpoints are primary native properties; bounds alone cannot be imported safely.
+                    // Retain each nonzero axis direction. An expanded zero axis runs Start -> End.
+                    int right = LayoutCoordinate((decimal)b.Left + b.Width), bottom = LayoutCoordinate((decimal)b.Top + b.Height);
+                    bool reverseX = item.Endpoints[0] > item.Endpoints[2], reverseY = item.Endpoints[1] > item.Endpoints[3];
+                    int[] endpoints = { reverseX ? right : b.Left, reverseY ? bottom : b.Top, reverseX ? b.Left : right, reverseY ? b.Top : bottom };
+                    afterEndpoints.Add(item.XPath, endpoints);
+                    for (int i = 0; i < 4; i++) if (item.Endpoints[i] != endpoints[i])
+                        edits.Add(new ClassicXmlEdit { XPath = Path(item.EndpointFields[i]), ExpectedValue = item.EndpointFields[i].Value, NewValue = endpoints[i].ToString(CultureInfo.InvariantCulture) });
+                }
                 for (int i = 0; i < 4; i++) if (old[i] != values[i])
                     edits.Add(new ClassicXmlEdit { XPath = Path(item.Fields[i]), ExpectedValue = item.Fields[i].Value, NewValue = values[i].ToString(CultureInfo.InvariantCulture) });
             }
             if (edits.Count == 0) throw new ArgumentException("The requested layout contains no changes.");
             return new { candidateXml = Edit(edits.ToArray()), changes = new { request.Action, request.Alignment, request.Axis, request.AnchorXPath,
                 rounding = "Nearest integer pixel; midpoint away from zero. Distribution preserves both outer edges; gaps may differ by one pixel.",
-                items = selected.Select(i => new { xPath = i.XPath, i.Name, before = i.Bounds, after = after[i.XPath] }).ToArray(), edits } };
+                lineDirection = "Preserve each nonzero endpoint axis direction; expanding a zero axis places Start at the minimum and End at the maximum.",
+                items = selected.Select(i => new { xPath = i.XPath, i.Name, before = i.Bounds, after = after[i.XPath],
+                    beforeEndpoints = EndpointSnapshot(i.Endpoints), afterEndpoints = EndpointSnapshot(afterEndpoints.TryGetValue(i.XPath, out var endpoints) ? endpoints : null) }).ToArray(), edits } };
         }
+        private static object? EndpointSnapshot(int[]? values) => values == null ? null : new { startLeft = values[0], startTop = values[1], endLeft = values[2], endTop = values[3] };
         private static int LayoutCoordinate(decimal coordinate)
         {
             coordinate = decimal.Round(coordinate, 0, MidpointRounding.AwayFromZero);

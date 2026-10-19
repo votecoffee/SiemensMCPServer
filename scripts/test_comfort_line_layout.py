@@ -12,9 +12,11 @@ from test_comfort_screen_texts import packet, stage, worker
 
 
 def item(kind, name, left, width, height):
+    endpoints = (f'<StartLeft>{left}</StartLeft><StartTop>20</StartTop><EndLeft>{left + width}</EndLeft><EndTop>{20 + height}</EndTop>'
+                 if kind == 'Hmi.Screen.Line' else '')
     return (f"<{kind} CompositionName='ScreenItems'><AttributeList><ObjectName>{name}</ObjectName>"
             f"<Left>{left}</Left><Top>20</Top><Width>{width}</Width><Height>{height}</Height><LineColor>1, 2, 3</LineColor>"
-            f"</AttributeList></{kind}>")
+            f"{endpoints}</AttributeList></{kind}>")
 
 
 XML = ("<Document><Engineering version='V15.1'/><Hmi.Screen.Screen ID='0'><AttributeList><Name>Lines</Name></AttributeList><ObjectList>"
@@ -38,9 +40,12 @@ def probe(bundle):
     for node in original.iter('Hmi.Screen.Line'):
         node.find('AttributeList/Left').text = str(int(node.findtext('AttributeList/Left')) + 5)
         node.find('AttributeList/Top').text = '13'
+        for field, delta in [('StartLeft', 5), ('EndLeft', 5), ('StartTop', -7), ('EndTop', -7)]:
+            node.find('AttributeList/' + field).text = str(int(node.findtext('AttributeList/' + field)) + delta)
     assert ET.tostring(original) == ET.tostring(result)
     diagonal = list(ET.fromstring(resized['result']['candidateXml']).iter('Hmi.Screen.Line'))[2]
     assert diagonal.findtext('AttributeList/Width') == '0' and diagonal.findtext('AttributeList/Height') == '80'
+    assert diagonal.findtext('AttributeList/StartLeft') == diagonal.findtext('AttributeList/EndLeft') == '210'
     assert forbidden.get('error') and collapsed.get('error')
     operation = next(o for o in hello['result']['operations'] if o['name'] == 'arrange_screen_items')
     assert operation['snapshotKind'] == 'classicReferences'
