@@ -22,6 +22,8 @@ namespace SiemensMCPServer.Extensions
                     Op("list_libraries", "List the attached project library and already-open global libraries with exact IDs and bounded metadata. Does not open, upgrade or save libraries.", "projectRead", false, LibraryInspectionOperations.Schema(false), "libraryCatalog"),
                     Op("browse_library", "Browse one returned library/path: folders, types, versions or master-copy content descriptions. Read-only metadata; no instance creation, dependency traversal or library updates.", "projectRead", false, LibraryInspectionOperations.Schema(true), "libraryCatalog") };
                 case "comfort": return new[] {
+                    Op("inspect_screen_layout", "Inspect bounded stored geometry of classic XML screen items and return exact selection paths/bounds. Supplied XML only; no attachment or native acceptance claim.", "local", false, LayoutSchema(false)),
+                    Op("arrange_screen_items", "Move, align, distribute equal gaps or resize selected classic screen items. Uses exact paths/expected bounds and the native resource fingerprint; returns exact geometry edits. Stored geometry only; does not evaluate runtime dynamizations.", "classicXml", true, LayoutSchema(true)),
                     Op("build_screen_package", "Build a sidecar-free classic screen/tag import bundle from native XML prototypes and a supplied PLC symbol manifest. Offline only; writes no files and does not establish native acceptance.", "local", false, ComfortPackage.Schema(true)),
                     Op("validate_package_bindings", "Check screen-to-HMI-tag references and symbolic PLC connection/type declarations in supplied XML. Offline only; no native connection partner verification.", "local", false, ComfortPackage.Schema(false)),
                     Op("inspect_xml", "Inspect supplied classic XML without attaching to TIA.", "local", false, xmlSchema),
@@ -49,6 +51,18 @@ namespace SiemensMCPServer.Extensions
             JsonElement args = input.TryGetProperty("arguments", out var nested) ? nested : input;
             if (module == "comfort")
             {
+                if (operation == "inspect_screen_layout")
+                {
+                    var request = ExtensionWire.Parse<ClassicLayoutInspection>(args);
+                    RequireLayoutXml(request.Xml);
+                    return ExtensionWire.Json(new ClassicXmlDocument(request.Xml).LayoutCatalog(request.Offset, request.MaxItems));
+                }
+                if (operation == "arrange_screen_items")
+                {
+                    string xml = input.GetProperty("snapshot").GetString()!;
+                    RequireLayoutXml(xml);
+                    return ExtensionWire.Json(new ClassicXmlDocument(xml).ArrangeLayout(ExtensionWire.Parse<ClassicLayoutRequest>(args)));
+                }
                 if (operation == "build_screen_package") return ExtensionWire.Json(ComfortPackage.Build(ExtensionWire.Parse<ComfortPackageSpec>(args)));
                 if (operation == "validate_package_bindings") return ExtensionWire.Json(ComfortPackage.ValidateBindings(ExtensionWire.Parse<ComfortBindingInput>(args)));
                 if (operation == "inspect_xml")
@@ -90,6 +104,31 @@ namespace SiemensMCPServer.Extensions
                 source.Validate(); return ExtensionWire.Json(new { source, fileName = source.FileName });
             }
             throw new ArgumentException("Unsupported extension operation.");
+        }
+        private static void RequireLayoutXml(string xml)
+        {
+            if (xml == null || xml.Length == 0 || xml.Length > 16 * 1024 * 1024) throw new ArgumentException("Supply native screen XML within the 16 MiB limit.");
+        }
+        private static object LayoutSchema(bool arrange)
+        {
+            if (!arrange) return new { type = "object", additionalProperties = false, required = new[] { "xml" }, properties = new {
+                xml = new { type = "string", minLength = 1, maxLength = 16777216 }, offset = new { type = "integer", minimum = 0, maximum = 10000 }, maxItems = new { type = "integer", minimum = 1, maximum = 200 } } };
+            var bounds = new { type = "object", additionalProperties = false, required = new[] { "left", "top", "width", "height" }, properties = new {
+                left = new { type = "integer", minimum = -1000000, maximum = 1000000 }, top = new { type = "integer", minimum = -1000000, maximum = 1000000 },
+                width = new { type = "integer", minimum = 1, maximum = 1000000 }, height = new { type = "integer", minimum = 1, maximum = 1000000 } } };
+            return new { type = "object", additionalProperties = false, required = new[] { "action", "items" }, properties = new {
+                action = new { type = "string", @enum = new[] { "move", "align", "distribute", "resize" } },
+                items = new { type = "array", minItems = 1, maxItems = 100, items = new { type = "object", additionalProperties = false,
+                    required = new[] { "xPath", "expectedBounds" }, properties = new { xPath = new { type = "string", maxLength = 4096 }, expectedBounds = bounds } } },
+                deltaX = new { type = "integer", minimum = -1000000, maximum = 1000000 }, deltaY = new { type = "integer", minimum = -1000000, maximum = 1000000 },
+                width = new { type = "integer", minimum = 1, maximum = 1000000 }, height = new { type = "integer", minimum = 1, maximum = 1000000 },
+                alignment = new { type = "string", @enum = new[] { "left", "right", "horizontalCenter", "top", "bottom", "verticalCenter" } },
+                axis = new { type = "string", @enum = new[] { "horizontal", "vertical" } }, anchorXPath = new { type = "string", maxLength = 4096 } },
+                oneOf = new object[] {
+                    new { properties = new { action = new { @enum = new[] { "move" } } }, required = new[] { "deltaX", "deltaY" } },
+                    new { properties = new { action = new { @enum = new[] { "align" } } }, required = new[] { "alignment", "anchorXPath" } },
+                    new { properties = new { action = new { @enum = new[] { "distribute" } } }, required = new[] { "axis" } },
+                    new { properties = new { action = new { @enum = new[] { "resize" } } }, anyOf = new[] { new { required = new[] { "width" } }, new { required = new[] { "height" } } } } } };
         }
         public static void SelfTest(string module)
         {
