@@ -116,6 +116,18 @@ public sealed class ClassicResourceTests
         File.AppendAllText(Path.Combine(plan.GetProperty("artifactDirectory").GetString()!, "candidate-files", "image.png"), "tamper");
         Assert.Throws<InvalidOperationException>(() => workflow.Apply(plan.GetProperty("planId").GetString()!, plan.GetProperty("candidateSha256").GetString()!)); Assert.Equal(0, fixture.Attempts);
     }
+    [Fact] public void BrokerRejectsInconsistentLineCandidatesFromAnExtensionBeforeStaging()
+    {
+        using var fixture = new Fixture(); var workflow = new ClassicXmlWorkflow(fixture, fixture.Plans);
+        var before = fixture.ReadClassicResource("hmi", "screen");
+        const string xml = "<Document><Hmi.Screen.Screen><AttributeList><Name>Screen1</Name></AttributeList><ObjectList><Hmi.Screen.Line CompositionName='ScreenItems'><AttributeList><ObjectName>Line</ObjectName><Left>10</Left><Top>20</Top><Width>80</Width><Height>0</Height><StartLeft>10</StartLeft><StartTop>20</StartTop><EndLeft>90</EndLeft><EndTop>20</EndTop></AttributeList></Hmi.Screen.Line></ObjectList></Hmi.Screen.Screen></Document>";
+        File.WriteAllText(Path.Combine(before.Directory, before.XmlFile), xml);
+        before = fixture.ReadClassicResource("hmi", "screen");
+        Assert.Throws<ArgumentException>(() => workflow.PreviewTransformed("hmi", "screen", before.Fingerprint,
+            source => source.Replace("<Left>10</Left>", "<Left>11</Left>"), new { }));
+        Assert.Equal(0, fixture.Attempts); Assert.False(Directory.Exists(fixture.Plans));
+        Assert.Equal(xml, File.ReadAllText(Path.Combine(before.Directory, before.XmlFile)));
+    }
     [Fact] public void MissingExternalCompanionCannotProduceAnApplicableScalarPreview()
     {
         using var fixture = new Fixture();
