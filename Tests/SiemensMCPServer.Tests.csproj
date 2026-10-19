@@ -19,6 +19,7 @@
     <Compile Include="../Extensions/ExtensionContract.cs" Link="ExtensionContract.cs" />
     <Compile Include="../Extensions/FeatureOperations.cs" Link="FeatureOperations.cs" />
     <Compile Include="../Extensions/ComfortPackage.cs" Link="ComfortPackage.cs" />
+    <Compile Include="../Extensions/HmiAnalysisOperations.cs" Link="HmiAnalysisOperations.cs" />
     <Compile Include="../Extensions/PlcInspectionOperations.cs" Link="PlcInspectionOperations.cs" />
     <Compile Include="../Mcp/PlcInspection.cs" Link="PlcInspection.cs" />
     <Compile Include="../Extensions/LibraryInspectionOperations.cs" Link="LibraryInspectionOperations.cs" />

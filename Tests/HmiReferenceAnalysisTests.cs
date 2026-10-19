@@ -126,4 +126,25 @@ public sealed class HmiReferenceAnalysisTests
         input = HmiReferenceFixture.Input(); input.Resources = input.Resources.Concat(new[] { input.Resources[0] }).ToArray();
         Assert.Throws<ArgumentException>(() => HmiReferenceAnalyzer.Analyze(input));
     }
+    [Fact] public void NativeArrayByteLengthIsRetainedWithoutBeingMistakenForElementCount()
+    {
+        var input = HmiReferenceFixture.Input(HmiReferenceFixture.Table("Axes[0].Flags", "Array [0..3] of DInt").Replace("<Length>1</Length>", "<Length>16</Length>"));
+        var report = HmiReferenceAnalyzer.Analyze(input); Assert.Equal("valid", report.Bindings.Single().Status);
+        Assert.Equal("16", report.Tags.Single().NativeLength); Assert.Equal(3, report.Tags.Single().Dimensions.Single().Upper);
+    }
+    [Fact] public void ConnectionAddressProfileJoinsWinccProgramTagsToL5xScopes()
+    {
+        var input = HmiReferenceFixture.Input(HmiReferenceFixture.Table("Main:LocalAlias", "Int"));
+        Assert.Equal("missingSymbol", HmiReferenceAnalyzer.Analyze(input).Bindings.Single().Status);
+        input.ConnectionMappings[0].AddressSyntax = "wincc-rockwell";
+        Assert.Equal("valid", HmiReferenceAnalyzer.Analyze(input).Bindings.Single().Status);
+    }
+    [Fact] public void ControllerElementImpactIncludesWholeArrayConsumersWithoutIncludingOtherElements()
+    {
+        var input = HmiReferenceFixture.Input(HmiReferenceFixture.Table("Axes[1].Flags", "Array [0..3] of DInt"));
+        var report = HmiReferenceAnalyzer.Analyze(input); var change = new[] { new HmiProposedChange { Kind = "controllerSymbol", ControllerId = "plc", Name = "Axes[1].Flags[2]" } };
+        Assert.Contains(HmiReferenceImpact.Report(input, report, report.AnalysisSha256, change).Items, i => i.Reference.LinkType == "Tag");
+        input.Resources[1].Xml = HmiReferenceFixture.Screen(@"HMI\Axis\Position[1]"); report = HmiReferenceAnalyzer.Analyze(input);
+        Assert.DoesNotContain(HmiReferenceImpact.Report(input, report, report.AnalysisSha256, change).Items, i => i.Reference.LinkType == "Tag");
+    }
 }

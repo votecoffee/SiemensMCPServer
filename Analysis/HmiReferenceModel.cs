@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace SiemensMCPServer.Analysis
@@ -17,6 +18,7 @@ namespace SiemensMCPServer.Analysis
         [JsonRequired] public string Connection { get; set; } = "";
         [JsonRequired] public string ControllerId { get; set; } = "";
         public string DefaultScope { get; set; } = "";
+        public string AddressSyntax { get; set; } = "canonical";
         public string ExpectedControllerName { get; set; } = "";
     }
     [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
@@ -25,9 +27,20 @@ namespace SiemensMCPServer.Analysis
         [JsonRequired] public HmiResourceInput[] Resources { get; set; } = Array.Empty<HmiResourceInput>();
         public ControllerDocumentInput[] ControllerDocuments { get; set; } = Array.Empty<ControllerDocumentInput>();
         public HmiConnectionMapping[] ConnectionMappings { get; set; } = Array.Empty<HmiConnectionMapping>();
+        public HmiConnectionDefinition[] ConnectionDefinitions { get; set; } = Array.Empty<HmiConnectionDefinition>();
+        public bool ConnectionMetadataAvailable { get; set; }
         public bool ExportReportedComplete { get; set; }
         public string[] ExportFailures { get; set; } = Array.Empty<string>();
         public string[] UnsupportedResources { get; set; } = Array.Empty<string>();
+    }
+    [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+    internal sealed class HmiConnectionDefinition
+    {
+        public string HmiId { get; set; } = "";
+        [JsonRequired] public string Name { get; set; } = "";
+        public string Path { get; set; } = "";
+        public string NativeType { get; set; } = "";
+        public Dictionary<string, string> Attributes { get; set; } = new Dictionary<string, string>();
     }
     internal sealed class AnalysisDiagnostic
     {
@@ -51,6 +64,7 @@ namespace SiemensMCPServer.Analysis
         public string ControllerSymbol { get; set; } = "";
         public string AddressMode { get; set; } = "";
         public string LogicalAddress { get; set; } = "";
+        public string NativeLength { get; set; } = "";
         public bool Multiplexed { get; set; }
         public string AliasTag { get; set; } = "";
         public string[] Issues { get; set; } = Array.Empty<string>();
@@ -97,6 +111,7 @@ namespace SiemensMCPServer.Analysis
     internal sealed class HmiAnalysisReport
     {
         public string Format => "tia-hmi-reference-analysis-v1";
+        public string EngineVersion => typeof(HmiReferenceAnalyzer).Assembly.GetName().Version!.ToString(3);
         public string AnalysisSha256 { get; set; } = "";
         public object[] Sources { get; set; } = Array.Empty<object>();
         public ControllerDeclaration[] Controllers { get; set; } = Array.Empty<ControllerDeclaration>();
@@ -107,6 +122,8 @@ namespace SiemensMCPServer.Analysis
         public bool ExportReportedComplete { get; set; }
         public string[] ExportFailures { get; set; } = Array.Empty<string>();
         public string[] UnsupportedResources { get; set; } = Array.Empty<string>();
+        public HmiConnectionDefinition[] ConnectionDefinitions { get; set; } = Array.Empty<HmiConnectionDefinition>();
+        public bool ConnectionMetadataAvailable { get; set; }
         public bool NativeBindingVerified => false;
         public string Scope => "Read-only classic HMI export/declaration analysis. Static exported links only; scripts, computed/indirect references, unexported objects, native partners, runtime and physical offsets require separate checks.";
     }

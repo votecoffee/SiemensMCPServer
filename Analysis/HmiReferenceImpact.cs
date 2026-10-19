@@ -71,9 +71,13 @@ namespace SiemensMCPServer.Analysis
                         if (change.NewSymbol.Length != 0) { copy.ControllerSymbol = change.NewSymbol; copy.LogicalAddress = ""; }
                         var mappings = input.ConnectionMappings;
                         if (change.Kind == "connection" && change.NewControllerId.Length != 0)
+                        {
+                            var previous = HmiBindingValidator.Mapping(mappings, tag.HmiId, tag.Connection);
                             mappings = mappings.Where(m => !(Names.Equals(m.Connection, tag.Connection) && Names.Equals(m.HmiId, tag.HmiId))).Concat(new[] {
-                                new HmiConnectionMapping { HmiId = tag.HmiId, Connection = tag.Connection, ControllerId = change.NewControllerId } }).ToArray();
-                        proposed.Add(tag.Id, HmiBindingValidator.Validate(new[] { copy }, analysis.Controllers, mappings).Single());
+                                new HmiConnectionMapping { HmiId = tag.HmiId, Connection = tag.Connection, ControllerId = change.NewControllerId,
+                                    DefaultScope = previous?.DefaultScope ?? "", AddressSyntax = previous?.AddressSyntax ?? "canonical" } }).ToArray();
+                        }
+                        proposed.Add(tag.Id, HmiBindingValidator.Validate(new[] { copy }, analysis.Controllers, mappings, analysis.ConnectionDefinitions, analysis.ConnectionMetadataAvailable).Single());
                     }
                 }
                 int before = items.Count;
@@ -82,6 +86,8 @@ namespace SiemensMCPServer.Analysis
                     bool match = change.Kind == "controllerSymbol"
                         ? Names.Equals(reference.ControllerId, change.ControllerId) && (Within(reference.ControllerAddress, change.Name)
                             || reference.Resolution != null && new[] { reference.Resolution.CanonicalSymbol }.Concat(reference.Resolution.AliasChain).Concat(reference.Resolution.DeclarationPaths).Any(p => Within(p, change.Name)))
+                            || Names.Equals(reference.ControllerId, change.ControllerId) && reference.Resolution?.Dimensions.Length > 0
+                                && new[] { reference.Resolution.CanonicalSymbol }.Concat(reference.Resolution.AliasChain).Any(p => Within(change.Name, p))
                         : selected.Contains(reference.TagId) || change.Kind == "connection" && Names.Equals(reference.Connection, change.Name);
                     if (!match) continue;
                     items.Add(new HmiImpactItem { ChangeIndex = index, Reference = reference,

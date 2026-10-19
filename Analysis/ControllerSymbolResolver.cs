@@ -94,6 +94,18 @@ namespace SiemensMCPServer.Analysis
             var result = Resolve(address, defaultScope, new HashSet<string>(ControllerDeclarations.Names), 0);
             result.Requested = address; return result;
         }
+        public SymbolResolution ResolveAddress(string address, string defaultScope, string syntax)
+        {
+            if (syntax == "canonical") return Resolve(address, defaultScope);
+            if (syntax != "wincc-rockwell") return new SymbolResolution { Requested = address, Reason = "Unsupported connection address syntax." };
+            var program = Regex.Match(address, @"^([A-Za-z_][A-Za-z_0-9]*):([A-Za-z_][A-Za-z_0-9]*)([.\[].*|)$", RegexOptions.CultureInvariant);
+            if (!program.Success || address.StartsWith("Program:", StringComparison.OrdinalIgnoreCase)) return Resolve(address, defaultScope);
+            string nativeRoot = program.Groups[1].Value + ":" + program.Groups[2].Value;
+            string scopedRoot = "Program:" + program.Groups[1].Value + "." + program.Groups[2].Value;
+            bool literal = symbols.ContainsKey(nativeRoot), scoped = symbols.ContainsKey(scopedRoot);
+            if (literal && scoped) return new SymbolResolution { Status = "ambiguousAddress", Requested = address, Reason = "Address matches both a literal controller tag and a WinCC program-scoped tag." };
+            var result = Resolve(scoped ? scopedRoot + program.Groups[3].Value : address, defaultScope); result.Requested = address; return result;
+        }
         private SymbolResolution Resolve(string address, string scope, HashSet<string> aliases, int depth)
         {
             var result = new SymbolResolution { Requested = address };

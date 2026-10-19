@@ -65,13 +65,22 @@ namespace SiemensMCPServer.Analysis
         {
             if (input.Resources == null || input.Resources.Length < 1 || input.Resources.Length > 2000 || input.ControllerDocuments == null
                 || input.ControllerDocuments.Length > 32 || input.ConnectionMappings == null || input.ConnectionMappings.Length > 1000
-                || input.ExportFailures == null || input.UnsupportedResources == null) throw new ArgumentException("Supply 1..2000 resources, at most 32 controllers and 1000 connection mappings.");
+                || input.ConnectionDefinitions == null || input.ConnectionDefinitions.Length > 1000
+                || input.ExportFailures == null || input.UnsupportedResources == null) throw new ArgumentException("Supply 1..2000 resources, at most 32 controllers and 1000 connection mappings/definitions.");
+            if (input.ExportFailures.Length > 10000 || input.UnsupportedResources.Length > 10000 || input.ExportFailures.Concat(input.UnsupportedResources).Any(s => s == null || s.Length > 8192))
+                throw new ArgumentException("Export diagnostic count/length limits exceeded.");
+            foreach (var connection in input.ConnectionDefinitions)
+                if (connection == null || connection.HmiId == null || connection.Name == null || connection.Path == null || connection.NativeType == null || connection.Attributes == null
+                    || connection.HmiId.Length > 4096 || connection.Name.Length > 1024 || connection.Path.Length > 4096 || connection.NativeType.Length > 1024
+                    || connection.Attributes.Count > 200 || connection.Attributes.Any(a => a.Key.Length > 1024 || a.Value == null || a.Value.Length > 8192))
+                    throw new ArgumentException("Invalid or excessive native connection metadata.");
             foreach (var mapping in input.ConnectionMappings)
             {
                 if (mapping == null) throw new ArgumentException("Connection mapping cannot be null.");
                 ControllerDeclarations.Name(mapping.Connection, "connection"); ControllerDeclarations.Name(mapping.ControllerId, "controller ID");
                 if (mapping.HmiId == null || mapping.DefaultScope == null || mapping.ExpectedControllerName == null || mapping.HmiId.Length > 4096 || mapping.DefaultScope.Length > 1024 || mapping.ExpectedControllerName.Length > 1024)
                     throw new ArgumentException("Invalid connection mapping scope.");
+                if (!new[] { "canonical", "wincc-rockwell" }.Contains(mapping.AddressSyntax)) throw new ArgumentException("addressSyntax must be canonical or wincc-rockwell.");
             }
             if (input.ConnectionMappings.GroupBy(m => m.HmiId + "\n" + m.Connection, Names).Any(g => g.Count() != 1)) throw new ArgumentException("Duplicate/ambiguous connection mappings.");
             var controllers = input.ControllerDocuments.Select(ControllerDeclarations.Import).ToArray();
@@ -100,11 +109,12 @@ namespace SiemensMCPServer.Analysis
                     foreach (string role in new[] { "Connection", "ControllerTag", "DataType", "HmiDataType", "Tag" })
                         if (tag.Elements("LinkList").Elements(role).Any() && Link(tag, role).Length == 0) issues.Add("Unsupported or ambiguous " + role + " declaration link.");
                     string length = Scalar(tag.Element("AttributeList"), "Length");
-                    if (shape.dimensions.Length != 0 && (length.Length != 0 && (!long.TryParse(length, NumberStyles.None, CultureInfo.InvariantCulture, out long total)
-                        || shape.dimensions.Aggregate(1m, (product, axis) => product * ((decimal)axis.Upper - axis.Lower + 1)) != total))) issues.Add("HMI Length differs from declared array dimensions.");
+                    // Native Length can be bytes (e.g. 65 INT elements -> 130), not element count.
+                    // Retain it as evidence; array rank/bounds come from the explicit DataType descriptor.
                     var item = new HmiTagDeclaration { HmiId = supplied.HmiId, ResourcePath = supplied.Path, XPath = resource.Paths[tag], Name = name,
                         DataType = shape.type, HmiDataType = Link(tag, "HmiDataType"), Dimensions = shape.dimensions, Connection = Unquote(Link(tag, "Connection")),
                         ControllerSymbol = Unquote(Link(tag, "ControllerTag")), LogicalAddress = Scalar(tag.Element("AttributeList"), "LogicalAddress"),
+                        NativeLength = length,
                         AddressMode = Scalar(tag.Element("AttributeList"), "AddressAccessMode"),
                         Multiplexed = Scalar(tag.Element("AttributeList"), "UseMultiplexing").Equals("true", StringComparison.OrdinalIgnoreCase),
                         AliasTag = Unquote(Link(tag, "Tag")), Issues = issues.ToArray() };
@@ -117,7 +127,7 @@ namespace SiemensMCPServer.Analysis
             }
             if (resources.GroupBy(r => r.Input.HmiId + "\n" + r.Input.Path, StringComparer.Ordinal).Any(g => g.Count() != 1)) throw new ArgumentException("Resource HMI/path pairs must be unique.");
             if (tags.Count > 50000) throw new ArgumentException("At most 50000 HMI tags can be analyzed.");
-            var bindings = HmiBindingValidator.Validate(tags.ToArray(), controllers, input.ConnectionMappings);
+            var bindings = HmiBindingValidator.Validate(tags.ToArray(), controllers, input.ConnectionMappings, input.ConnectionDefinitions, input.ConnectionMetadataAvailable);
             var bindingById = bindings.ToDictionary(b => b.TagId, StringComparer.Ordinal);
             var lookup = new TagLookup(tags);
             foreach (var resource in resources)
@@ -167,7 +177,7 @@ namespace SiemensMCPServer.Analysis
                             {
                                 row.ControllerAddress += suffix;
                                 var mapping = HmiBindingValidator.Mapping(input.ConnectionMappings, tag.HmiId, tag.Connection);
-                                row.Resolution = new ControllerSymbolResolver(controllers.Single(c => Names.Equals(c.Id, binding.ControllerId))).Resolve(row.ControllerAddress, mapping?.DefaultScope ?? "");
+                                row.Resolution = new ControllerSymbolResolver(controllers.Single(c => Names.Equals(c.Id, binding.ControllerId))).ResolveAddress(row.ControllerAddress, mapping?.DefaultScope ?? "", mapping?.AddressSyntax ?? "canonical");
                                 if (row.Resolution.Status != "resolved") { row.Status = row.Resolution.Status; row.Issues = new[] { row.Resolution.Reason }; }
                             }
                         }
@@ -183,10 +193,12 @@ namespace SiemensMCPServer.Analysis
             foreach (var group in tags.GroupBy(t => t.HmiId + "\n" + t.Name, Names).Where(g => g.Count() > 1))
                 foreach (var tag in group) diagnostics.Add(new AnalysisDiagnostic { Code = "ambiguousTag", HmiId = tag.HmiId, ResourcePath = tag.ResourcePath, XPath = tag.XPath, Message = "Duplicate HMI tag qualified name." });
             var sources = resources.Select(r => (object)new { r.Input.HmiId, r.Input.Path, sha256 = TextListDocument.Hash(r.Input.Xml), nativeType = r.Root.Name.LocalName }).ToArray();
-            string hash = TextListDocument.Hash(JsonSerializer.Serialize(new { sources, controllers = controllers.Select(c => new { c.Id, c.SourceSha256 }), input.ConnectionMappings,
-                input.ExportReportedComplete, input.ExportFailures, input.UnsupportedResources }, JsonDefaults.Options));
+            string hash = TextListDocument.Hash(JsonSerializer.Serialize(new { format = "tia-hmi-reference-analysis-v1", engineVersion = typeof(HmiReferenceAnalyzer).Assembly.GetName().Version!.ToString(3),
+                sources, controllers = controllers.Select(c => new { c.Id, c.SourceSha256 }), input.ConnectionMappings,
+                input.ConnectionDefinitions, input.ConnectionMetadataAvailable, input.ExportReportedComplete, input.ExportFailures, input.UnsupportedResources }, JsonDefaults.Options));
             return new HmiAnalysisReport { AnalysisSha256 = hash, Sources = sources, Controllers = controllers, Tags = tags.ToArray(), Bindings = bindings, References = references.ToArray(),
-                Diagnostics = diagnostics.ToArray(), ExportReportedComplete = input.ExportReportedComplete, ExportFailures = input.ExportFailures, UnsupportedResources = input.UnsupportedResources };
+                Diagnostics = diagnostics.ToArray(), ConnectionDefinitions = input.ConnectionDefinitions, ConnectionMetadataAvailable = input.ConnectionMetadataAvailable,
+                ExportReportedComplete = input.ExportReportedComplete, ExportFailures = input.ExportFailures, UnsupportedResources = input.UnsupportedResources };
         }
         internal static HmiTagDeclaration[] FindTags(IEnumerable<HmiTagDeclaration> tags, string hmi, string reference, out string suffix)
             => new TagLookup(tags).Find(hmi, reference, out suffix);

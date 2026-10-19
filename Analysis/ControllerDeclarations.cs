@@ -91,8 +91,10 @@ namespace SiemensMCPServer.Analysis
         }
         private static DeclarationDimension[] RockwellDimensions(string value)
         {
+            value = value.Trim();
             if (value.Length == 0 || value == "0") return Array.Empty<DeclarationDimension>();
-            var values = value.Split(',');
+            // Native L5X tags use space-separated ranks; accept comma-separated declaration exports too.
+            var values = value.Contains(',') ? value.Split(',') : System.Text.RegularExpressions.Regex.Split(value, @"\s+");
             if (values.Length > 3) throw new ArgumentException("L5X arrays support at most three dimensions.");
             return values.Select(v => int.TryParse(v.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out int size) && size > 0
                 ? new DeclarationDimension { Lower = 0, Upper = size - 1 } : throw new ArgumentException("Invalid L5X array dimension.")).ToArray();

@@ -10,7 +10,8 @@ namespace SiemensMCPServer.Analysis
         internal static HmiConnectionMapping? Mapping(HmiConnectionMapping[] mappings, string hmi, string connection)
             => mappings.SingleOrDefault(m => Names.Equals(m.HmiId, hmi) && Names.Equals(m.Connection, connection))
                 ?? mappings.SingleOrDefault(m => m.HmiId.Length == 0 && Names.Equals(m.Connection, connection));
-        public static HmiBindingValidation[] Validate(HmiTagDeclaration[] tags, ControllerDeclaration[] controllers, HmiConnectionMapping[] mappings)
+        public static HmiBindingValidation[] Validate(HmiTagDeclaration[] tags, ControllerDeclaration[] controllers, HmiConnectionMapping[] mappings,
+            HmiConnectionDefinition[]? connections = null, bool connectionMetadataAvailable = false)
         {
             var declarations = controllers.ToDictionary(c => c.Id, Names);
             var resolvers = controllers.ToDictionary(c => c.Id, c => new ControllerSymbolResolver(c), Names);
@@ -25,6 +26,11 @@ namespace SiemensMCPServer.Analysis
                 if (tag.AliasTag.Length != 0) return Fail("hmiAliasUnsupported", "A direct HMI tag-to-tag binding requires its own native alias adapter.");
                 if (tag.Connection.Length == 0 && result.ControllerAddress.Length == 0) { result.Status = "internal"; return result; }
                 if (tag.Connection.Length == 0 || result.ControllerAddress.Length == 0) return Fail("incompleteBinding", "External HMI bindings require a connection and controller address.");
+                if (connectionMetadataAvailable)
+                {
+                    int found = (connections ?? Array.Empty<HmiConnectionDefinition>()).Count(c => Names.Equals(c.HmiId, tag.HmiId) && Names.Equals(c.Name, tag.Connection));
+                    if (found != 1) return Fail(found == 0 ? "missingHmiConnection" : "ambiguousHmiConnection", "The binding connection does not select one captured native HMI connection declaration.");
+                }
                 if (tag.ControllerSymbol.Length != 0 && tag.LogicalAddress.Length != 0) return Fail("conflictingAddress", "Both ControllerTag and LogicalAddress are populated; select the native authoritative address explicitly.");
                 var mapping = Mapping(mappings, tag.HmiId, tag.Connection);
                 if (mapping == null) return Fail("unmappedConnection", "No explicit HMI connection-to-controller metadata mapping was supplied.");
@@ -32,7 +38,8 @@ namespace SiemensMCPServer.Analysis
                 if (!declarations.TryGetValue(mapping.ControllerId, out var declaration)) return Fail("missingController", "The mapped controller declaration is absent.");
                 if (mapping.ExpectedControllerName.Length != 0 && !Names.Equals(mapping.ExpectedControllerName, declaration.Name))
                     return Fail("controllerIdentityMismatch", "The imported controller name differs from the explicit connection mapping expectation.");
-                var resolved = resolvers[mapping.ControllerId].Resolve(result.ControllerAddress, mapping.DefaultScope);
+                if (mapping.AddressSyntax == "wincc-rockwell" && declaration.Format != "rockwell-l5x") return Fail("addressSyntaxMismatch", "WinCC Rockwell addressing requires a Rockwell declaration source.");
+                var resolved = resolvers[mapping.ControllerId].ResolveAddress(result.ControllerAddress, mapping.DefaultScope, mapping.AddressSyntax);
                 result.Resolution = resolved;
                 if (resolved.Status != "resolved") return Fail(resolved.Status, resolved.Reason);
                 if (resolved.ExternalAccess.Equals("None", StringComparison.OrdinalIgnoreCase)) return Fail("externalAccessNone", "The controller declaration prohibits external access.");
@@ -44,6 +51,7 @@ namespace SiemensMCPServer.Analysis
                     if (tag.Dimensions[axis].Lower != resolved.Dimensions[axis].Lower || tag.Dimensions[axis].Upper != resolved.Dimensions[axis].Upper)
                         return Fail("arrayBoundsMismatch", "HMI and controller array bounds differ; offset conversion is not inferred.");
                 var warnings = new List<string>();
+                if (!connectionMetadataAvailable) warnings.Add("Native HMI connection definitions were not supplied; mapping is an explicit caller assertion.");
                 if (resolved.ExternalAccess.Equals("Read Only", StringComparison.OrdinalIgnoreCase)) warnings.Add("Controller declaration permits read-only access; write consumers must be reviewed.");
                 if (tag.HmiDataType.Length != 0 && HmiReferenceAnalyzer.TypeShape(tag.HmiDataType).type != tag.DataType) warnings.Add("Native HMI storage/transfer types differ; runtime conversion is not validated.");
                 if (tag.DataType == "STRING" || tag.DataType == "WSTRING") warnings.Add("String encoding/capacity and driver conversion require separate native validation.");

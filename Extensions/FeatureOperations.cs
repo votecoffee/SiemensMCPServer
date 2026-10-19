@@ -22,6 +22,10 @@ namespace SiemensMCPServer.Extensions
                     Op("list_libraries", "List the attached project library and already-open global libraries with exact IDs and bounded metadata. Does not open, upgrade or save libraries.", "projectRead", false, LibraryInspectionOperations.Schema(false), "libraryCatalog"),
                     Op("browse_library", "Browse one returned library/path: folders, types, versions or master-copy content descriptions. Read-only metadata; no instance creation, dependency traversal or library updates.", "projectRead", false, LibraryInspectionOperations.Schema(true), "libraryCatalog") };
                 case "comfort": return new[] {
+                    Op("import_controller_declarations", "Import read-only Rockwell L5X or PLCopen XML declarations with source hashes; inspect paged symbols, types and members. No manually built symbol list, native import or network/controller access.", "local", false, HmiAnalysisOperations.Schema("import_controller_declarations")),
+                    Op("analyze_hmi_references", "Trace supplied project classic HMI resources through screen/control/event/animation tag links into mapped controller declarations. Reports exact source paths, missing/ambiguous/opaque references and hashes. Large export folders use the companion analysis command.", "local", false, HmiAnalysisOperations.Schema("analyze_hmi_references")),
+                    Op("validate_hmi_bindings", "Validate HMI bindings against imported controller scopes/members/types/array bounds/aliases and explicit connection mappings. Static declaration evidence only; native connection partners and runtime are not established.", "local", false, HmiAnalysisOperations.Schema("validate_hmi_bindings")),
+                    Op("reference_impact", "Report affected HMI objects for proposed tag/connection/binding/controller-symbol changes against an expected analysis hash; follows aliases and nested members. Does not edit or apply changes.", "local", false, HmiAnalysisOperations.Schema("reference_impact")),
                     Op("inspect_behaviors", "Inspect bounded exported event/animation prototypes and exact external Owner/Control link targets, with owner-subtree paging. Supplied XML only; native acceptance remains separate.", "local", false, BehaviorSchema(false)),
                     Op("inspect_references", "Inspect exported classic LinkList references, exact symbolic names and owning controls. Native-ID and unsupported roles are inspection-only; supplied XML only, with bounded pages and exact owner/type filters.", "local", false, ReferenceSchema(false)),
                     Op("rebind_references", "Change exact existing symbolic Tag, ControllerTag and Connection names with per-link fingerprints and old values. Preserves native quoting verbatim; does not verify target existence/types or rewrite scripts. Requires host 0.10.4+ native-reference contract.", "classicXml", true, ReferenceSchema(true), "classicReferences"),
@@ -58,6 +62,8 @@ namespace SiemensMCPServer.Extensions
             JsonElement args = input.TryGetProperty("arguments", out var nested) ? nested : input;
             if (module == "comfort")
             {
+                if (new[] { "import_controller_declarations", "analyze_hmi_references", "validate_hmi_bindings", "reference_impact" }.Contains(operation))
+                    return HmiAnalysisOperations.Execute(operation, args);
                 if (operation == "inspect_behaviors")
                 {
                     var request = ExtensionWire.Parse<ClassicBehaviorInspection>(args);

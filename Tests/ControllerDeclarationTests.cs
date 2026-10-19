@@ -87,6 +87,22 @@ public sealed class ControllerDeclarationTests
         Assert.Equal("DINT", resolver.Resolve("CounterAlias[1].Flags[2]").DataType);
         Assert.Equal("Axes[1].Flags[2]", resolver.Resolve("CounterAlias[1].Flags[2]").CanonicalSymbol);
     }
+    [Fact] public void NativeL5xSpaceSeparatedDimensionsResolveWithoutExpandingArrays()
+    {
+        var model = ControllerFixture.Import(ControllerFixture.L5x.Replace("Dimensions='2,4'", "Dimensions='2 4'"));
+        Assert.Equal("INT", new ControllerSymbolResolver(model).Resolve("Matrix[1,3]").DataType);
+        Assert.Equal(new[] { 1, 3 }, model.Symbols.Single(s => s.Name == "Matrix").Dimensions.Select(d => d.Upper));
+    }
+    [Fact] public void WinccRockwellProgramSyntaxRequiresAnExplicitProfileAndKeepsIoTagsDistinct()
+    {
+        var resolver = new ControllerSymbolResolver(ControllerFixture.Import());
+        Assert.Equal("missingSymbol", resolver.Resolve("Main:LocalAlias").Status);
+        var result = resolver.ResolveAddress("Main:LocalAlias", "", "wincc-rockwell");
+        Assert.Equal("resolved", result.Status); Assert.Equal("INT", result.DataType); Assert.Equal("Program:Main.Counter", result.CanonicalSymbol);
+        Assert.Equal("Main:LocalAlias", result.Requested);
+        string text = ControllerFixture.L5x.Replace("<Tags><Tag Name='Axes'", "<Tags><Tag Name='Remote:I' TagType='Base' DataType='DINT'/><Tag Name='Axes'");
+        Assert.Equal("DINT", new ControllerSymbolResolver(ControllerFixture.Import(text)).ResolveAddress("Remote:I", "", "wincc-rockwell").DataType);
+    }
     [Fact] public void PlcOpenDerivedStructArraysPreserveNonzeroBoundsScopesAndDeclaredAddresses()
     {
         var model = ControllerFixture.Import(ControllerFixture.PlcOpen, "plcopen-xml"); var resolver = new ControllerSymbolResolver(model);
