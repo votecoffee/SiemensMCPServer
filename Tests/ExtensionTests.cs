@@ -10,6 +10,21 @@ using Xunit;
 public sealed class ExtensionTests
 {
     [Theory]
+    [InlineData("edit_text_list")]
+    [InlineData("change_text_list")]
+    public void OlderComfortWorkersCannotSilentlyNormalizeTextValues(string operation)
+    {
+        using var fixture = new Fixture(); using var manager = fixture.Manager();
+        string generation = manager.Generation("comfort");
+        var descriptor = fixture.Workers.Single().Hello.Operations.Single(o => o.Name == operation);
+        descriptor.Route = "internal"; descriptor.SnapshotKind = "";
+        var failure = Assert.Throws<InvalidOperationException>(() => manager.Execute("comfort", operation, new { }));
+        Assert.Contains("worker 0.14.1+", failure.Message);
+        Assert.Equal(generation, manager.Generation("comfort"));
+        Assert.False(fixture.Workers.Single().Disposed);
+    }
+
+    [Theory]
     [InlineData("comfort", "edit_text_list", true, "literalTextV1", true)]
     [InlineData("comfort", "change_text_list", true, "literalTextV1", true)]
     [InlineData("comfort", "edit_text_list", false, "literalTextV1", false)]

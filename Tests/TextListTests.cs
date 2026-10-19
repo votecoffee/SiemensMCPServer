@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Xml.Linq;
 using SiemensMCPServer.Mcp;
+using SiemensMCPServer.Extensions;
 using Xunit;
 
 namespace SiemensMCPServer.Tests;
@@ -32,6 +33,28 @@ public sealed class TextListTests
     private static TextEdit Edit(string newText = "New “ready” & café\nSecond line") => new TextEdit {
         Entry = "7", Culture = "en-US", ExpectedText = "Old & ready", NewText = newText
     };
+
+    [Fact]
+    public void WorkerCannotNormalizeLiteralCarriageReturnsIntoADifferentPreview()
+    {
+        using var directory = new Scratch();
+        var backend = new FakeBackend();
+        var workflow = new TextListWorkflow(backend, directory.Path, new NormalizingWorker());
+        var failure = Assert.Throws<InvalidOperationException>(() => workflow.Preview("hmi", "Messages_TL",
+            new TextListDocument(backend.Xml).Fingerprint, new[] { Edit("First\r\nSecond") }));
+        Assert.Contains("exact requested", failure.Message);
+        Assert.False(Directory.Exists(directory.Path));
+        Assert.Equal(0, backend.Imports);
+    }
+
+    private sealed class NormalizingWorker : IFeatureEngine
+    {
+        public JsonElement Execute(string module, string operation, object input)
+        {
+            var reply = FeatureOperations.Execute(module, operation, ExtensionWire.Json(input));
+            return ExtensionWire.Json(new { candidate = reply.GetProperty("candidate").GetString()!.Replace("&#xD;", "") });
+        }
+    }
 
     [Theory]
     [InlineData("First\r\nSecond")]

@@ -130,3 +130,5 @@ Pure tests and the persistent-STDIO upgrade test cover worker replacement, a new
 ## Literal classic text values (0.14.1)
 
 Comfort text-list edits and structure operations use the `internalText` / `literalTextV1` contract. Host and worker 0.14.1 serialize CR characters as XML entities, preserve CR/LF mixtures on reparse and distinguish those values in fingerprints. Older hosts reject this route during catalog validation and retain their existing workers/plans. Upgrade/reconnect the host before staging the new Comfort worker. Ordinary feature reload remains available afterward. Native import/readback of specific multiline values requires its own acceptance.
+
+The converse is guarded too: a 0.14.1 host refuses text-list transformations from an older Comfort worker, while its other compatible operations remain available. The host independently derives the exact requested text-list candidate and checks the returned worker fingerprint before creating artifacts or a plan. A worker cannot normalize selected newlines or change unrelated text-list content silently.

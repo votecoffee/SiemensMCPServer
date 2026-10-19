@@ -28,8 +28,10 @@ namespace SiemensMCPServer.Mcp
             string originalXml = backend.ReadTextList(hmiId, listName);
             var before = TextListDocuments.Parse(originalXml);
             RequireFingerprint(before, expectedFingerprint);
+            var intended = before.Edit(edits);
             var reply = features.Execute(before is TextListDocument ? "comfort" : "unified", "edit_text_list", new { snapshot = originalXml, arguments = new { edits } });
             var after = TextListDocuments.Parse(reply.GetProperty("candidate").GetString()!);
+            RequireCandidate(before, after, intended);
             var diff = edits.Select(e => new { entry = e.Entry, culture = e.Culture, before = e.ExpectedText, after = e.NewText }).ToArray();
             return Stage(hmiId, listName, originalXml, before, after, diff);
         }
@@ -40,9 +42,17 @@ namespace SiemensMCPServer.Mcp
             string originalXml = backend.ReadTextList(hmiId, listName);
             if (!(TextListDocuments.Parse(originalXml) is TextListDocument before)) throw new NotSupportedException("Structured entry/translation operations require a classic HMI text list.");
             RequireFingerprint(before, expectedFingerprint);
+            var intended = before.ChangeStructure(changes, activeCultures);
             var reply = features.Execute("comfort", "change_text_list", new { snapshot = originalXml, arguments = new { changes, activeCultures } });
             var after = new TextListDocument(reply.GetProperty("candidate").GetString()!);
+            RequireCandidate(before, after, intended);
             return Stage(hmiId, listName, originalXml, before, after, new { operations = changes, before = before.Structure(), after = after.Structure(), beforeValues = before.Read(), afterValues = after.Read(), activeProjectCultures = activeCultures });
+        }
+
+        private static void RequireCandidate(ITextListDocument before, ITextListDocument after, ITextListDocument intended)
+        {
+            if (before.Name != after.Name || before.ArtifactExtension != after.ArtifactExtension) throw new InvalidOperationException("Extension cannot change text-list identity or format.");
+            if (after.Fingerprint != intended.Fingerprint) throw new InvalidOperationException("Worker candidate differs from the exact requested text-list changes. No preview was created.");
         }
 
         private object Stage(string hmiId, string listName, string originalXml, ITextListDocument before, ITextListDocument after, object diff)

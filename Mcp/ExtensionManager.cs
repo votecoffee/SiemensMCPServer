@@ -248,7 +248,10 @@ namespace SiemensMCPServer.Mcp
         public JsonElement Execute(string module, string operation, object input)
         => Read(() => {
             var loaded = Get(module);
-            if (!loaded.Worker.Hello.Operations.Any(o => o.Name == operation)) throw new ArgumentException("Unknown extension operation; inspect tia_list_extensions.");
+            var descriptor = loaded.Worker.Hello.Operations.SingleOrDefault(o => o.Name == operation) ?? throw new ArgumentException("Unknown extension operation; inspect tia_list_extensions.");
+            if (module == "comfort" && new[] { "edit_text_list", "change_text_list" }.Contains(operation)
+                && (descriptor.Route != "internalText" || descriptor.SnapshotKind != "literalTextV1"))
+                throw new InvalidOperationException("Comfort text-list edits require worker 0.14.1+ for exact newline preservation. Update/reload the Comfort worker before creating a new preview.");
             return loaded.Worker.Call(operation, input);
         });
         public object ExecuteLocal(string module, string operation, object input) => Read(() => {
