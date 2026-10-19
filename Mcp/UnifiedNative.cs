@@ -43,7 +43,7 @@ namespace SiemensMCPServer.Mcp
         }
 
         public static bool CanInspect(object software) => Has(software.GetType(), "Screens") && Has(software.GetType(), "ScreenGroups");
-        private static Type? ResolveType(string name) => AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetType(name)).FirstOrDefault(t => t != null);
+        private static Type? ResolveType(string name) => SiemensApiTypes.Resolve(typeof(Project).Assembly, name, TiaPortalAssemblyResolver.LoadOptionalModule);
         private static bool Has(Type? type, string name) => type?.GetProperty(name, BindingFlags.Public | BindingFlags.Instance) != null;
         private static PropertyInfo Property(object target, string name) => target.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.Instance)
             ?? throw new NotSupportedException("Installed Unified API does not expose " + target.GetType().FullName + "." + name);

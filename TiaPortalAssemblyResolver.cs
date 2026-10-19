@@ -73,15 +73,20 @@ namespace SiemensMCPServer
             if (!File.Exists(path))
                 return null;
 
+            SiemensApiTypes.RequireIdentity(requested, AssemblyName.GetAssemblyName(path));
             Assembly loaded = Assembly.LoadFrom(path);
-            if (!string.Equals(requested.FullName, loaded.GetName().FullName, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new FileNotFoundException(
-                    "The installed TIA Portal Openness assembly does not match the version requested by this build.",
-                    path);
-            }
-
+            SiemensApiTypes.RequireIdentity(requested, loaded.GetName());
             return loaded;
+        }
+
+        internal static Assembly LoadOptionalModule(AssemblyName requested)
+        {
+            if (requested.Name != "Siemens.Engineering.WinCCUnified" && requested.Name != "Siemens.Engineering.WinCC"
+                && requested.Name != "Siemens.Engineering.Step7")
+                throw new ArgumentException("Only documented Siemens product modules can be loaded.", "requested");
+            if (_selectedInstallation == null)
+                throw new InvalidOperationException("Select a compatible TIA Portal installation before loading its product modules.");
+            return ResolveSiemensEngineeringAssembly(null, new ResolveEventArgs(requested.FullName));
         }
 
         private static IList<CompatibleInstallation> FindCompatibleInstallations()
@@ -123,6 +128,13 @@ namespace SiemensMCPServer
                                 if (string.IsNullOrWhiteSpace(assemblyPath) || !File.Exists(assemblyPath))
                                     continue;
 
+                                try
+                                {
+                                    SiemensApiTypes.RequireIdentity(referencedBase, AssemblyName.GetAssemblyName(assemblyPath));
+                                }
+                                catch (IOException) { continue; }
+                                catch (BadImageFormatException) { continue; }
+
                                 string directory = Path.GetDirectoryName(assemblyPath);
                                 if (string.IsNullOrWhiteSpace(directory))
                                     continue;
@@ -158,10 +170,10 @@ namespace SiemensMCPServer
                     return null;
 
                 string direct = apiKey.GetValue(baseAssemblyName) as string;
-                if (!string.IsNullOrWhiteSpace(direct) && File.Exists(direct))
+                if (baseAssemblyName != V21BaseAssemblyName && !string.IsNullOrWhiteSpace(direct) && File.Exists(direct))
                     return direct;
 
-                foreach (string framework in new[] { "net48", "net8.0-windows" })
+                foreach (string framework in new[] { "net48" })
                 {
                     using (RegistryKey frameworkKey = apiKey.OpenSubKey(framework))
                     {

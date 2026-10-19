@@ -17,7 +17,7 @@ namespace SiemensMCPServer.Mcp
             if (path == graphics || path.StartsWith(graphics + "/", StringComparison.Ordinal))
             {
                 if (reference.Family == "plc") throw new NotSupportedException("Project graphics are an HMI resource.");
-                object root = project!.GetType().GetProperty("Graphics")!.GetValue(project, null)!;
+                object root = NativeProjectResources.Graphics(project!);
                 return EngineeringNative.Resolve(root, path == graphics ? "" : path.Substring(graphics.Length + 1));
             }
             return EngineeringNative.Resolve(reference.Software, path);

@@ -633,7 +633,7 @@ namespace SiemensMCPServer
                 throw new InvalidOperationException("No TIA project is attached.");
 
             int count = 0;
-            dynamic graphics = ((dynamic)_project).Graphics;
+            dynamic graphics = NativeProjectResources.Graphics(_project);
             foreach (dynamic graphic in graphics)
             {
                 string name = Convert.ToString(graphic.Name);
@@ -844,7 +844,7 @@ namespace SiemensMCPServer
                 // Project graphics are required by graphic lists and many screen objects.
                 RunImportCategoryIfPresent("ProjectGraphics", root, summary, ref ok, ref failed, delegate(string path)
                 {
-                    ImportXmlFilesRecursiveDynamic(((dynamic)_project).Graphics, path, options, "project graphic");
+                    ImportXmlFilesRecursiveDynamic(NativeProjectResources.Graphics(_project), path, options, "project graphic");
                 });
 
                 // External tags link to the HMI connection.
