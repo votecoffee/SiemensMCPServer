@@ -13,6 +13,7 @@
     <Compile Include="../Mcp/ExtensionPlanStore.cs" Link="ExtensionPlanStore.cs" />
     <Compile Include="../Extensions/ExtensionContract.cs" Link="ExtensionContract.cs" />
     <Compile Include="../Extensions/FeatureOperations.cs" Link="FeatureOperations.cs" />
+    <Compile Include="../Extensions/ComfortPackage.cs" Link="ComfortPackage.cs" />
     <Compile Include="../Extensions/FeatureRecipes.cs" Link="FeatureRecipes.cs" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />

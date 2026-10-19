@@ -1,6 +1,6 @@
 # Engineering feature coverage
 
-The MCP server has 51 tools. Five fixed extension tools provide discovery/read/preview/apply/reload while workers change independently of the host; see [extensions](EXTENSIONS.md). Comfort/classic V15.1 is the primary profile; Unified follows with version limits. See [validation status](NATIVE-ACCEPTANCE.md) for native boundaries. PLC and Unified native writes require separate acceptance. V15.1/V19 builds and offline reload tests do not establish every native operation or exact V15.0 compatibility. The WinForms UI remains classic-only.
+The MCP server has 51 tools. Five fixed extension tools provide discovery/read/preview/apply/reload while workers change independently of the host; see [extensions](EXTENSIONS.md). Comfort/classic V15.1 is the primary profile; Unified follows with version limits. See [validation status](NATIVE-ACCEPTANCE.md) for native boundaries. PLC and Unified native writes require separate acceptance. V15.1/V19 builds and offline reload tests do not establish every native operation or exact V15.0 compatibility. The WinForms UI supports classic HMI workflows plus API-supported Unified and offline PLC native transfers; see [desktop usage](../docs/DESKTOP.md).
 
 | Feature | Comfort / classic | Unified | Route and limit |
 | --- | --- | --- | --- |
@@ -12,6 +12,7 @@ The MCP server has 51 tools. Five fixed extension tools provide discovery/read/p
 | Text-list translations | Specialized XML adapter | Paired-YAML adapter on matching newer API | Existing single-value entries/locales; V19 Unified has no route |
 | Text-list structure/additions | Dedicated add/remove ordinary entries and supported translation changes | Native YAML import where available | Classic templates, fingerprints, fresh IDs and explicit translations; V15.1 retains active language slots, so clear text instead of removing a slot; default/range/formatted/linked entries protected |
 | Normal screens/folders | XML export/import, including contents | Native graph and creation/edit/delete | Unified serialization requires an actual native method; none synthesized |
+| Screen/tag package builder | Offline native prototype cloning and supplied PLC binding checks | No package builder | [Comfort worker operations](COMFORT-PACKAGES.md); sidecar-free templates, native import acceptance pending |
 | Captions/layout/colors | Scalar fields or screen XML | Dedicated style-preserving caption tools and generic properties | Complex text can be explicit raw markup; no automatic dynamic/multi-run rewriting |
 | Comfort XML scalar editing | Dedicated read/preview/apply workflow with bounded exact-path catalog | Not routed through classic XML | Exact XPath/old values, retained sidecars/languages, protected composition/identity metadata including slide-in edge, native readback equality |
 | Templates/popups/slide-ins | Native XML resources | Available native screen/group/item model | Device/API dependent; unavailable categories reported |

@@ -63,6 +63,15 @@ powershell.exe -NoProfile -File scripts/test_native_contracts.ps1 -Version V15.1
 
 Offline and metadata checks do not establish native project or runtime acceptance. See [validation status](../plugin/NATIVE-ACCEPTANCE.md). Keep machine-specific evidence outside the public tree or under `.local/`.
 
+The Comfort package integration probe installs a staged worker into an isolated extension root, reloads it in one persistent host, generates synthetic screen/tag XML and checks file materialization and rejection controls. It never attaches to a project:
+
+```powershell
+powershell.exe -NoProfile -File build/Build-Extensions.ps1 -Destination artifacts/comfort-package-probe -Modules comfort
+py -3 -B -X utf8 scripts/test_comfort_package.py Mcp/bin/Release/V15.1/net48/SiemensMCPServer.Mcp.exe --worker-root artifacts/comfort-package-probe
+```
+
+This probe can also run against an existing 0.7.1 host executable to check compatibility with a newer worker. See the [Comfort package guide](../plugin/COMFORT-PACKAGES.md) for supported input and native acceptance limits.
+
 ## Desktop verification
 
 The desktop project uses SDK-style .NET Framework 4.8 builds and locked NuGet dependencies. Its native transfer adapter source is shared with MCP, without a reference to the MCP executable or host dependencies.

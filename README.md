@@ -32,7 +32,7 @@ The server exposes engineering operations through the Model Context Protocol (MC
 
 | Area | Scope |
 | --- | --- |
-| Comfort / classic HMI | Primary profile: V15.1. Text lists, native XML resources, scalar properties, supported object creation/deletion and bulk transfers. |
+| Comfort / classic HMI | Primary profile: V15.1. Text lists, native XML resources, scalar properties, supported object creation/deletion, prototype-based screen/tag packages and bulk transfers. |
 | Unified HMI | API-visible objects and supported screen properties. Text lists require the native paired-YAML API; V19 does not expose that route. |
 | Siemens PLC | Offline blocks, data types, tags, native XML transfers, SCL/STL generation and compile diagnostics. |
 | Desktop utility | Comfort / Advanced screens and resources; Unified native transfers where available; offline PLC XML resources. |
@@ -114,6 +114,8 @@ Keep a persistent MCP connection for engineering workflows: attachments, preview
 ### Reload feature workers
 
 Stage a trusted worker bundle, then call `tia_reload_extensions` for its module. Successful reload preserves the TIA attachment and invalidates outstanding previews; reread before another edit. Host changes require a host upgrade. See [extension development and updates](plugin/EXTENSIONS.md).
+
+Comfort worker 0.7.2 adds offline screen/tag package generation from native XML prototypes and validation of supplied PLC bindings. These operations load through the existing 0.7.1 host. Review the generated package before native import; see the [Comfort package workflow](plugin/COMFORT-PACKAGES.md).
 
 ## Development
 

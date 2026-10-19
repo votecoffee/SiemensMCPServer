@@ -16,6 +16,8 @@ namespace SiemensMCPServer.Extensions
             switch (module)
             {
                 case "comfort": return new[] {
+                    Op("build_screen_package", "Build a sidecar-free classic screen/tag import bundle from native XML prototypes and a supplied PLC symbol manifest. Offline only; writes no files and does not establish native acceptance.", "local", false, ComfortPackage.Schema(true)),
+                    Op("validate_package_bindings", "Check screen-to-HMI-tag references and symbolic PLC connection/type declarations in supplied XML. Offline only; no native connection partner verification.", "local", false, ComfortPackage.Schema(false)),
                     Op("inspect_xml", "Inspect supplied classic XML without attaching to TIA.", "local", false, xmlSchema),
                     Op("edit_xml", "Edit existing scalar XML fields in the selected native resource.", "classicXml", true, new { type = "object", required = new[] { "edits" }, properties = new { edits = new { type = "array", items = new { type = "object", required = new[] { "xPath", "expectedValue", "newValue" }, properties = new { xPath = new { type = "string" }, expectedValue = new { type = "string" }, newValue = new { type = "string" } } } } } }),
                     Op("change_behaviors", "Clone/remove existing native behavior prototypes.", "classicXml", true, new { type = "object", required = new[] { "changes" } }),
@@ -36,6 +38,8 @@ namespace SiemensMCPServer.Extensions
             JsonElement args = input.TryGetProperty("arguments", out var nested) ? nested : input;
             if (module == "comfort")
             {
+                if (operation == "build_screen_package") return ExtensionWire.Json(ComfortPackage.Build(ExtensionWire.Parse<ComfortPackageSpec>(args)));
+                if (operation == "validate_package_bindings") return ExtensionWire.Json(ComfortPackage.ValidateBindings(ExtensionWire.Parse<ComfortBindingInput>(args)));
                 if (operation == "inspect_xml")
                 {
                     var doc = new ClassicXmlDocument(args.GetProperty("xml").GetString()!);

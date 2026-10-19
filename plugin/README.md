@@ -60,6 +60,8 @@ Simple native V15.1 text-list captions use a `<Text><body><p>…</p></body></Tex
 
 ## Comfort V15.1 resource editing
 
+Comfort worker 0.7.2 also provides [screen/tag package generation and offline PLC binding checks](COMFORT-PACKAGES.md). These local operations clone native XML prototypes and produce a reviewed import bundle without changing the project. They reload on the existing 0.7.1 host; native import/compile acceptance remains separate.
+
 Use `hmi_read_object` to select a screen/resource path, then `hmi_read_classic_resource` for its full native XML, content fingerprint including companion files, and retained artifacts. It also returns `scalarCatalog`: up to 1000 existing fields with exact `xPath`, current `value`, `editable` and `readOnlyReason`. Paths distinguish repeated/namespaced nodes without using export IDs. The catalog reports truncation; the full XML remains available. This covers native XML-exportable screens, tag tables, scripts, text/graphic lists and related classic resources.
 
 `hmi_preview_classic_xml_edits` accepts that fingerprint and edits with `xPath`, `expectedValue`, and `newValue`. Reuse a returned editable catalog path/value or use structural/name selectors after inspecting the actual XML. Each XPath must select exactly one existing scalar inside the resource. Volatile IDs, resource renaming, composition metadata, structural containers, ambiguous selectors and complex subtree replacement are rejected. Other fields/languages and image sidecars remain intact. Existing cycles are read-only. Catalog eligibility does not establish native semantic acceptance.

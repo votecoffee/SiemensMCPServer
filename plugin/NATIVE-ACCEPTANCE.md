@@ -8,6 +8,7 @@ This document summarizes public validation scope. Project-specific exports, scre
 | Build and transport checks | V15.1/V19 profiles, stdio initialization, tool schemas, fresh package extraction and installed API metadata. |
 | Comfort/classic V15.1 native checks | Selected resource/text edits, transfers, guards, compile/save/reopen and attached-project worker reload have been exercised in a limited test environment. |
 | Unified and PLC native writes | Separate native acceptance is still required. |
+| Generated Comfort screen/tag packages | Offline generation, binding checks, worker reload and exact file materialization tested; native import/compile/save acceptance remains pending. |
 | Other API versions/devices | Require their own builds and native acceptance; exact V15.0 and V21 are not established by the V15.1/V19 checks. |
 | Runtime/device behavior | Not established by engineering tests; no download, watch or force workflow is provided. |
 

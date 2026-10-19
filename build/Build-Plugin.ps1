@@ -25,6 +25,7 @@ $helperDirectory = Join-Path $packageRoot 'scripts'
 New-Item -ItemType Directory -Path $helperDirectory -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Install-CodexPlugin.ps1') -Destination $helperDirectory
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Install-Extension.ps1') -Destination $helperDirectory
+Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Write-ComfortPackage.ps1') -Destination $helperDirectory
 Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\test_codex_integration.py') -Destination $helperDirectory
 $buildArgs = @('publish', (Join-Path $repoRoot 'Mcp\SiemensMCPServer.Mcp.csproj'), '-c', 'Release', '--nologo', '-v', 'minimal',
     '-p:RestoreLockedMode=true', '-p:StageFeatureExtensions=false', ('-p:TiaPortalVersion=' + $TiaPortalVersion), '-o', (Join-Path $packageRoot 'server'))
