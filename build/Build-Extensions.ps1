@@ -3,7 +3,7 @@ param(
     [string]$Configuration='Release',
     [string]$WorkerVersion='',
     [string]$WorkerDirectory='',
-    [ValidateSet('comfort','unified','plc')][string[]]$Modules=@('comfort','unified','plc')
+    [ValidateSet('comfort','unified','plc','project')][string[]]$Modules=@('comfort','unified','plc','project')
 )
 $ErrorActionPreference='Stop'
 function Get-ExtensionHash([string]$Path) {

@@ -20,6 +20,9 @@
     <Compile Include="../Extensions/ComfortPackage.cs" Link="ComfortPackage.cs" />
     <Compile Include="../Extensions/PlcInspectionOperations.cs" Link="PlcInspectionOperations.cs" />
     <Compile Include="../Mcp/PlcInspection.cs" Link="PlcInspection.cs" />
+    <Compile Include="../Extensions/LibraryInspectionOperations.cs" Link="LibraryInspectionOperations.cs" />
+    <Compile Include="../Mcp/LibraryInspection.cs" Link="LibraryInspection.cs" />
+    <Compile Include="../Mcp/LibraryCatalogReader.cs" Link="LibraryCatalogReader.cs" />
     <Compile Include="../Mcp/PlcReferenceReader.cs" Link="PlcReferenceReader.cs" />
     <Compile Include="../Extensions/FeatureRecipes.cs" Link="FeatureRecipes.cs" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />

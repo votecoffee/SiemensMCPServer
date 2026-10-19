@@ -110,6 +110,23 @@ if ($Version -eq 'V19') {
     }
 }
 $projectType = Get-ApiType 'Siemens.Engineering.Project'
+Assert-Contract ($null -ne $projectType.GetProperty('ProjectLibrary')) 'Project exposes its library without opening a separate file'
+Assert-Contract ($null -ne (Get-ApiType 'Siemens.Engineering.TiaPortal').GetProperty('GlobalLibraries')) 'Portal exposes its already-open global library composition'
+foreach ($entry in @(
+    @{ Type = 'Library.ProjectLibrary'; Fields = @('TypeFolder','MasterCopyFolder') },
+    @{ Type = 'Library.GlobalLibrary'; Fields = @('TypeFolder','MasterCopyFolder','Name','Path','Author','IsReadOnly','IsModified') },
+    @{ Type = 'Library.Types.LibraryTypeFolder'; Fields = @('Folders','Types','Name') },
+    @{ Type = 'Library.Types.LibraryType'; Fields = @('Versions','Name','Guid','Author') },
+    @{ Type = 'Library.Types.LibraryTypeVersion'; Fields = @('Guid','VersionNumber','Author','ModifiedDate','State') },
+    @{ Type = 'Library.MasterCopies.MasterCopyFolder'; Fields = @('Folders','MasterCopies','Name') },
+    @{ Type = 'Library.MasterCopies.MasterCopy'; Fields = @('Name','Author','CreationDate','ContentDescriptions') },
+    @{ Type = 'Library.MasterCopies.MasterCopyContentDescription'; Fields = @('ContentName','ContentType') }
+)) {
+    $libraryType = Get-ApiType ('Siemens.Engineering.' + $entry.Type)
+    foreach ($field in $entry.Fields) {
+        Assert-Contract ($null -ne $libraryType.GetProperty($field)) ($entry.Type + ' exposes library metadata member ' + $field)
+    }
+}
 $graphicsProperty = $projectType.GetProperty('Graphics')
 if ($Version -eq 'V21') {
     $graphicsProvider = Get-ApiType 'Siemens.Engineering.Hmi.Globalization.GraphicsProvider'

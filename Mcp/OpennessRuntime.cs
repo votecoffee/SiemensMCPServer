@@ -16,6 +16,7 @@ namespace SiemensMCPServer.Mcp
         object PreviewExtension(string module, string operation, string targetId, string path, string fingerprint, JsonElement arguments);
         object ApplyExtension(string id, string hash);
         object ReadPlcExtension(string operation, string kind, JsonElement arguments);
+        object ReadProjectExtension(string operation, string kind, JsonElement arguments);
         object ListProcesses();
         object ApiCapabilities();
         object ListScreens(string hmiId);
@@ -88,6 +89,7 @@ namespace SiemensMCPServer.Mcp
             object data;
             if (descriptor.Route == "local") data = extensions.Execute(module, operation, arguments);
             else if (descriptor.Route == "plcRead" && module == "plc") data = EnsureSession().ReadPlcExtension(operation, descriptor.SnapshotKind, arguments);
+            else if (descriptor.Route == "projectRead" && module == "project") data = EnsureSession().ReadProjectExtension(operation, descriptor.SnapshotKind, arguments);
             else throw new ArgumentException("This extension operation has no read route.");
             return (object)new { extension = extensions.Identity(module), data };
         }, token);

@@ -41,8 +41,9 @@ namespace SiemensMCPServer.Extensions
         public string SnapshotKind { get; set; } = "";
         public JsonElement InputSchema { get; set; }
         public bool IsCompatible(string module) => !string.IsNullOrEmpty(Name) && Name.Length <= 128 && InputSchema.ValueKind == JsonValueKind.Object
-            && new[] { "local", "internal", "classicXml", "unifiedObject", "plcSource", "plcRead" }.Contains(Route)
-            && (Route == "plcRead" ? module == "plc" && !Preview && new[] { "source", "crossReferences" }.Contains(SnapshotKind) : string.IsNullOrEmpty(SnapshotKind));
+            && new[] { "local", "internal", "classicXml", "unifiedObject", "plcSource", "plcRead", "projectRead" }.Contains(Route)
+            && (Route == "plcRead" ? module == "plc" && !Preview && new[] { "source", "crossReferences" }.Contains(SnapshotKind)
+                : Route == "projectRead" ? module == "project" && !Preview && SnapshotKind == "libraryCatalog" : string.IsNullOrEmpty(SnapshotKind));
     }
     internal sealed class ExtensionHello
     {

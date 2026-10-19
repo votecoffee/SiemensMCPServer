@@ -233,7 +233,7 @@ namespace SiemensMCPServer.Mcp
         public object List()
         {
             var registry = Registry();
-            var modules = new[] { "comfort", "unified", "plc" }.Concat(registry.Keys).Concat(active.Keys).Distinct(StringComparer.Ordinal).OrderBy(s => s, StringComparer.Ordinal).ToArray();
+            var modules = new[] { "comfort", "unified", "plc" }.Concat(Registry(bundledRoot).Keys).Concat(registry.Keys).Concat(active.Keys).Distinct(StringComparer.Ordinal).OrderBy(s => s, StringComparer.Ordinal).ToArray();
             return new { hostProcessId = Process.GetCurrentProcess().Id, extensionRoot = externalRoot,
                 modules = modules.Select(module => { var a = Get(module); return new { module, a.Bundle.Manifest.Version, a.Generation, workerProcessId = a.Worker.ProcessId, a.Bundle.ManifestSha256, operations = a.Worker.Hello.Operations }; }).ToArray(),
                 scope = "Trusted local worker code; hashes detect changes, not publisher identity. Workers receive serialized data, never Siemens objects. Reload does not save or alter the project." };
@@ -241,7 +241,7 @@ namespace SiemensMCPServer.Mcp
         public object Reload(string module, Action invalidatePreviews)
         {
             var registry = Registry();
-            string[] modules = module == "" ? new[] { "comfort", "unified", "plc" }.Concat(registry.Keys).Concat(active.Keys).Distinct(StringComparer.Ordinal).ToArray() : new[] { module };
+            string[] modules = module == "" ? new[] { "comfort", "unified", "plc" }.Concat(Registry(bundledRoot).Keys).Concat(registry.Keys).Concat(active.Keys).Distinct(StringComparer.Ordinal).ToArray() : new[] { module };
             var replacements = new Dictionary<string, Active>(StringComparer.Ordinal);
             try { foreach (string name in modules) replacements.Add(name, Load(name, registry)); }
             catch { foreach (var candidate in replacements.Values) candidate.Dispose(); throw; }

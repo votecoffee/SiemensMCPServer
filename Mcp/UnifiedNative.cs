@@ -34,6 +34,7 @@ namespace SiemensMCPServer.Mcp
                     scope = "Offline blocks, PLC data types, tag tables/groups, native XML import/export, SCL/STL source generation and compile diagnostics. Native trials pending.",
                     downloadOrRuntimeControl = false },
                 plcInspection = PlcInspectionNative.Capabilities(),
+                projectLibraries = LibraryInspectionNative.Capabilities(),
                 unifiedScreenEdits = edits, unifiedScreenGroups = Has(software, "ScreenGroups"),
                 unifiedTextListNativeApiPresent = Has(software, "HmiTextLists"), unifiedTextListEditing = UnifiedTextListNative.Supports(software),
                 engineeringObjectTools = new { browse = true, typedScalarEdits = true, nativeCreationAndDeletion = "per-object self-description", nativeImportExport = "per-object method presence", bulkImport = "native resources and supported folder hierarchy only" },

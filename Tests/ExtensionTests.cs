@@ -80,6 +80,18 @@ public sealed class ExtensionTests
         Assert.True(fixture.Workers.Last().Disposed);
         Assert.All(generations, g => Assert.Equal(g.Value, manager.Generation(g.Key)));
     }
+    [Fact] public void NewBundledModulesAreDiscoveredAndReloadedWithTheExistingFacade()
+    {
+        using var fixture = new Fixture(); fixture.Bundle("project", "0.8.0");
+        File.WriteAllText(Path.Combine(fixture.Bundled, "active.json"), "{\"project\":\"project\"}");
+        using var manager = fixture.Manager();
+        var listed = ExtensionWire.Json(manager.List());
+        Assert.Equal(4, listed.GetProperty("modules").GetArrayLength());
+        string previous = manager.Generation("project");
+        var reloaded = ExtensionWire.Json(manager.Reload("", () => { }));
+        Assert.Contains("project", reloaded.GetProperty("reloaded").EnumerateArray().Select(e => e.GetString()));
+        Assert.NotEqual(previous, manager.Generation("project"));
+    }
     [Theory]
     [InlineData("../outside")][InlineData("C:/outside")][InlineData("comfort\\other")][InlineData("/outside")]
     public void RegistryCannotPointOutsideExtensionRoot(string relative)

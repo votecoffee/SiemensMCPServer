@@ -82,7 +82,7 @@ def run(executable, native=False):
             extension_data = extensions["structuredContent"]["result"]
             assert extension_data["hostProcessId"] == process.pid
             modules = {m["module"]:m for m in extension_data["modules"]}
-            assert set(modules)=={"comfort","unified","plc"}
+            assert set(modules)=={"comfort","unified","plc","project"}
             probe = call("tia_read_extension", module="comfort", operation="inspect_xml", argumentsJson=json.dumps({"xml":"<Document><Hmi.Screen.Screen><AttributeList><Name>Café — テスト</Name></AttributeList></Hmi.Screen.Screen></Document>", "editable":True},ensure_ascii=False))
             assert not probe.get("isError"), probe
             assert probe["structuredContent"]["result"]["data"]["name"] == "Café — テスト"
@@ -159,6 +159,7 @@ def run(executable, native=False):
                 profile = capabilities["structuredContent"]["result"]
                 assert profile["classicTextLists"] is True
                 assert profile["comfortXmlResourceEdits"] is True and profile["plcEngineering"]["available"] is True, profile
+                assert profile["projectLibraries"]["projectLibraryApiPresent"] and profile["projectLibraries"]["openGlobalLibrariesApiPresent"], profile
                 api_major = int(profile["apiVersion"].split(".")[0])
                 if 16 <= api_major <= 19:
                     assert profile["unifiedDiscovery"] and profile["unifiedScreenInspection"] and profile["unifiedScreenEdits"], profile

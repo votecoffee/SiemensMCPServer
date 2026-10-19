@@ -15,6 +15,9 @@ namespace SiemensMCPServer.Extensions
             object xmlSchema = new { type = "object", required = new[] { "xml", "editable" }, properties = new { xml = new { type = "string" }, editable = new { type = "boolean" } } };
             switch (module)
             {
+                case "project": return new[] {
+                    Op("list_libraries", "List the attached project library and already-open global libraries with exact IDs and bounded metadata. Does not open, upgrade or save libraries.", "projectRead", false, LibraryInspectionOperations.Schema(false), "libraryCatalog"),
+                    Op("browse_library", "Browse one returned library/path: folders, types, versions or master-copy content descriptions. Read-only metadata; no instance creation, dependency traversal or library updates.", "projectRead", false, LibraryInspectionOperations.Schema(true), "libraryCatalog") };
                 case "comfort": return new[] {
                     Op("build_screen_package", "Build a sidecar-free classic screen/tag import bundle from native XML prototypes and a supplied PLC symbol manifest. Offline only; writes no files and does not establish native acceptance.", "local", false, ComfortPackage.Schema(true)),
                     Op("validate_package_bindings", "Check screen-to-HMI-tag references and symbolic PLC connection/type declarations in supplied XML. Offline only; no native connection partner verification.", "local", false, ComfortPackage.Schema(false)),
@@ -29,7 +32,7 @@ namespace SiemensMCPServer.Extensions
                 case "plc": return new[] {
                     Op("read_source", "Export readable native SCL/STL/DB/UDT source to local artifacts and return bounded text. Explicit PLC/path and verified Offline state required; does not generate blocks or import a source into the project.", "plcRead", false, PlcInspectionOperations.Schema("read_source"), "source"),
                     Op("find_in_source", "Search a native readable-source snapshot for literal text, with line/column/context results and file hash. Same native export and Offline limits as read_source; no LAD/FBD translation.", "plcRead", false, PlcInspectionOperations.Schema("find_in_source"), "source"),
-                    Op("cross_references", "Read bounded native cross-reference source/reference/location rows for one PLC object. Requires Offline state and an API exposing CrossReferenceService (present in the inspected V19 profile, absent in V15.1). No native handles leave the broker.", "plcRead", false, PlcInspectionOperations.Schema("cross_references"), "crossReferences"),
+                    Op("cross_references", "Read bounded native cross-reference source/reference/location rows for one PLC object. Requires Offline state and an API exposing CrossReferenceService (present in inspected V18/V19, absent in V15.1/V16/V17). No native handles leave the broker.", "plcRead", false, PlcInspectionOperations.Schema("cross_references"), "crossReferences"),
                     Op("prepare_source", "Validate exact SCL/STL source. arguments: name, language, code, allowBlockReplacement. Preview uses an offline PLC root.", "plcSource", true, new { type = "object", required = new[] { "name", "language", "code", "allowBlockReplacement" } }),
                     Op("inspect_source", "Validate supplied SCL/STL source without attaching or generating blocks.", "local", false, new { type = "object", required = new[] { "name", "language", "code", "allowBlockReplacement" } }) };
                 default: throw new ArgumentException("Unknown bundled extension module.");
@@ -38,6 +41,7 @@ namespace SiemensMCPServer.Extensions
         public static JsonElement Execute(string module, string operation, JsonElement input)
         {
             if (!Describe(module).Any(o => o.Name == operation)) throw new ArgumentException("Unknown extension operation.");
+            if (module == "project") return LibraryInspectionOperations.Execute(operation, input);
             JsonElement args = input.TryGetProperty("arguments", out var nested) ? nested : input;
             if (module == "comfort")
             {
