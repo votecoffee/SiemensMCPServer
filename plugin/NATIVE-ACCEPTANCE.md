@@ -5,7 +5,7 @@ This document summarizes public validation scope. Project-specific exports, scre
 | Validation layer | Scope |
 | --- | --- |
 | Offline tests | XML/YAML handling, typed edits, identity/companion checks, preview lifecycles, worker reload, rollback, hashes and path validation. |
-| Concurrent requests and transaction scheduling | Lane/pool unit tests and multiplexed real MCP checks cover parallel local jobs, bounded queues, pre-dispatch cancellation, native-lane metadata responsiveness, generation draining, response isolation and worker cleanup. The integration test remains unattached; native transaction interleaving and external-client contention require separate native trials. |
+| Concurrent requests and transaction scheduling | Lane/pool unit tests and multiplexed real MCP checks cover parallel local jobs, bounded queues, pre-dispatch cancellation, native-lane metadata responsiveness, generation draining, response isolation and worker cleanup. The integration test remains unattached; native transaction scheduling under simultaneous submissions and external-client contention require separate native trials. |
 | Build and transport checks | V15.1–V19 API profiles, stdio initialization, tool schemas and installed API metadata; V16–V18 checked with V19 compatibility APIs. Fresh package extraction is checked separately. See [compatibility](API-COMPATIBILITY.md). |
 | Comfort/classic V15.1 native checks | Selected resource/text edits, transfers, guards, compile/save/reopen and attached-project worker reload have been exercised in a limited test environment. |
 | Unified and PLC native writes | Separate native acceptance is still required. |

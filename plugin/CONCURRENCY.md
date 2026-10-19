@@ -76,4 +76,4 @@ Run the integration check after building the host:
 py -3 -B -X utf8 scripts/test_concurrent_requests.py Mcp/bin/Release/V15.1/net48/SiemensMCPServer.Mcp.exe
 ```
 
-The check compiles its test fixture into a temporary bundle using the installed .NET Framework compiler. That fixture is not included in plugin packages. Native transaction interleaving, external-client contention, compile/save and device/runtime acceptance require separate native trials. Existing [validation status](NATIVE-ACCEPTANCE.md) remains applicable.
+The check compiles its test fixture into a temporary bundle using the installed .NET Framework compiler. That fixture is not included in plugin packages. Native transaction scheduling under simultaneous submissions, external-client contention, compile/save and device/runtime acceptance require separate native trials. Existing [validation status](NATIVE-ACCEPTANCE.md) remains applicable.
