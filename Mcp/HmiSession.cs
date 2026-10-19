@@ -21,6 +21,7 @@ namespace SiemensMCPServer.Mcp
         private UnifiedEditWorkflow? unifiedWorkflow;
         private EngineeringWorkflow? engineeringWorkflow;
         private ClassicXmlWorkflow? classicXmlWorkflow;
+        private ProjectTranslationWorkflow? projectTranslationWorkflow;
         private readonly string artifactRoot;
         private readonly IFeatureEngine features;
         private int? processId;
@@ -372,6 +373,7 @@ namespace SiemensMCPServer.Mcp
             unifiedWorkflow = new UnifiedEditWorkflow(this, Path.Combine(sessionRoot, "unified"), features);
             engineeringWorkflow = new EngineeringWorkflow(this, Path.Combine(sessionRoot, "engineering"));
             classicXmlWorkflow = new ClassicXmlWorkflow(this, Path.Combine(sessionRoot, "comfort-xml"), features);
+            projectTranslationWorkflow = new ProjectTranslationWorkflow(this, Path.Combine(sessionRoot, "project-texts"), features);
             extensionPlans.Clear();
         }
 

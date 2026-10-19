@@ -31,6 +31,8 @@
     <Compile Include="../Mcp/LibraryCatalogReader.cs" Link="Features/LibraryCatalogReader.cs"/>
     <Compile Include="../Mcp/ProjectTextInspection.cs" Link="Features/ProjectTextInspection.cs"/>
     <Compile Include="../Mcp/ProjectTextWorkbook.cs" Link="Features/ProjectTextWorkbook.cs"/>
+    <Compile Include="../Mcp/ProjectTextTranslations.cs" Link="Features/ProjectTextTranslations.cs"/>
+
     <Compile Include="../Mcp/PlcPolicy.cs" Link="Core/PlcPolicy.cs"/>
   </ItemGroup>
 </Project>

@@ -19,6 +19,10 @@ namespace SiemensMCPServer.Mcp
             object preview;
             switch (descriptor.Route)
             {
+                case "projectTexts":
+                    if (module != "project" || targetId != "project" || path != "") throw new ArgumentException("Project-text previews require module=project, targetId=project and an empty path.");
+                    preview = projectTranslationWorkflow!.Preview(fingerprint, ExtensionWire.Parse<ProjectTranslationEdits>(arguments));
+                    break;
                 case "classicXml":
                     JsonElement generated = default;
                     preview = classicXmlWorkflow!.PreviewTransformed(targetId, path, fingerprint,
@@ -55,6 +59,7 @@ namespace SiemensMCPServer.Mcp
             var plan = extensionPlans.Take(id, hash, manager.Generation);
             switch (plan.Route)
             {
+                case "projectTexts": return projectTranslationWorkflow!.Apply(id, hash);
                 case "classicXml": return ApplyClassicXml(id, hash);
                 case "unifiedObject": return ApplyUnified(id, hash);
                 case "plcSource": return ApplyEngineeringPlan(id, hash);

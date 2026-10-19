@@ -24,6 +24,7 @@
     <Compile Include="../Extensions/PlcInspectionOperations.cs" Link="Extensions/PlcInspectionOperations.cs" />
     <Compile Include="../Extensions/LibraryInspectionOperations.cs" Link="Extensions/LibraryInspectionOperations.cs" />
     <Compile Include="../Extensions/ProjectTextOperations.cs" Link="Extensions/ProjectTextOperations.cs" />
+    <Compile Include="../Extensions/ProjectTranslationOperations.cs" Link="Extensions/ProjectTranslationOperations.cs" />
     <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
     <PackageReference Include="YamlDotNet" Version="18.1.0" />

@@ -98,6 +98,12 @@ namespace SiemensMCPServer.Mcp
     internal static class ProjectTextFiles
     {
         public const int MaxBytes = 8 * 1024 * 1024;
+        public static ProjectTextSnapshot FromBytes(byte[] bytes, ProjectTextCapture capture)
+        {
+            if (bytes == null || bytes.Length == 0 || bytes.Length > MaxBytes) throw new InvalidDataException("Project-text workbook exceeds its file limit.");
+            return new ProjectTextSnapshot { SourceLanguage = capture.SourceLanguage, TargetLanguage = capture.TargetLanguage, Bytes = bytes.Length,
+                FileSha256 = TextListDocument.Hash(bytes), WorkbookBase64Url = Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_') };
+        }
         public static ProjectTextSnapshot Read(string directory)
         {
             string path = Path.Combine(directory, "project-texts.xlsx");

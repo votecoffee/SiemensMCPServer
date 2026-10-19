@@ -18,6 +18,9 @@ namespace SiemensMCPServer.Mcp
         public string Type { get; set; } = "";
         public string Text { get; set; } = "";
         public string? Formula { get; set; }
+        internal XElement Node = null!;
+        internal string Part = "";
+        internal bool PlainString;
     }
     internal sealed class ProjectTextSheet
     {
@@ -25,8 +28,8 @@ namespace SiemensMCPServer.Mcp
         public string State { get; set; } = "";
         public int CellCount { get; set; }
     }
-    // Read-only OOXML view, not a Siemens workbook schema or spreadsheet evaluator.
-    internal sealed class ProjectTextWorkbook
+    // Bounded OOXML view. The separate translation adapter recognizes only native schemas.
+    internal sealed partial class ProjectTextWorkbook
     {
         public const int MaxCells = 200000, MaxTextCharacters = 16 * 1024 * 1024, MaxCellCharacters = 65536;
         private const int MaxPartBytes = 16 * 1024 * 1024;
@@ -37,11 +40,17 @@ namespace SiemensMCPServer.Mcp
         public List<ProjectTextSheet> Sheets { get; } = new List<ProjectTextSheet>();
         public int IgnoredExternalRelationships { get; private set; }
         private int textCharacters;
+        private readonly byte[] originalBytes;
+        private readonly Dictionary<string, XDocument> worksheets = new Dictionary<string, XDocument>(StringComparer.Ordinal);
+        private XDocument? sharedDocument;
+        private string sharedPart = "";
+        private readonly List<bool> plainStrings = new List<bool>();
         private sealed class Relationship { public string Type = "", Target = ""; public bool External; }
 
         public ProjectTextWorkbook(byte[] bytes)
         {
             if (bytes == null || bytes.Length == 0 || bytes.Length > ProjectTextFiles.MaxBytes) throw new InvalidDataException("Workbook exceeds the 8 MiB file limit.");
+            originalBytes = bytes.ToArray();
             using (var stream = new MemoryStream(bytes, false))
             using (var zip = new ZipArchive(stream, ZipArchiveMode.Read)) {
                 if (zip.Entries.Count > 512) throw new InvalidDataException("Workbook exceeds 512 ZIP entries.");
@@ -68,14 +77,19 @@ namespace SiemensMCPServer.Mcp
                 if (sharedRelations.Length > 1 || sharedRelations.Any(r => r.External)) throw new InvalidDataException("Ambiguous or external shared-string table.");
                 var strings = new List<string>();
                 if (sharedRelations.Length == 1) {
-                    var shared = Xml(parts, Target(directory, sharedRelations[0].Target));
+                    sharedPart = Target(directory, sharedRelations[0].Target);
+                    var shared = sharedDocument = Xml(parts, sharedPart);
                     XNamespace sns = SpreadsheetNamespace(shared, "sst");
                     foreach (var item in shared.Root!.Elements(sns + "si")) {
                         if (strings.Count >= 100000) throw new InvalidDataException("Workbook exceeds 100000 shared strings.");
                         string value = Text(item, sns); Budget(value); strings.Add(value);
+                        plainStrings.Add(item.Elements().All(e => e.Name == sns + "t") && item.Elements(sns + "t").Count() == 1);
                     }
                 }
                 var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                // Bound the stored string table and expanded cells separately. A shared
+                // string is intentionally counted again when referenced by a cell.
+                textCharacters = 0;
                 var usedParts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var sheet in workbook.Root!.Element(ns + "sheets")?.Elements(ns + "sheet") ?? Enumerable.Empty<XElement>()) {
                     if (Sheets.Count >= 128) throw new InvalidDataException("Workbook exceeds 128 sheets.");
@@ -87,7 +101,8 @@ namespace SiemensMCPServer.Mcp
                     string part = Target(directory, relationship.Target);
                     if (!usedParts.Add(part)) throw new InvalidDataException("Multiple sheets reference the same worksheet.");
                     var info = new ProjectTextSheet { Name = name, State = (string?)sheet.Attribute("state") ?? "visible" };
-                    ReadSheet(Xml(parts, part), strings, info); Sheets.Add(info);
+                    var worksheet = Xml(parts, part); worksheets.Add(part, worksheet);
+                    ReadSheet(worksheet, strings, info, part); Sheets.Add(info);
                 }
                 if (Sheets.Count == 0) throw new InvalidDataException("Workbook has no supported worksheets.");
             }
@@ -115,7 +130,7 @@ namespace SiemensMCPServer.Mcp
             if ((ns != Main && ns != StrictMain) || document.Root?.Name.LocalName != root) throw new InvalidDataException("Unsupported SpreadsheetML part.");
             return ns;
         }
-        private void ReadSheet(XDocument document, IList<string> strings, ProjectTextSheet sheet)
+        private void ReadSheet(XDocument document, IList<string> strings, ProjectTextSheet sheet, string part)
         {
             XNamespace ns = SpreadsheetNamespace(document, "worksheet"); int previousRow = 0;
             var addresses = new HashSet<string>(StringComparer.Ordinal);
@@ -139,15 +154,20 @@ namespace SiemensMCPServer.Mcp
                     if (cell.Elements(ns + "v").Count() > 1 || cell.Elements(ns + "f").Count() > 1 || cell.Elements(ns + "is").Count() > 1)
                         throw new InvalidDataException("Ambiguous worksheet cell contents.");
                     string? formula = cell.Element(ns + "f")?.Value;
+                    bool plain = false;
                     if (type == "s") {
                         if (!int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out int index) || index < 0 || index >= strings.Count) throw new InvalidDataException("Invalid shared-string reference.");
                         value = strings[index];
-                    } else if (type == "inlineStr") value = Text(cell.Element(ns + "is") ?? throw new InvalidDataException("Missing inline string."), ns);
+                        plain = plainStrings[index];
+                    } else if (type == "inlineStr") {
+                        var inline = cell.Element(ns + "is") ?? throw new InvalidDataException("Missing inline string.");
+                        value = Text(inline, ns); plain = inline.Elements().All(e => e.Name == ns + "t") && inline.Elements(ns + "t").Count() == 1;
+                    }
                     else if (type == "str") value = DecodeEscapes(value);
                     else if (type != "n" && type != "b" && type != "d" && type != "e") throw new InvalidDataException("Unsupported workbook cell type.");
                     if (type == "b" && value != "0" && value != "1" && value != "") throw new InvalidDataException("Invalid boolean cell value.");
                     Budget(value); if (formula != null) Budget(formula);
-                    Cells.Add(new ProjectTextCell { Sheet = sheet.Name, Address = address, Type = type, Text = value, Formula = formula }); sheet.CellCount++;
+                    Cells.Add(new ProjectTextCell { Sheet = sheet.Name, Address = address, Type = type, Text = value, Formula = formula, Node = cell, Part = part, PlainString = plain }); sheet.CellCount++;
                 }
             }
         }

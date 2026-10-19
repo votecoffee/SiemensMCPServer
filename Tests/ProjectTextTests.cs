@@ -164,8 +164,8 @@ public sealed class ProjectTextTests
     }
     [Fact] public void ProjectTextRoutesAreLimitedToReadOnlyProjectSnapshots()
     {
-        var operations = FeatureOperations.Describe("project").Where(o => o.SnapshotKind != "libraryCatalog").ToArray();
-        Assert.Equal(3, operations.Length);
+        var operations = FeatureOperations.Describe("project").Where(o => o.Route == "projectRead" && o.SnapshotKind != "libraryCatalog").ToArray();
+        Assert.Equal(4, operations.Length);
         Assert.All(operations, operation => { Assert.True(operation.IsCompatible("project")); Assert.False(operation.IsCompatible("comfort")); operation.Preview = true; Assert.False(operation.IsCompatible("project")); });
     }
     private sealed class FailingReader : IFeatureEngine
