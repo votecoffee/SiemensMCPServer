@@ -41,7 +41,7 @@ def named(doc, name):
 def worker_probe(bundle):
     hello, inspected = worker(bundle, [packet(1, '$hello', {}), packet(2, 'inspect_screen_items', {'xml': XML})])
     descriptors = {o['name']: o for o in hello['result']['operations']}
-    assert descriptors['change_screen_items']['route'] == 'classicXml' and descriptors['change_screen_items']['snapshotKind'] == 'screenText'
+    assert descriptors['change_screen_items']['route'] == 'classicXml' and descriptors['change_screen_items']['snapshotKind'] == 'classicReferences'
     rows = {r['name']: r for r in inspected['result']['items']}; assert len(rows) == 5
     first = clone(rows['A'], 'Copy Ü', rows['C']['containerXPath'])
     first['edits'] = [{'xPath': '/Document/Hmi.Screen.Button/AttributeList/Left', 'expectedValue': '10', 'newValue': '60'}]

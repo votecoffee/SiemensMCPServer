@@ -38,7 +38,7 @@ def packet(number, operation, arguments, snapshot=None):
 def worker_probe(bundle):
     hello, inspected = worker(bundle, [packet(1, '$hello', {}), packet(2, 'inspect_screen_texts', {'xml': XML})])
     descriptors = {o['name']: o for o in hello['result']['operations']}
-    assert descriptors['edit_screen_texts']['snapshotKind'] == 'screenText'
+    assert descriptors['edit_screen_texts']['snapshotKind'] == 'classicReferences'
     assert descriptors['edit_screen_texts']['route'] == 'classicXml' and descriptors['edit_screen_texts']['preview']
     rows = inspected['result']['runs']
     assert [r['text'] for r in rows] == ['Hello', ' ', 'world', '', 'Deutsch 😀']

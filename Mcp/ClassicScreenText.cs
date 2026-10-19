@@ -74,7 +74,7 @@ namespace SiemensMCPServer.Mcp
             {
                 XElement owner = multilingual.Parent!.Parent!;
                 string property = (string?)multilingual.Attribute("CompositionName") ?? "";
-                string ownerName = owner.Element("AttributeList")?.Element("Name")?.Value ?? "";
+                string ownerName = ObjectNameField(owner)?.Value ?? "";
                 string ownerPath = Path(owner);
                 if (property.Length > 128 || ownerName.Length > 512 || ownerPath.Length > 4096) throw new ArgumentException("Screen text owner/property metadata exceeds inspection bounds.");
                 var items = multilingual.Elements("ObjectList").Elements("MultilingualTextItem").ToArray();

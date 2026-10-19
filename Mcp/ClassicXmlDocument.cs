@@ -29,6 +29,13 @@ namespace SiemensMCPServer.Mcp
         private readonly bool preserveResourceIdentity;
         public string Name { get; }
         public string NativeType => resource.Name.LocalName;
+        internal static XElement? ObjectNameField(XElement node)
+        {
+            var attributes = node.Elements("AttributeList").ToArray();
+            if (attributes.Length != 1) return null;
+            var names = attributes[0].Elements().Where(e => e.Name == "Name" || e.Name == "ObjectName").ToArray();
+            return names.Length == 1 && !names[0].HasAttributes && !names[0].HasElements && names[0].Nodes().All(n => n is XText) ? names[0] : null;
+        }
         public ClassicXmlDocument(string xml, bool preserveResourceIdentity = true)
         {
             this.preserveResourceIdentity = preserveResourceIdentity;
@@ -62,7 +69,7 @@ namespace SiemensMCPServer.Mcp
         {
             if (node is XAttribute attribute && (attribute.IsNamespaceDeclaration || attribute.Name.LocalName == "ID" || attribute.Name.LocalName == "UId" || attribute.Name.LocalName == "CompositionName"))
                 return "Export identity, namespace and composition metadata cannot be changed by scalar edits.";
-            if (preserveResourceIdentity && node == resource.Element("AttributeList")?.Element("Name")) return "Resource identity requires an explicit create/rename operation.";
+            if (preserveResourceIdentity && node is XElement identity && identity.Parent == resource.Element("AttributeList") && (identity.Name == "Name" || identity.Name == "ObjectName")) return "Resource identity requires an explicit create/rename operation.";
             if (resource.Name.LocalName == "Hmi.Screen.ScreenSlidein" && node == resource.Element("AttributeList")?.Element("SlideinType"))
                 return "The slide-in edge identifies this native resource and cannot be changed by scalar edits.";
             if (node is XElement element && (element == resource || element.Name.LocalName == "ObjectList" || element.Name.LocalName == "AttributeList" || element.Name.LocalName == "LinkList"))

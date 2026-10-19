@@ -73,7 +73,7 @@ namespace SiemensMCPServer.Mcp
                 if (path.Length > 4096 || container.Length > 4096) throw new ArgumentException("Screen layout paths exceed 4096 characters.");
                 var item = new LayoutItem { Node = node, XPath = path, ContainerXPath = container };
                 var attributes = node.Elements("AttributeList").ToArray();
-                item.Name = attributes.Length == 1 ? attributes[0].Element("Name")?.Value ?? "" : "";
+                item.Name = ObjectNameField(node)?.Value ?? "";
                 if (item.Name.Length > 512) throw new ArgumentException("Screen item names exceed 512 characters.");
                 if (attributes.Length != 1 || item.Name.Length == 0) item.UnsupportedReason = "Exactly one AttributeList and a nonempty item name are required.";
                 else

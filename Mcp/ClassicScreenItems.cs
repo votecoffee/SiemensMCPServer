@@ -74,7 +74,7 @@ namespace SiemensMCPServer.Mcp
         {
             if (node == null) return 0;
             var local = new HashSet<string>(node.DescendantsAndSelf().Attributes("ID").Select(a => a.Value), StringComparer.Ordinal);
-            return node.DescendantsAndSelf().Attributes("TargetID").Count(a => a.Value != "@OpenLink" && !local.Contains(a.Value));
+            return node.DescendantsAndSelf().Attributes("TargetID").Count(a => a.Value != "@OpenLink" && !local.Contains(NativeXmlIds.TargetKey(a.Value)));
         }
         private ScreenItemState ScreenItemsState()
         {
@@ -91,13 +91,12 @@ namespace SiemensMCPServer.Mcp
             if (document.Descendants().Attributes().Any(a => a.Name.LocalName == "UId")) state.UnsupportedReason = "UId identity/reference formats require a separate native adapter.";
             try { NativeXmlIds.VerifyReferences(resource, document); }
             catch (ArgumentException) { state.UnsupportedReason = "An exported native ID reference is unresolved; use a reviewed native resource import."; }
-            state.Items = items.Select((e, i) => new ScreenItemRecord { Node = e, Canonical = copies[i], XPath = Path(e), Name = e.Element("AttributeList")?.Element("Name")?.Value ?? "" }).ToArray();
+            state.Items = items.Select((e, i) => new ScreenItemRecord { Node = e, Canonical = copies[i], XPath = Path(e), Name = ObjectNameField(e)?.Value ?? "" }).ToArray();
             foreach (var item in state.Items)
             {
                 if (item.XPath.Length > 4096) throw new ArgumentException("Screen item paths exceed 4096 characters.");
-                if (!ItemNameValid(item.Name) || item.Node.Elements("AttributeList").Count() != 1 || item.Node.Element("AttributeList")!.Elements("Name").Count() != 1
-                    || item.Node.Element("AttributeList")!.Element("Name")!.HasElements || string.IsNullOrEmpty((string?)item.Node.Attribute("ID")))
-                    state.UnsupportedReason = "Every exported control requires an ID and one existing scalar Name of 1..128 characters.";
+                if (!ItemNameValid(item.Name) || ObjectNameField(item.Node) == null || string.IsNullOrEmpty((string?)item.Node.Attribute("ID")))
+                    state.UnsupportedReason = "Every exported control requires an ID and one unambiguous scalar ObjectName or Name of 1..128 characters.";
                 state.Containers[Path(item.Node.Parent!)] = item.Node.Parent!;
             }
             if (state.Items.GroupBy(i => i.Name, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() != 1)) state.UnsupportedReason = "Duplicate exported control names require a reviewed native resource import.";
@@ -107,7 +106,7 @@ namespace SiemensMCPServer.Mcp
         {
             var nodes = new HashSet<XElement>(removed.SelectMany(i => i.Node.DescendantsAndSelf()));
             var ids = new HashSet<string>(nodes.Attributes("ID").Select(a => a.Value), StringComparer.Ordinal);
-            if (document.Descendants().Attributes("TargetID").Any(a => ids.Contains(a.Value) && !nodes.Contains(a.Parent!)))
+            if (document.Descendants().Attributes("TargetID").Any(a => ids.Contains(NativeXmlIds.TargetKey(a.Value)) && !nodes.Contains(a.Parent!)))
                 return "A retained exported object references a removed native ID; remove the dependent object too or use an explicit native import.";
             var names = new HashSet<string>(removed.Select(i => i.Name), StringComparer.OrdinalIgnoreCase);
             foreach (var link in document.Descendants().Where(e => (string?)e.Attribute("TargetID") == "@OpenLink" && !nodes.Contains(e)))
@@ -192,13 +191,13 @@ namespace SiemensMCPServer.Mcp
                 var copy = NativeXmlIds.Clone(op.Prototype!, candidate.document);
                 var members = new[] { copy }.Concat(copy.Descendants().Where(ScreenItem)).ToArray();
                 string[] expectedNames = op.Members.Select(m => op.Change.Names!.Single(n => n.SourceXPath == m.XPath).NewName).ToArray();
-                for (int i = 0; i < members.Length; i++) members[i].Element("AttributeList")!.Element("Name")!.Value = expectedNames[i];
+                for (int i = 0; i < members.Length; i++) ObjectNameField(members[i])!.Value = expectedNames[i];
                 string[] references = ItemReferenceMetadata(copy);
                 if (op.Change.Edits?.Length > 0)
                     copy = TransferFiles.Xml(new ClassicXmlDocument(new XDocument(new XElement("Document", copy)).ToString(SaveOptions.DisableFormatting), false).Edit(op.Change.Edits)).Root!.Elements().Single();
                 if (!ItemReferenceMetadata(copy).SequenceEqual(references)) throw new ArgumentException("Clone scalar edits cannot change native IDs, TargetID links, composition, culture identities or external-file metadata.");
                 members = new[] { copy }.Concat(copy.Descendants().Where(ScreenItem)).ToArray();
-                if (!members.Select(m => m.Element("AttributeList")!.Element("Name")!.Value).SequenceEqual(expectedNames)) throw new ArgumentException("Scalar clone edits cannot override explicit control names.");
+                if (!members.Select(m => ObjectNameField(m)?.Value).SequenceEqual(expectedNames)) throw new ArgumentException("Scalar clone edits cannot override explicit control names.");
                 if ((extraCharacters += copy.ToString(SaveOptions.DisableFormatting).Length) > 4 * 1024 * 1024) throw new ArgumentException("Cloned XML exceeds the 4 MiB preview budget.");
                 if (copy.Parent != null) copy.Remove();
                 op.Destination!.Add(copy); op.Clone = copy;

@@ -147,7 +147,7 @@ public sealed class ClassicReferenceTests
     {
         var operations = FeatureOperations.Describe("comfort"); Assert.All(operations, op => Assert.True(op.IsCompatible("comfort")));
         Assert.Equal("local", operations.Single(op => op.Name == "inspect_references").Route);
-        var preview = operations.Single(op => op.Name == "rebind_references"); Assert.True(preview.Preview); Assert.Equal("classicXml", preview.Route); Assert.Equal("screenText", preview.SnapshotKind);
+        var preview = operations.Single(op => op.Name == "rebind_references"); Assert.True(preview.Preview); Assert.Equal("classicXml", preview.Route); Assert.Equal("classicReferences", preview.SnapshotKind);
         using var backend = new Backend(); var workflow = new ClassicXmlWorkflow(backend, Path.Combine(backend.Root, "plans")); var before = backend.ReadClassicResource("hmi", "screen");
         var plan = ExtensionWire.Json(workflow.PreviewTransformed("hmi", "screen", before.Fingerprint, xml => Change(xml, Edit(Rows(xml).First(r => r.GetProperty("editable").GetBoolean()))).GetProperty("candidateXml").GetString()!, new { action = "rebind" }));
         string directory = Path.Combine(plan.GetProperty("artifactDirectory").GetString()!, "candidate-files"); Assert.Equal(new byte[] { 0, 255, 1 }, File.ReadAllBytes(Path.Combine(directory, "image.bin")));

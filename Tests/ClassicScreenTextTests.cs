@@ -158,7 +158,7 @@ public sealed class ClassicScreenTextTests
     {
         var descriptors = FeatureOperations.Describe("comfort"); Assert.All(descriptors, d => Assert.True(d.IsCompatible("comfort")));
         Assert.Equal("local", descriptors.Single(d => d.Name == "inspect_screen_texts").Route); Assert.Equal("classicXml", descriptors.Single(d => d.Name == "edit_screen_texts").Route);
-        Assert.Equal("screenText", descriptors.Single(d => d.Name == "edit_screen_texts").SnapshotKind);
+        Assert.Equal("classicReferences", descriptors.Single(d => d.Name == "edit_screen_texts").SnapshotKind);
         Assert.False(new ExtensionOperation { Name = "wrong", Route = "classicXml", Preview = true, SnapshotKind = "screenText", InputSchema = ExtensionWire.Json(new { }) }.IsCompatible("unified"));
     }
     [Fact] public void ResourceHashPreservesRichTextWhitespaceAndIgnoresOnlyOuterFormatting()

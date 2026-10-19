@@ -103,7 +103,7 @@ namespace SiemensMCPServer.Extensions
         {
             if (string.IsNullOrWhiteSpace(value) || value.Length > 128 || value.Any(char.IsControl)) throw new ArgumentException("Use nonempty, bounded native names.");
         }
-        private static string ObjectName(XElement element) => element.Element("AttributeList")?.Element("Name")?.Value ?? "";
+        private static string ObjectName(XElement element) => ClassicXmlDocument.ObjectNameField(element)?.Value ?? "";
         private static XDocument Parse(string xml)
         {
             if (xml == null || xml.Length > MaxPayload) throw new ArgumentException("Supply bounded native XML.");
@@ -159,7 +159,7 @@ namespace SiemensMCPServer.Extensions
                     Name(member.Name); Name(member.Prototype);
                     var prototype = originals.SingleOrDefault(e => Names.Equals(ObjectName(e), member.Prototype)) ?? throw new ArgumentException("Native prototype was not found: " + member.Prototype);
                     var copy = NativeXmlIds.Clone(prototype, document);
-                    copy.Element("AttributeList")!.Element("Name")!.Value = member.Name;
+                    ClassicXmlDocument.ObjectNameField(copy)!.Value = member.Name;
                     copy = EditMember(copy, member.Edits);
                     if ((workingBytes += Encoding.UTF8.GetByteCount(copy.ToString(SaveOptions.DisableFormatting))) > MaxPayload) throw new ArgumentException("Template/clone input exceeds 4 MiB.");
                     prototype.Parent!.Add(copy);

@@ -44,7 +44,7 @@ namespace SiemensMCPServer.Extensions
             && new[] { "local", "internal", "classicXml", "unifiedObject", "plcSource", "plcRead", "projectRead" }.Contains(Route)
             && (Route == "plcRead" ? module == "plc" && !Preview && new[] { "source", "crossReferences" }.Contains(SnapshotKind)
                 : Route == "projectRead" ? module == "project" && !Preview && new[] { "libraryCatalog", "projectLanguages", "projectTexts" }.Contains(SnapshotKind)
-                : Route == "classicXml" && SnapshotKind == "screenText" ? module == "comfort" && Preview : string.IsNullOrEmpty(SnapshotKind));
+                : Route == "classicXml" && new[] { "screenText", "classicReferences" }.Contains(SnapshotKind) ? module == "comfort" && Preview : string.IsNullOrEmpty(SnapshotKind));
     }
     internal sealed class ExtensionHello
     {

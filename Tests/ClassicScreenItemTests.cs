@@ -161,7 +161,7 @@ public sealed class ClassicScreenItemTests
     {
         var descriptors = FeatureOperations.Describe("comfort"); Assert.All(descriptors, d => Assert.True(d.IsCompatible("comfort")));
         Assert.Equal("local", descriptors.Single(d => d.Name == "inspect_screen_items").Route);
-        var preview = descriptors.Single(d => d.Name == "change_screen_items"); Assert.Equal("classicXml", preview.Route); Assert.Equal("screenText", preview.SnapshotKind);
+        var preview = descriptors.Single(d => d.Name == "change_screen_items"); Assert.Equal("classicXml", preview.Route); Assert.Equal("classicReferences", preview.SnapshotKind);
     }
     [Fact] public void NativePreviewRetainsCompanionBytesAndRejectsTamperedCandidates()
     {

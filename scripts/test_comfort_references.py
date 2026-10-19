@@ -17,7 +17,7 @@ def worker_probe(bundle):
     hello, inspected, controls = worker(bundle, [packet(1, '$hello', {}), packet(2, 'inspect_references', {'xml': XML}),
                                                packet(3, 'inspect_screen_items', {'xml': XML})])
     descriptors = {o['name']: o for o in hello['result']['operations']}
-    assert descriptors['rebind_references']['route'] == 'classicXml' and descriptors['rebind_references']['snapshotKind'] == 'screenText'
+    assert descriptors['rebind_references']['route'] == 'classicXml' and descriptors['rebind_references']['snapshotKind'] == 'classicReferences'
     rows = inspected['result']['references']; assert len(rows) == 3
     tags = [r for r in rows if r['editable']]; assert len(tags) == 1 and tags[0]['linkType'] == 'Tag'
     assert next(r for r in rows if r['linkType'] == 'Owner')['targetName'] == 'A'

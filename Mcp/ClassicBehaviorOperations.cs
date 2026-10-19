@@ -87,7 +87,7 @@ namespace SiemensMCPServer.Mcp
         {
             var nodes = new HashSet<XElement>(roots.SelectMany(n => n.DescendantsAndSelf()));
             var ids = new HashSet<string>(nodes.Attributes("ID").Select(a => a.Value), StringComparer.Ordinal);
-            return document.Descendants().Attributes("TargetID").Any(a => ids.Contains(a.Value) && !nodes.Contains(a.Parent!))
+            return document.Descendants().Attributes("TargetID").Any(a => ids.Contains(NativeXmlIds.TargetKey(a.Value)) && !nodes.Contains(a.Parent!))
                 ? "A retained exported object references a removed behavior; include the dependent behavior or use an explicit native import." : null;
         }
         public object InspectBehaviors(ClassicBehaviorInspection request)
@@ -106,7 +106,7 @@ namespace SiemensMCPServer.Mcp
                 var targets = new List<object>(); int linkCharacters = 0;
                 foreach (var link in links)
                 {
-                    string id = (string)link.Attribute("TargetID")!;
+                    string id = NativeXmlIds.TargetKey((string)link.Attribute("TargetID")!);
                     if (localIds.Contains(id) || !state.Ids.TryGetValue(id, out var target) || !NativeReferenceOwner(target)) continue;
                     var targetRow = new { xPath = Path(link), expectedTargetXPath = Path(target), targetType = target.Name.LocalName, targetName = ReferenceObjectName(target) };
                     int cost = JsonSerializer.Serialize(targetRow, JsonDefaults.Options).Length;
@@ -117,7 +117,7 @@ namespace SiemensMCPServer.Mcp
                 var summary = new { xPath = row.XPath, fingerprint = row.Fingerprint, nativeType = row.Node.Name.LocalName, composition = (string?)row.Node.Attribute("CompositionName"),
                     ownerXPath = Path(owner), ownerType = owner.Name.LocalName, ownerName = ReferenceObjectName(owner), cloneRootXPath = Path(wrapped.Root!.Elements().Single()),
                     cloneAvailable = cloneReason == null, cloneUnavailableReason = cloneReason, standaloneRemovalAvailable = state.UnavailableReason == null && BehaviorRemovalBlock(new[] { row.Node }) == null,
-                    ownerLinks = targets, ownerLinkCatalogLimited = targets.Count < links.Count(l => !localIds.Contains((string)l.Attribute("TargetID")!) && state.Ids.TryGetValue((string)l.Attribute("TargetID")!, out var t) && NativeReferenceOwner(t)) };
+                    ownerLinks = targets, ownerLinkCatalogLimited = targets.Count < links.Count(l => !localIds.Contains(NativeXmlIds.TargetKey((string)l.Attribute("TargetID")!)) && state.Ids.TryGetValue(NativeXmlIds.TargetKey((string)l.Attribute("TargetID")!), out var t) && NativeReferenceOwner(t)) };
                 int rowCost = JsonSerializer.Serialize(summary, JsonDefaults.Options).Length;
                 if (characters + rowCost > 258048) { limited = true; break; }
                 rows.Add(summary); characters += rowCost; next++;
@@ -160,7 +160,7 @@ namespace SiemensMCPServer.Mcp
                     {
                         if (map == null || map.XPath == null || map.ExpectedTargetXPath == null || map.NewTargetXPath == null || map.XPath.Length > 4096 || map.ExpectedTargetXPath.Length > 4096 || map.NewTargetXPath.Length > 4096
                             || !seen.Add(map.XPath) || !eligible.TryGetValue(map.XPath, out var link)) throw new ArgumentException("Use unique exact clone-relative Owner/Control link paths from inspect_behaviors.");
-                        string id = (string)link.Attribute("TargetID")!;
+                        string id = NativeXmlIds.TargetKey((string)link.Attribute("TargetID")!);
                         if (localIds.Contains(id) || !state.Ids.TryGetValue(id, out var oldTarget) || !NativeReferenceOwner(oldTarget) || Path(oldTarget) != map.ExpectedTargetXPath)
                             throw new InvalidOperationException("Expected external owner-link target differs; inspect the behavior again.");
                         if (!state.Owners.TryGetValue(map.NewTargetXPath, out var newTarget) || oldTarget.Name != newTarget.Name || string.IsNullOrEmpty((string?)newTarget.Attribute("ID")))
@@ -184,7 +184,11 @@ namespace SiemensMCPServer.Mcp
                 var clone = NativeXmlIds.Clone(plan.Prototype, candidate.document);
                 var wrapped = new XDocument(new XElement("Document", clone));
                 var links = wrapped.Descendants().Where(BehaviorOwnerLink).ToDictionary(Path, StringComparer.Ordinal);
-                foreach (var map in plan.Targets) links[map.Key].SetAttributeValue("TargetID", (string)map.Value.Attribute("ID")!);
+                foreach (var map in plan.Targets)
+                {
+                    var link = links[map.Key];
+                    link.SetAttributeValue("TargetID", NativeXmlIds.Retarget((string)link.Attribute("TargetID")!, (string)map.Value.Attribute("ID")!));
+                }
                 string[] metadata = ItemReferenceMetadata(clone);
                 if (plan.Change.Edits.Length != 0)
                     clone = TransferFiles.Xml(new ClassicXmlDocument(wrapped.ToString(SaveOptions.DisableFormatting), false).Edit(plan.Change.Edits)).Root!.Elements().Single();

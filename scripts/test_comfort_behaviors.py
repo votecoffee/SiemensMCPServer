@@ -31,7 +31,7 @@ def worker_probe(bundle):
     hello, inspected, controls = worker(bundle, [packet(1, '$hello', {}), packet(2, 'inspect_behaviors', {'xml': BEHAVIORS}),
                                                packet(3, 'inspect_screen_items', {'xml': BEHAVIORS})])
     descriptors = {o['name']: o for o in hello['result']['operations']}
-    assert descriptors['change_behaviors']['snapshotKind'] == 'screenText' and descriptors['inspect_behaviors']['route'] == 'local'
+    assert descriptors['change_behaviors']['snapshotKind'] == 'classicReferences' and descriptors['inspect_behaviors']['route'] == 'local'
     rows = inspected['result']['objects']; assert len(rows) == 3
     assert not rows[0]['standaloneRemovalAvailable']
     destination = next(r for r in controls['result']['items'] if r['name'] == 'C')['xPath']

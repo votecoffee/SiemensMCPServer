@@ -85,7 +85,7 @@ namespace SiemensMCPServer.Mcp
                 var row = new ReferenceRecord { Node = link, XPath = Path(link), Name = names.Length == 1 && !names[0].HasElements && names[0].Value.Length <= 4096 ? names[0].Value : null,
                     Owner = link.Ancestors().First(NativeReferenceOwner), Control = link.Ancestors().FirstOrDefault(ScreenItem) };
                 if (row.XPath.Length > 4096) throw new ArgumentException("Reference paths exceed 4096 characters.");
-                ids.TryGetValue((string)link.Attribute("TargetID")!, out row.Target);
+                ids.TryGetValue(NativeXmlIds.TargetKey((string)link.Attribute("TargetID")!), out row.Target);
                 if (row.Target != null && Path(row.Target).Length > 4096) throw new ArgumentException("Reference target paths exceed 4096 characters.");
                 row.UnavailableReason = invalidReference ?? (!row.Open ? "Native-ID links are inspection-only; this operation does not change object ownership or identity." :
                     !EditableReferenceTypes.Contains(link.Name.LocalName) ? "Only symbolic Tag, ControllerTag and Connection link roles are supported." :
@@ -98,8 +98,8 @@ namespace SiemensMCPServer.Mcp
         }
         private static string? ReferenceObjectName(XElement? node)
         {
-            var names = node?.Element("AttributeList")?.Elements("Name").ToArray();
-            return names?.Length == 1 && !names[0].HasElements && names[0].Value.Length <= 512 ? names[0].Value : null;
+            var name = node == null ? null : ObjectNameField(node);
+            return name != null && name.Value.Length <= 512 ? name.Value : null;
         }
         private static object ReferenceSummary(ReferenceRecord row) => new { xPath = row.XPath, linkType = row.Node.Name.LocalName, kind = row.Open ? "openLink" : "nativeId", name = row.Name,
             ownerXPath = Path(row.Owner), ownerType = row.Owner.Name.LocalName, ownerName = ReferenceObjectName(row.Owner),
