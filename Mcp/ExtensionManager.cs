@@ -115,8 +115,7 @@ namespace SiemensMCPServer.Mcp
                 Hello = ExtensionWire.Parse<ExtensionHello>(Call("$hello", new { }));
                 if (Hello.Protocol != ExtensionWire.Protocol || Hello.Module != bundle.Manifest.Module || Hello.Version != bundle.Manifest.Version
                     || Hello.Operations == null || Hello.Operations.Length == 0 || Hello.Operations.Length > 100
-                    || Hello.Operations.Any(o => string.IsNullOrEmpty(o.Name) || o.Name.Length > 128 || o.InputSchema.ValueKind != JsonValueKind.Object
-                        || !new[] { "local", "internal", "classicXml", "unifiedObject", "plcSource" }.Contains(o.Route))
+                    || Hello.Operations.Any(o => o == null || !o.IsCompatible(Hello.Module))
                     || Hello.Operations.GroupBy(o => o.Name, StringComparer.Ordinal).Any(g => g.Count() > 1))
                     throw new InvalidOperationException("Extension handshake is incompatible with its manifest or host routes.");
             }

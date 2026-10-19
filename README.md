@@ -34,7 +34,7 @@ The server exposes engineering operations through the Model Context Protocol (MC
 | --- | --- |
 | Comfort / classic HMI | Primary profile: V15.1. Text lists, native XML resources, scalar properties, supported object creation/deletion, prototype-based screen/tag packages and bulk transfers. |
 | Unified HMI | API-visible objects and supported screen properties. Text lists require the native paired-YAML API; V19 does not expose that route. |
-| Siemens PLC | Offline blocks, data types, tags, native XML transfers, SCL/STL generation and compile diagnostics. |
+| Siemens PLC | Offline blocks, data types, tags, native XML transfers, SCL/STL generation, readable-source export/search, API-supported cross-references and compile diagnostics. |
 | Desktop utility | Comfort / Advanced screens and resources; Unified native transfers where available; offline PLC XML resources. |
 
 The server does not provide device download, runtime control, watch or force operations. See [feature coverage](plugin/FEATURE-COVERAGE.md) and [validation status](plugin/NATIVE-ACCEPTANCE.md) for supported routes and their limits.
@@ -118,6 +118,8 @@ Stage a trusted worker bundle, then call `tia_reload_extensions` for its module.
 Comfort worker 0.7.2 adds offline screen/tag package generation from native XML prototypes and validation of supplied PLC bindings. These operations load through the existing 0.7.1 host. Review the generated package before native import; see the [Comfort package workflow](plugin/COMFORT-PACKAGES.md).
 
 The 0.7.2 host adds Unified compile-service lookup within the HMI's owning device when its software has no compiler. Results report the selected native scope. This broker change requires a host upgrade/reconnect; native Unified compile acceptance remains pending.
+
+Host/worker 0.7.3 adds PLC `read_source`, `find_in_source` and `cross_references` through `tia_read_extension`. These use explicit PLC/object paths and verified Offline state. Native readable-source export supports SCL/STL, data blocks and PLC types; native cross-references require a matching API and object service (present in the inspected V19 API, absent in V15.1). The new broker read route requires a host upgrade/reconnect. Native project acceptance remains pending.
 
 ## Development
 

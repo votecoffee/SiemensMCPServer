@@ -1,6 +1,6 @@
 {
   "name": "siemens-mcp-server",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "Local MCP server for Siemens HMI and offline PLC engineering through TIA Portal Openness.",
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",

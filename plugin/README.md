@@ -1,4 +1,4 @@
-# SiemensMCPServer plugin 0.7.2
+# SiemensMCPServer plugin 0.7.3
 
 The project and GitHub repository are now **SiemensMCPServer**. The plugin/MCP ID is `siemens-mcp-server`, the local marketplace is `siemens-mcp-server-local`, and the host is `SiemensMCPServer.Mcp.exe`. Remove the old `siemens-tia-openness` plugin or direct MCP registration through Codex before installing the renamed plugin. The installer refuses to register a second copy while the old server is enabled. Do not remove its cache manually while it is running. This rename needs a host upgrade; feature-worker reload remains available afterward.
 

@@ -3,7 +3,7 @@
     <OutputType>Exe</OutputType><TargetFramework>net48</TargetFramework><PlatformTarget>x64</PlatformTarget>
     <LangVersion>latest</LangVersion><Nullable>annotations</Nullable><AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType><RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <AssemblyName>SiemensMCPServer.ExtensionWorker</AssemblyName><Version>0.7.2</Version>
+    <AssemblyName>SiemensMCPServer.ExtensionWorker</AssemblyName><Version>0.7.3</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Text.Json" Version="10.0.10"/><PackageReference Include="YamlDotNet" Version="18.1.0"/>
@@ -19,5 +19,7 @@
     <Compile Include="../Mcp/UnifiedTextListDocument.cs" Link="Features/UnifiedTextListDocument.cs"/>
     <Compile Include="../Mcp/UnifiedObjectState.cs" Link="Features/UnifiedObjectState.cs"/>
     <Compile Include="../Mcp/PlcSourceFiles.cs" Link="Features/PlcSourceFiles.cs"/>
+    <Compile Include="../Mcp/PlcInspection.cs" Link="Features/PlcInspection.cs"/>
+    <Compile Include="../Mcp/PlcPolicy.cs" Link="Core/PlcPolicy.cs"/>
   </ItemGroup>
 </Project>

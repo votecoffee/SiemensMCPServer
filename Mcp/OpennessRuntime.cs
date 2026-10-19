@@ -15,6 +15,7 @@ namespace SiemensMCPServer.Mcp
         void InvalidatePreviews();
         object PreviewExtension(string module, string operation, string targetId, string path, string fingerprint, JsonElement arguments);
         object ApplyExtension(string id, string hash);
+        object ReadPlcExtension(string operation, string kind, JsonElement arguments);
         object ListProcesses();
         object ApiCapabilities();
         object ListScreens(string hmiId);
@@ -82,8 +83,12 @@ namespace SiemensMCPServer.Mcp
         }
         public Task<object> ReadExtension(string module, string operation, string argumentsJson, CancellationToken token) => Enqueue(() => {
             var descriptor = extensions.Operation(module, operation);
-            if (descriptor.Preview || descriptor.Route != "local") throw new ArgumentException("Use a preview for this extension operation.");
-            var data = extensions.Execute(module, operation, Arguments(argumentsJson));
+            if (descriptor.Preview) throw new ArgumentException("Use a preview for this extension operation.");
+            var arguments = Arguments(argumentsJson);
+            object data;
+            if (descriptor.Route == "local") data = extensions.Execute(module, operation, arguments);
+            else if (descriptor.Route == "plcRead" && module == "plc") data = EnsureSession().ReadPlcExtension(operation, descriptor.SnapshotKind, arguments);
+            else throw new ArgumentException("This extension operation has no read route.");
             return (object)new { extension = extensions.Identity(module), data };
         }, token);
         public Task<object> PreviewExtension(string module, string operation, string targetId, string path, string fingerprint, string argumentsJson, CancellationToken token)

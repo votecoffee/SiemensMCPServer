@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using SiemensMCPServer.Mcp;
@@ -37,7 +38,11 @@ namespace SiemensMCPServer.Extensions
         public string Description { get; set; } = "";
         public string Route { get; set; } = "local";
         public bool Preview { get; set; }
+        public string SnapshotKind { get; set; } = "";
         public JsonElement InputSchema { get; set; }
+        public bool IsCompatible(string module) => !string.IsNullOrEmpty(Name) && Name.Length <= 128 && InputSchema.ValueKind == JsonValueKind.Object
+            && new[] { "local", "internal", "classicXml", "unifiedObject", "plcSource", "plcRead" }.Contains(Route)
+            && (Route == "plcRead" ? module == "plc" && !Preview && new[] { "source", "crossReferences" }.Contains(SnapshotKind) : string.IsNullOrEmpty(SnapshotKind));
     }
     internal sealed class ExtensionHello
     {

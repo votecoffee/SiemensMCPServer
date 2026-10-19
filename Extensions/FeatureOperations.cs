@@ -7,8 +7,8 @@ namespace SiemensMCPServer.Extensions
 {
     internal static class FeatureOperations
     {
-        private static ExtensionOperation Op(string name, string description, string route, bool preview, object schema) => new ExtensionOperation {
-            Name = name, Description = description, Route = route, Preview = preview, InputSchema = ExtensionWire.Json(schema)
+        private static ExtensionOperation Op(string name, string description, string route, bool preview, object schema, string snapshotKind = "") => new ExtensionOperation {
+            Name = name, Description = description, Route = route, Preview = preview, InputSchema = ExtensionWire.Json(schema), SnapshotKind = snapshotKind
         };
         public static ExtensionOperation[] Describe(string module)
         {
@@ -27,6 +27,9 @@ namespace SiemensMCPServer.Extensions
                     Op("edit_object", "Edit supported static fields/captions of a selected Unified screen/item. arguments: screenPath, itemPath, edits.", "unifiedObject", true, new { type = "object", required = new[] { "screenPath", "itemPath", "edits" } }),
                     Op("edit_text_list", "Transform a supplied paired-YAML text-list document.", "internal", true, new { type = "object" }) };
                 case "plc": return new[] {
+                    Op("read_source", "Export readable native SCL/STL/DB/UDT source to local artifacts and return bounded text. Explicit PLC/path and verified Offline state required; does not generate blocks or import a source into the project.", "plcRead", false, PlcInspectionOperations.Schema("read_source"), "source"),
+                    Op("find_in_source", "Search a native readable-source snapshot for literal text, with line/column/context results and file hash. Same native export and Offline limits as read_source; no LAD/FBD translation.", "plcRead", false, PlcInspectionOperations.Schema("find_in_source"), "source"),
+                    Op("cross_references", "Read bounded native cross-reference source/reference/location rows for one PLC object. Requires Offline state and an API exposing CrossReferenceService (present in the inspected V19 profile, absent in V15.1). No native handles leave the broker.", "plcRead", false, PlcInspectionOperations.Schema("cross_references"), "crossReferences"),
                     Op("prepare_source", "Validate exact SCL/STL source. arguments: name, language, code, allowBlockReplacement. Preview uses an offline PLC root.", "plcSource", true, new { type = "object", required = new[] { "name", "language", "code", "allowBlockReplacement" } }),
                     Op("inspect_source", "Validate supplied SCL/STL source without attaching or generating blocks.", "local", false, new { type = "object", required = new[] { "name", "language", "code", "allowBlockReplacement" } }) };
                 default: throw new ArgumentException("Unknown bundled extension module.");
@@ -74,6 +77,7 @@ namespace SiemensMCPServer.Extensions
             }
             if (module == "plc")
             {
+                if (operation == "read_source" || operation == "find_in_source" || operation == "cross_references") return PlcInspectionOperations.Execute(operation, input);
                 var source = ExtensionWire.Parse<PlcSourceInput>(args);
                 source.Validate(); return ExtensionWire.Json(new { source, fileName = source.FileName });
             }

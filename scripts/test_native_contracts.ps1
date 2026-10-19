@@ -46,6 +46,24 @@ foreach ($name in @('Hmi.HmiTarget', 'SW.PlcSoftware', 'HW.DeviceItem', 'HW.Devi
 }
 $compiler = $api.GetType('Siemens.Engineering.Compiler.ICompilable', $true)
 Assert-Contract ($null -ne $compiler.GetMethod('Compile', [Type[]]@())) 'Compile service has a parameterless native invocation'
+$sourceGroup = $api.GetType('Siemens.Engineering.SW.ExternalSources.PlcExternalSourceSystemGroup', $true)
+$sourceMethod = @($sourceGroup.GetMethods() | Where-Object { $_.Name -eq 'GenerateSource' -and $_.GetParameters().Length -eq 3 })
+Assert-Contract ($sourceMethod.Count -eq 1 -and $sourceMethod[0].GetParameters()[1].ParameterType -eq [IO.FileInfo]) 'Readable-source export exposes native dependency options and file output'
+$sourceInterface = $api.GetType('Siemens.Engineering.SW.ExternalSources.IGenerateSource', $true)
+foreach ($name in @('SW.Blocks.CodeBlock', 'SW.Blocks.DataBlock', 'SW.Types.PlcType')) {
+    Assert-Contract ($sourceInterface.IsAssignableFrom($api.GetType("Siemens.Engineering.$name", $true))) "$name supports native readable-source export"
+}
+$referenceService = $api.GetType('Siemens.Engineering.CrossReference.CrossReferenceService', $false)
+Assert-Contract (($null -ne $referenceService) -eq ($Version -eq 'V19')) 'Native cross-reference service availability matches this inspected profile'
+if ($referenceService) {
+    Assert-Contract (@($provider.GetMethods() | Where-Object { $_.Name -eq 'GetService' -and $_.IsGenericMethodDefinition -and $_.GetParameters().Length -eq 0 }).Count -eq 1) 'Cross-reference service supports the guarded generic service lookup'
+    Assert-Contract (@($referenceService.GetMethods() | Where-Object { $_.Name -eq 'GetCrossReferences' -and $_.GetParameters().Length -eq 1 -and $_.GetParameters()[0].ParameterType.IsEnum }).Count -eq 1) 'Cross-reference query has the native filter signature'
+    foreach ($name in @('SourceObject', 'ReferenceObject', 'Location')) {
+        $referenceType = $api.GetType("Siemens.Engineering.CrossReference.$name", $true)
+        $fields = if ($name -eq 'Location') { @('Name','ReferenceLocation','ReferenceType','Access','ReferencedAsName','Address','TypeName') } else { @('Name','Address','TypeName','Device','Path') }
+        foreach ($field in $fields) { Assert-Contract ($null -ne $referenceType.GetProperty($field)) "$name exposes textual/enum field $field" }
+    }
+}
 Assert-Contract ($null -ne $hmi.GetMethod('ImportScreenOverview', [Type[]]@([IO.FileInfo], $importOptions))) 'HmiTarget imports the permanent-area singleton'
 $slidein = $api.GetType('Siemens.Engineering.Hmi.Screen.ScreenSlidein', $true)
 Assert-Contract ($null -ne $slidein.GetProperty('SlideinType') -and $null -eq $slidein.GetProperty('Name')) 'Slide-in identity is its side/type, not a name'
