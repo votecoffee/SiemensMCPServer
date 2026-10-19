@@ -90,6 +90,11 @@ def run(executable, native=False):
             probe = call("tia_read_extension", module="comfort", operation="inspect_xml", argumentsJson=json.dumps({"xml":"<Document><Hmi.Screen.Screen><AttributeList><Name>Café — テスト</Name></AttributeList></Hmi.Screen.Screen></Document>", "editable":True},ensure_ascii=False))
             assert not probe.get("isError"), probe
             assert probe["structuredContent"]["result"]["data"]["name"] == "Café — テスト"
+            if host_version >= (0, 9, 1):
+                assert {"inspect_screen_layout", "arrange_screen_items"} <= {o["name"] for o in modules["comfort"]["operations"]}
+                layout = call("tia_read_extension", module="comfort", operation="inspect_screen_layout", argumentsJson=json.dumps({"xml":"<Document><Hmi.Screen.Screen><AttributeList><Name>Layout</Name></AttributeList></Hmi.Screen.Screen></Document>"}))
+                assert not layout.get("isError"), layout
+                assert layout["structuredContent"]["result"]["data"]["totalItems"] == 0
             reloaded = call("tia_reload_extensions", module="comfort")
             assert not reloaded.get("isError"), reloaded
             reload_data = reloaded["structuredContent"]["result"]

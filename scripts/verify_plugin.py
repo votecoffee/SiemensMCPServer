@@ -47,6 +47,8 @@ def validate(files):
     if version >= (0, 9, 0):
         assert "skills/inspect-project-texts/SKILL.md" in files
         assert "PROJECT-TEXTS.md" in files
+    if version >= (0, 9, 1):
+        assert "COMFORT-LAYOUT.md" in files
     return len(manifest)
 
 

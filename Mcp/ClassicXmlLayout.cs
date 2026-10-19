@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Xml.Linq;
 
@@ -60,6 +61,7 @@ namespace SiemensMCPServer.Mcp
             if (!new[] { "Hmi.Screen.Screen", "Hmi.Screen.ScreenTemplate", "Hmi.Screen.ScreenPopup", "Hmi.Screen.ScreenSlidein",
                 "Hmi.Screen.ScreenOverview", "Hmi.Screen.ScreenGlobalElements" }.Contains(NativeType))
                 throw new ArgumentException("Screen layout requires a native classic screen resource.");
+            if (Name.Length > 512) throw new ArgumentException("Screen resource names exceed 512 characters.");
             var nodes = resource.DescendantsAndSelf().Take(50001).ToArray();
             if (nodes.Length > 50000 || nodes.Any(n => n.Ancestors().Take(65).Count() > 64))
                 throw new ArgumentException("Screen layout exceeds 50000 XML elements or 64 levels.");
@@ -100,12 +102,13 @@ namespace SiemensMCPServer.Mcp
             var all = LayoutItems(); var rows = new List<object>(); int characters = 0, next = offset;
             foreach (var item in all.Skip(offset).Take(maxItems))
             {
-                int cost = item.XPath.Length * 2 + item.ContainerXPath.Length + item.Name.Length + 1024;
-                if (characters + cost > 262144) break;
-                characters += cost;
-                rows.Add(new { xPath = item.XPath, item.Name, nativeType = item.Node.Name.LocalName, containerXPath = item.ContainerXPath,
+                var row = new { xPath = item.XPath, item.Name, nativeType = item.Node.Name.LocalName, containerXPath = item.ContainerXPath,
                     bounds = item.Bounds, geometryAvailable = item.Bounds != null, unsupportedReason = item.UnsupportedReason,
-                    selection = item.Bounds == null ? null : new ClassicLayoutSelection { XPath = item.XPath, ExpectedBounds = item.Bounds } });
+                    selection = item.Bounds == null ? null : new ClassicLayoutSelection { XPath = item.XPath, ExpectedBounds = item.Bounds } };
+                // Count escaped JSON, including repeated selection paths and non-ASCII names.
+                int cost = JsonSerializer.Serialize(row, JsonDefaults.Options).Length;
+                if (characters + cost > 258048) break;
+                characters += cost; rows.Add(row);
                 next++;
             }
             return new { Name, NativeType, items = rows, totalItems = all.Length, offset, nextOffset = next, hasMore = next < all.Length,

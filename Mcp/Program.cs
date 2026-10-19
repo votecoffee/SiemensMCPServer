@@ -32,7 +32,7 @@ namespace SiemensMCPServer.Mcp
                 builder.Logging.SetMinimumLevel(LogLevel.Warning);
                 builder.Services.AddSingleton(new OpennessRuntime(version, root, writes, extensionsRoot));
                 builder.Services.AddMcpServer(options => {
-                    options.ServerInfo = new ModelContextProtocol.Protocol.Implementation { Name = "siemens-mcp-server", Version = "0.9.0" };
+                    options.ServerInfo = new ModelContextProtocol.Protocol.Implementation { Name = "siemens-mcp-server", Version = "0.9.1" };
                     options.ServerInstructions = "Use explicit TIA process, project path, and HMI IDs. Read a text list, preview edits, and inspect the diff before applying authorized changes. Apply never saves; compile and save are separate tools. Classic and capability-checked Unified operations; use tia_get_api_capabilities and the target family. Do not retry an uncertain write; inspect current state first.";
                 }).WithStdioServerTransport().WithTools<McpTools>();
                 using (var host = builder.Build()) await host.RunAsync().ConfigureAwait(false);

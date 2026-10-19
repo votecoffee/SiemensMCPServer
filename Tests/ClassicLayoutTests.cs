@@ -149,6 +149,16 @@ public sealed class ClassicLayoutTests
         Assert.Throws<InvalidOperationException>(() => workflow.Apply(plan.GetProperty("planId").GetString()!, plan.GetProperty("candidateSha256").GetString()!)); Assert.Equal(0, backend.Attempts);
         Assert.Equal(new[] { 10, 51, 110 }, Values(XDocument.Load(Path.Combine(resource.Directory, "payload.xml")), "Left"));
     }
+    [Fact] public void CatalogBoundsEscapedUnicodePayloadAndStillMakesPagingProgress()
+    {
+        string xml = Screen(string.Concat(Enumerable.Repeat(Item(new string('中', 500), 1, 1, 10, 10), 200)));
+        var page = ExtensionWire.Json(new ClassicXmlDocument(xml).LayoutCatalog(0, 200));
+        Assert.True(page.GetProperty("hasMore").GetBoolean()); Assert.True(page.GetProperty("payloadLimited").GetBoolean());
+        Assert.InRange(page.GetProperty("nextOffset").GetInt32(), 1, 199); Assert.True(page.GetRawText().Length < 262144);
+        var next = ExtensionWire.Json(new ClassicXmlDocument(xml).LayoutCatalog(page.GetProperty("nextOffset").GetInt32(), 200));
+        Assert.True(next.GetProperty("nextOffset").GetInt32() > page.GetProperty("nextOffset").GetInt32());
+        Assert.Throws<ArgumentException>(() => Catalog(Xml.Replace("<Name>Test</Name>", "<Name>" + new string('x', 513) + "</Name>")));
+    }
     private sealed class Backend : IClassicResourceBackend, IDisposable
     {
         public string Root = Path.Combine(Path.GetTempPath(), "comfort-layout-" + Guid.NewGuid().ToString("N")); public int Attempts;
