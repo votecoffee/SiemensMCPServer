@@ -84,6 +84,16 @@ public sealed class ProjectTextTests
             File.WriteAllBytes(path, Array.Empty<byte>()); Assert.Throws<InvalidDataException>(() => ProjectTextFiles.Read(directory));
         } finally { Directory.Delete(directory, true); }
     }
+    [Fact] public void CellPageTextBudgetReturnsAContinuationInsteadOfAnOversizedReply()
+    {
+        var parts = Parts(); string text = new string('x', 4096);
+        parts["xl/sharedStrings.xml"] = $"<sst xmlns=\"{Main}\"><si><t>{text}</t></si></sst>";
+        parts["xl/worksheets/sheet1.xml"] = $"<worksheet xmlns=\"{Main}\"><sheetData><row r=\"1\">{string.Concat(Enumerable.Repeat($"<c t=\"s\"><f>{text}</f><v>0</v></c>", 100))}</row></sheetData></worksheet>";
+        var result = Execute("read_project_texts", Zip(parts), new { maxCells = 100, maxCharacters = 4096 });
+        Assert.True(result.GetProperty("payloadLimited").GetBoolean()); Assert.True(result.GetProperty("hasMore").GetBoolean());
+        int count = result.GetProperty("cells").GetArrayLength(); Assert.InRange(count, 1, 99);
+        Assert.Equal(count, result.GetProperty("nextOffset").GetInt32());
+    }
     [Theory]
     [InlineData("../outside.xml")][InlineData("/absolute.xml")][InlineData("xl\\bad.xml")][InlineData("xl/./bad.xml")][InlineData("C:/bad.xml")]
     public void RejectsUnsafeZipMembers(string path)
@@ -131,8 +141,12 @@ public sealed class ProjectTextTests
     private sealed class Backend : IProjectTextBackend
     {
         public int Calls;
+        public ProjectTextSnapshot? LastSnapshot;
         public ProjectLanguageSnapshot CaptureProjectLanguages(string path) { Calls++; return new ProjectLanguageSnapshot { Languages = new[] { new ProjectLanguage { Culture = "en-US" } } }; }
-        public ProjectTextSnapshot CaptureProjectTexts(string path, ProjectTextCapture capture) { Calls++; return Snapshot(Zip(Parts())); }
+        public ProjectTextSnapshot CaptureProjectTexts(string path, ProjectTextCapture capture) {
+            Calls++; LastSnapshot = Snapshot(Zip(Parts())); LastSnapshot.ArtifactDirectory = Path.Combine(Path.GetTempPath(), "synthetic-export");
+            LastSnapshot.FileName = "project-texts.xlsx"; return LastSnapshot;
+        }
     }
     [Fact] public void ValidatesBeforeCaptureRejectsClientSnapshotsAndReportsReadOnlyScope()
     {
@@ -153,5 +167,20 @@ public sealed class ProjectTextTests
         var operations = FeatureOperations.Describe("project").Where(o => o.SnapshotKind != "libraryCatalog").ToArray();
         Assert.Equal(3, operations.Length);
         Assert.All(operations, operation => { Assert.True(operation.IsCompatible("project")); Assert.False(operation.IsCompatible("comfort")); operation.Preview = true; Assert.False(operation.IsCompatible("project")); });
+    }
+    private sealed class FailingReader : IFeatureEngine
+    {
+        public JsonElement Execute(string module, string operation, object input) {
+            if (ExtensionWire.Json(input).GetProperty("phase").GetString() == "snapshot") throw new InvalidDataException("Synthetic reader failure");
+            return ExtensionWire.Json(new { validated = true });
+        }
+    }
+    [Fact] public void FailedInspectionReportsRetainedWorkbookAndHashInTheVisibleBaseError()
+    {
+        var backend = new Backend(); var workflow = new ProjectTextWorkflow(backend, new FailingReader());
+        var error = Assert.Throws<InvalidOperationException>(() => workflow.Read("read_project_texts", "projectTexts", Arguments()));
+        Assert.Null(error.InnerException); Assert.Contains(backend.LastSnapshot!.FileSha256, error.GetBaseException().Message);
+        Assert.Contains(Path.Combine(backend.LastSnapshot.ArtifactDirectory, backend.LastSnapshot.FileName), error.Message);
+        Assert.Contains("Synthetic reader failure", error.Message); Assert.Equal(1, backend.Calls);
     }
 }

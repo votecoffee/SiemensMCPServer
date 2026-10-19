@@ -75,16 +75,22 @@ namespace SiemensMCPServer.Mcp
         {
             var request = ExtensionWire.Parse<ProjectTextInput>(arguments); request.Validate(kind);
             features.Execute("project", operation, new { phase = "validate", arguments });
-            object snapshot, evidence;
+            object snapshot, evidence; ProjectTextSnapshot? workbook = null;
             if (kind == "projectLanguages") {
                 var languages = backend.CaptureProjectLanguages(request.ExpectedProjectPath);
                 snapshot = languages; evidence = new { request.ExpectedProjectPath, activeLanguages = languages.Languages.Length };
             } else {
                 var texts = backend.CaptureProjectTexts(request.ExpectedProjectPath, ExtensionWire.Parse<ProjectTextCapture>(request.Capture));
-                snapshot = texts; evidence = new { request.ExpectedProjectPath, workbook = texts.Evidence };
+                workbook = texts; snapshot = texts; evidence = new { request.ExpectedProjectPath, workbook = texts.Evidence };
+            }
+            JsonElement data;
+            try { data = features.Execute("project", operation, new { phase = "snapshot", snapshot, arguments }); }
+            catch (Exception ex) when (workbook != null) {
+                throw new InvalidOperationException("Project-text inspection failed; native XLSX retained at " + Path.Combine(workbook.ArtifactDirectory, workbook.FileName)
+                    + " (SHA-256 " + workbook.FileSha256 + "). " + ex.GetBaseException().Message);
             }
             return new { snapshotKind = kind, evidence, capturedUtc = DateTime.UtcNow.ToString("o"),
-                data = features.Execute("project", operation, new { phase = "snapshot", snapshot, arguments }),
+                data,
                 projectSaved = false, projectTextsImported = false,
                 scope = "Fresh project-text export per call. Cells include metadata/headers and are not classified as translatable. No workbook edits, import, compile or runtime control." };
         }

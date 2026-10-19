@@ -68,13 +68,18 @@ namespace SiemensMCPServer.Extensions
             if (sheet != "" && !workbook.Sheets.Any(s => s.Name == sheet)) throw new ArgumentException("Worksheet does not exist; use a returned exact sheet name.");
             var cells = workbook.Cells.Where(c => sheet == "" || c.Sheet == sheet).ToArray();
             if (read != null) {
-                var rows = cells.Skip(read.Offset).Take(read.MaxCells).Select(c => new {
-                    c.Sheet, c.Address, c.Type, text = Prefix(c.Text, read.MaxCharacters), textTruncated = c.Text.Length > read.MaxCharacters,
-                    formula = c.Formula == null ? null : Prefix(c.Formula, read.MaxCharacters), formulaTruncated = c.Formula?.Length > read.MaxCharacters,
-                    hasFormula = c.Formula != null }).ToArray();
-                bool more = read.Offset + rows.Length < cells.Length;
+                var rows = new List<object>(); int characters = 0; bool payloadLimited = false;
+                foreach (var cell in cells.Skip(read.Offset).Take(read.MaxCells)) {
+                    string text = Prefix(cell.Text, read.MaxCharacters); string? formula = cell.Formula == null ? null : Prefix(cell.Formula, read.MaxCharacters);
+                    int size = cell.Sheet.Length + cell.Address.Length + cell.Type.Length + text.Length + (formula?.Length ?? 0);
+                    if (characters + size > 262144) { payloadLimited = true; break; }
+                    characters += size;
+                    rows.Add(new { cell.Sheet, cell.Address, cell.Type, text, textTruncated = text.Length != cell.Text.Length,
+                        formula, formulaTruncated = formula?.Length != cell.Formula?.Length, hasFormula = cell.Formula != null });
+                }
+                bool more = read.Offset + rows.Count < cells.Length;
                 return ExtensionWire.Json(new { sheets = workbook.Sheets, cells = rows, totalCells = cells.Length, offset = read.Offset,
-                    nextOffset = more ? (int?)(read.Offset + rows.Length) : null, hasMore = more, workbook.IgnoredExternalRelationships,
+                    nextOffset = more ? (int?)(read.Offset + rows.Count) : null, hasMore = more, payloadLimited, workbook.IgnoredExternalRelationships,
                     valueSemantics = "Raw cell text/numeric values and formula caches. Styles are not rendered; formulas and external links are never evaluated." });
             }
             var matches = new List<object>(); int count = 0;
