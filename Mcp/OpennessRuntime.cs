@@ -57,6 +57,8 @@ namespace SiemensMCPServer.Mcp
         private readonly RequestLane native, local, control;
         private readonly string artifactRoot;
         private readonly bool allowWrites;
+        private readonly SafeguardStore safeguards;
+        private readonly SafeguardSettings startupSettings;
         private IHmiSession? session;
         private string? requestedVersion;
         private int disposed;
@@ -64,22 +66,24 @@ namespace SiemensMCPServer.Mcp
         private readonly Func<string, IFeatureEngine, IHmiSession>? sessionFactory;
 
         public OpennessRuntime(string? version, string artifactRoot, bool allowWrites, string? extensionsRoot = null, int analysisParallelism = 2,
-            Func<string, IFeatureEngine, IHmiSession>? sessionFactory = null)
+            Func<string, IFeatureEngine, IHmiSession>? sessionFactory = null, SafeguardStore? safeguards = null)
         {
             requestedVersion = version; this.artifactRoot = Path.GetFullPath(artifactRoot); this.allowWrites = allowWrites;
             this.sessionFactory = sessionFactory;
+            this.safeguards = safeguards ?? new SafeguardStore();
+            startupSettings = this.safeguards.Current();
             extensions = new ExtensionManager(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "extensions"),
                 extensionsRoot ?? ExtensionPaths.DefaultRoot(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)),
-                Path.Combine(this.artifactRoot, "extension-workers"), localParallelism: analysisParallelism);
-            local = new RequestLane("Local analysis", analysisParallelism, 32);
-            control = new RequestLane("Request control", 1, 16);
-            native = new RequestLane("TIA Openness STA", 1, 100, sta: true, cleanup: () => session?.Dispose());
+                Path.Combine(this.artifactRoot, "extension-workers"), factory: b => new ExtensionWorker(b, startupSettings.WorkerTimeoutSeconds * 1000), localParallelism: analysisParallelism);
+            local = new RequestLane("Local analysis", analysisParallelism, startupSettings.AnalysisQueueCapacity);
+            control = new RequestLane("Request control", 1, startupSettings.ControlQueueCapacity);
+            native = new RequestLane("TIA Openness STA", 1, startupSettings.NativeQueueCapacity, sta: true, cleanup: () => session?.Dispose());
         }
 
         public Task<object> ListExtensions(CancellationToken token) => control.Enqueue(() => extensions.List(new {
             native = native.Snapshot(), local = local.Snapshot(), control = control.Snapshot(),
             scope = "Native calls/transactions are FIFO on one STA. Pure local analysis uses separate bounded workers. Queued cancellation removes work before dispatch; running operations finish without thread abort. Reload drains active generation leases." }), token, nameof(ListExtensions));
-        public Task<object> ReloadExtensions(string module, CancellationToken token) => Enqueue(() => extensions.Reload(module, () => session?.InvalidatePreviews()), token);
+        public Task<object> ReloadExtensions(string module, CancellationToken token) => Enqueue(() => { safeguards.Current().Require(GuardedOperation.ExtensionReload, mcp: true); return extensions.Reload(module, () => session?.InvalidatePreviews()); }, token);
         private static JsonElement Arguments(string json)
         {
             if (json == null || json.Length > 16 * 1024 * 1024) throw new ArgumentException("Supply a bounded JSON arguments object.");
@@ -115,7 +119,10 @@ namespace SiemensMCPServer.Mcp
             referencedApi = TiaPortalAssemblyResolver.ReferencedApiVersion,
             compatibleEngineeringVersions = TiaPortalAssemblyResolver.GetCompatibleEngineeringVersions(),
             selectedEngineeringVersion = TiaPortalAssemblyResolver.SelectedEngineeringVersion ?? requestedVersion,
-            writesEnabled = allowWrites, artifactRoot
+            writesEnabled = allowWrites && safeguards.Current().McpWritesEnabled, artifactRoot,
+            safeguardsFile = safeguards.FilePath, safeguards = safeguards.Current(),
+            startupRequestLimits = new { startupSettings.NativeQueueCapacity, startupSettings.AnalysisQueueCapacity, startupSettings.ControlQueueCapacity, startupSettings.WorkerTimeoutSeconds },
+            launchWritePermission = allowWrites
         }, token);
 
         public Task<object> PrepareClassicBundle(string sourceDirectory, string[] categories, ClassicFolderName[] folderNames, CancellationToken token)
@@ -132,7 +139,13 @@ namespace SiemensMCPServer.Mcp
         }, token);
 
         public Task<object> Invoke(Func<IHmiSession, object> operation, CancellationToken token, bool writes = false, [CallerMemberName] string operationName = "") => Enqueue(() => {
-            if (writes && !allowWrites) throw new InvalidOperationException("Writes are disabled. Start this server with --allow-writes to apply, compile or save.");
+            if (writes) {
+                if (!allowWrites) throw new InvalidOperationException("Writes are disabled. Start this server with --allow-writes to apply, compile or save.");
+                GuardedOperation kind = operationName == "Compile" || operationName == "CompilePlc" ? GuardedOperation.Compile
+                    : operationName == "Save" ? GuardedOperation.Save : operationName == "Archive" ? GuardedOperation.Archive
+                    : operationName == "Reopen" ? GuardedOperation.Reopen : GuardedOperation.Apply;
+                safeguards.Current().Require(kind, mcp: true);
+            }
             return operation(EnsureSession());
         }, token, operationName);
 
@@ -146,12 +159,12 @@ namespace SiemensMCPServer.Mcp
             string? selected = string.IsNullOrWhiteSpace(requestedVersion) ? (versions.Count == 1 ? versions[0] : null) : Normalize(requestedVersion!);
             if (selected == null) throw new InvalidOperationException("Select a compatible engineering version with tia_select_version first.");
             TiaPortalAssemblyResolver.Initialize(selected);
-            session = CreateSession(artifactRoot, extensions);
+            session = CreateSession(artifactRoot, extensions, safeguards.Current);
             return session;
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static IHmiSession CreateSession(string root, IFeatureEngine features) => new HmiSession(root, features);
+        private static IHmiSession CreateSession(string root, IFeatureEngine features, Func<SafeguardSettings> settings) => new HmiSession(root, features, settings);
 
         private Task<object> Enqueue(Func<object> operation, CancellationToken token, [CallerMemberName] string operationName = "")
         {

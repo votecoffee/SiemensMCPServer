@@ -15,6 +15,18 @@ public sealed class EngineeringTests
             new EngineeringValue { Name = "MaxLength", Type = typeof(uint).FullName!, Value = "10", Editable = true },
             new EngineeringValue { Name = "Bound", Type = typeof(bool).FullName!, Value = "true", Editable = false } } };
     private static EngineeringEdit Edit(string attribute = "Name", string old = "Tag1", string value = "Tag2") => new EngineeringEdit { Attribute = attribute, ExpectedValue = old, NewValue = value };
+    [Theory][InlineData("delete")][InlineData("import")]
+    public void RevokedPermissionBlocksAnAlreadyPreparedPlanWithoutBackendEffect(string action)
+    {
+        using var temp = new Scratch(); var backend = new Backend(); var settings = new SiemensMCPServer.SafeguardSettings();
+        var workflow = new EngineeringWorkflow(backend, temp.Path, () => settings);
+        string source = System.IO.Path.Combine(temp.Path, "source"); Directory.CreateDirectory(source);
+        File.WriteAllText(System.IO.Path.Combine(source, "payload.xml"), "<Document/>");
+        var plan = Json(workflow.Preview(action, "hmi", backend.State.Path, backend.State.Fingerprint, sourceDirectory: source, overwrite: action == "import"));
+        if (action == "delete") settings.AllowDelete = false; else settings.AllowOverwrite = false;
+        Assert.Throws<InvalidOperationException>(() => workflow.Apply(plan.GetProperty("planId").GetString()!, plan.GetProperty("candidateSha256").GetString()!));
+        Assert.Equal(0, backend.Attempts);
+    }
     [Fact] public void TypedEditsPreserveUnselectedAttributesAndOriginal()
     {
         var state = State(); var after = state.Edit(new[] { Edit() });

@@ -17,13 +17,14 @@ namespace SiemensMCPServer
         private readonly Label scope = new Label { Dock = DockStyle.Top, Height = 46, Padding = new Padding(8), AutoEllipsis = true };
         private readonly TextBox details = new TextBox { Dock = DockStyle.Bottom, Height = 78, ReadOnly = true, Multiline = true, ScrollBars = ScrollBars.Vertical };
         private readonly Action<string> log;
+        private readonly SafeguardStore safeguards;
         private readonly Action<string, Exception> error;
         private EngineeringTransferSession? session;
         private bool canImport;
 
-        internal EngineeringTransferPanel(Action<string> log, Action<string, Exception> error)
+        internal EngineeringTransferPanel(Action<string> log, Action<string, Exception> error, SafeguardStore safeguards)
         {
-            this.log = log; this.error = error;
+            this.log = log; this.error = error; this.safeguards = safeguards;
             var actions = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 70, AutoScroll = true, Padding = new Padding(6), WrapContents = true };
             actions.Controls.AddRange(new Control[] { exportSelected, exportAll, importNative, importBundle, overwrite });
             Controls.Add(tree); Controls.Add(details); Controls.Add(actions); Controls.Add(scope);
@@ -81,12 +82,16 @@ namespace SiemensMCPServer
                 + (state.Errors.Length == 0 ? "" : Environment.NewLine + string.Join("; ", state.Errors));
             UpdateActions();
         }
+        internal void RefreshPolicy() => UpdateActions();
         private void UpdateActions()
         {
             bool selected = session != null && tree.SelectedNode?.Tag != null;
             exportSelected.Enabled = selected; exportAll.Enabled = session != null;
-            importNative.Enabled = selected && canImport; importBundle.Enabled = selected;
-            overwrite.Enabled = session != null;
+            bool writes = false, allowOverwrite = false;
+            try { var policy = safeguards.Current(); policy.Require(GuardedOperation.Apply); if (session != null) policy.RequireProject(session.ProjectPath); writes = true; allowOverwrite = policy.AllowOverwrite; } catch { }
+            importNative.Enabled = selected && canImport && writes; importBundle.Enabled = selected && writes;
+            overwrite.Enabled = session != null && writes && allowOverwrite;
+            if (!allowOverwrite) overwrite.Checked = false;
         }
         private void Export(bool all)
         {
@@ -123,7 +128,7 @@ namespace SiemensMCPServer
                         + (session.Family == "unified" ? "Unified uses its native replacement scope; affected collections may be replaced." + Environment.NewLine : "")
                         + "Apply this import? The project will remain unsaved. Inspect the result and compile in TIA before saving.";
                     log("Prepared import; retained baseline and candidate -> " + plan.Directory);
-                    if (MessageBox.Show(this, review, "Review engineering import", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+                    if (safeguards.Current().ConfirmDesktopImports && MessageBox.Show(this, review, "Review engineering import", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
                     session.Apply(plan);
                     log("Native import accepted. Inspect after-export in " + plan.Directory + "; compile in TIA, then Save project explicitly.");
                     RefreshResources();

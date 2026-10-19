@@ -2,7 +2,8 @@ param(
     [Parameter(Mandatory = $true)][string]$DesktopDirectory,
     [Parameter(Mandatory = $true)][ValidateSet('V15.1', 'V16', 'V17', 'V18', 'V19', 'V20', 'V21')][string]$Version,
     [string]$TiaPortalInstallVersion = $Version,
-    [string]$ScreenshotPath
+    [string]$ScreenshotPath,
+    [string]$SafeguardsScreenshotPath
 )
 $ErrorActionPreference = 'Stop'
 # Windows PowerShell/.NET Framework, STA. No process enumeration, attachment or native writes.
@@ -81,6 +82,39 @@ try {
         }
         [IO.Directory]::Delete($native)
         [IO.Directory]::Delete($scratch)
+    }
+    # Use isolated settings and the real property grid, with no native attachment.
+    $guardRoot = Join-Path ([IO.Path]::GetTempPath()) ('siemens-safeguards-ui-' + [Guid]::NewGuid().ToString('N'))
+    [IO.Directory]::CreateDirectory($guardRoot) | Out-Null
+    $guardPath = Join-Path $guardRoot 'safeguards.json'
+    $storeType = $assembly.GetType('SiemensMCPServer.SafeguardStore', $true)
+    $guardType = $assembly.GetType('SiemensMCPServer.SafeguardsForm', $true)
+    $store = [Activator]::CreateInstance($storeType, $privateInstance, $null, [object[]]@([string]$guardPath), $null)
+    $guard = [Activator]::CreateInstance($guardType, $privateInstance, $null, [object[]]@($store), $null)
+    try {
+        Assert-Ui ((Field '_safeguardsButton').Enabled) 'Safeguards remain accessible without an attachment'
+        $grid = $guardType.GetField('grid', $privateInstance).GetValue($guard)
+        $settings = $grid.SelectedObject
+        $settings.GetType().GetProperty('McpWritesEnabled').SetValue($settings, $false, $null)
+        $settings.GetType().GetProperty('PreviewLifetimeMinutes').SetValue($settings, 7, $null)
+        $guardType.GetMethod('SaveSettings', $privateInstance).Invoke($guard, $null)
+        $saved = Get-Content -LiteralPath $guardPath -Raw | ConvertFrom-Json
+        Assert-Ui (-not $saved.mcpWritesEnabled -and $saved.previewLifetimeMinutes -eq 7) 'GUI saves shared write permission and preview lifetime'
+        $guardType.GetMethod('LoadSaved', $privateInstance).Invoke($guard, $null)
+        Assert-Ui (-not $grid.SelectedObject.McpWritesEnabled) 'GUI reload preserves the saved permission'
+        $properties = [ComponentModel.TypeDescriptor]::GetProperties($grid.SelectedObject)
+        Assert-Ui ($properties['IdentityChecks'].IsReadOnly) 'Integrity checks are visibly read-only'
+        Assert-Ui (-not $properties['AllowSave'].IsReadOnly) 'Operation permissions are editable'
+        if ($SafeguardsScreenshotPath) {
+            $guard.ShowInTaskbar = $false; $guard.Opacity = 0; $guard.Show(); $guard.PerformLayout()
+            $bitmap = [Drawing.Bitmap]::new($guard.Width, $guard.Height)
+            try { $guard.DrawToBitmap($bitmap, [Drawing.Rectangle]::new(0, 0, $guard.Width, $guard.Height)); $bitmap.Save($SafeguardsScreenshotPath) }
+            finally { $bitmap.Dispose() }
+        }
+    } finally {
+        $guard.Dispose()
+        foreach ($file in @($guardPath, ($guardPath + '.previous'))) { if (Test-Path -LiteralPath $file) { Remove-Item -LiteralPath $file } }
+        [IO.Directory]::Delete($guardRoot)
     }
     if ($ScreenshotPath) {
         # Render an invisible test window so child controls participate in layout/painting.

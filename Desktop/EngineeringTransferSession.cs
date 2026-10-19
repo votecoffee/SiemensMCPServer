@@ -22,6 +22,7 @@ namespace SiemensMCPServer
         internal bool Bundle;
         internal int ResourceCount;
         internal bool Applied;
+        internal DateTime Created, Expires;
     }
 
     // Runs on the WinForms STA. Native handles remain in this session, never in saved plans.
@@ -30,8 +31,9 @@ namespace SiemensMCPServer
         private readonly TiaPortal portal;
         private readonly Project project;
         private readonly SoftwareReference reference;
-        internal EngineeringTransferSession(TiaPortal portal, Project project, SoftwareReference reference)
-        { this.portal = portal; this.project = project; this.reference = reference; }
+        private readonly SafeguardStore safeguards;
+        internal EngineeringTransferSession(TiaPortal portal, Project project, SoftwareReference reference, SafeguardStore safeguards)
+        { this.portal = portal; this.project = project; this.reference = reference; this.safeguards = safeguards; }
 
         internal string Family => reference.Family;
         internal string TargetLabel => reference.Label;
@@ -39,6 +41,7 @@ namespace SiemensMCPServer
 
         private void Check(bool transfer)
         {
+            safeguards.Current().RequireProject(ProjectPath);
             if (portal.Projects.Count != 1 || !portal.Projects[0].Equals(project)) throw new InvalidOperationException("The attached project changed. Attach again.");
             var current = SoftwareCatalog.Discover(project).SingleOrDefault(s => s.Id == reference.Id);
             if (current == null || !current.Software.Equals(reference.Software)) throw new InvalidOperationException("The selected target changed. Attach again.");
@@ -113,11 +116,15 @@ namespace SiemensMCPServer
         internal DesktopImportPlan PrepareImport(string path, string sourceDirectory, bool overwrite, bool bundle)
         {
             Check(true);
-            string directory = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SiemensMCPServer", "DesktopTransfers", Guid.NewGuid().ToString("N"));
+            var policy = safeguards.Current(); policy.Require(GuardedOperation.Apply);
+            if (overwrite) policy.Require(GuardedOperation.Overwrite);
+            string root = policy.DesktopEvidenceRoot.Length == 0 ? System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SiemensMCPServer", "DesktopTransfers") : policy.DesktopEvidenceRoot;
+            string directory = System.IO.Path.Combine(root, Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(directory);
             string candidate = System.IO.Path.Combine(directory, "candidate-files");
             TransferFiles.Copy(sourceDirectory, candidate);
             var plan = new DesktopImportPlan { Path = path, Directory = directory, Overwrite = overwrite, Bundle = bundle,
+                Created = DateTime.UtcNow, Expires = DateTime.UtcNow.AddMinutes(policy.PreviewLifetimeMinutes),
                 FilesHash = TransferFiles.Hash(TransferFiles.Inventory(candidate)) };
             ValidateCandidate(plan);
             using (var exclusive = portal.ExclusiveAccess("Desktop import baseline"))
@@ -152,6 +159,9 @@ namespace SiemensMCPServer
 
         internal void Apply(DesktopImportPlan plan)
         {
+            var policy = safeguards.Current(); policy.Require(GuardedOperation.Apply);
+            if (plan.Overwrite) policy.Require(GuardedOperation.Overwrite);
+            if (new PreviewPolicy(safeguards.Current).Expired(plan.Created, plan.Expires)) throw new InvalidOperationException("Desktop import preview expired. Prepare it again.");
             if (plan.Applied) throw new InvalidOperationException("This import plan has already been used. Prepare another import.");
             string candidate = System.IO.Path.Combine(plan.Directory, "candidate-files");
             if (TransferFiles.Hash(TransferFiles.Inventory(candidate)) != plan.FilesHash) throw new InvalidOperationException("Staged files changed after review. Prepare another import.");

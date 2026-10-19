@@ -27,6 +27,8 @@ namespace SiemensMCPServer
         private readonly Button _importButton = new Button();
         private readonly CheckBox _overwriteCheck = new CheckBox();
         private readonly Button _saveProjectButton = new Button();
+        private readonly Button _safeguardsButton = new Button();
+        private readonly SafeguardStore _safeguards;
         private readonly TextBox _log = new TextBox();
         private readonly Label _projectLabel = new Label();
 
@@ -41,8 +43,11 @@ namespace SiemensMCPServer
         public MainForm() : this(true) { }
 
         // Allows layout checks without enumerating processes or opening an Openness connection.
-        internal MainForm(bool discoverProcesses)
+        internal MainForm(bool discoverProcesses) : this(discoverProcesses, new SafeguardStore()) { }
+
+        internal MainForm(bool discoverProcesses, SafeguardStore safeguards)
         {
+            _safeguards = safeguards;
             Text = "SiemensMCPServer - TIA Portal " + TiaPortalAssemblyResolver.SelectedEngineeringVersion + " - HMI / PLC Import and Export";
             Width = 1220;
             Height = 760;
@@ -51,6 +56,7 @@ namespace SiemensMCPServer
             Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
 
             BuildUi();
+            Activated += (s, e) => { UpdateActionState(); _engineeringPanel.RefreshPolicy(); };
             if (discoverProcesses) RefreshProcesses();
         }
 
@@ -171,6 +177,10 @@ namespace SiemensMCPServer
             actions.Controls.Add(_importButton);
             actions.Controls.Add(_overwriteCheck);
             actions.Controls.Add(_saveProjectButton);
+            _safeguardsButton.Text = "Safeguards...";
+            _safeguardsButton.AutoSize = true;
+            _safeguardsButton.Click += (s, e) => { using (var dialog = new SafeguardsForm(_safeguards)) dialog.ShowDialog(this); UpdateActionState(); _engineeringPanel.RefreshPolicy(); };
+            actions.Controls.Add(_safeguardsButton);
 
             var split = new SplitContainer
             {
@@ -185,7 +195,7 @@ namespace SiemensMCPServer
             _screenTree.HideSelection = false;
             _screenTree.AfterSelect += (s, e) => UpdateActionState();
             split.Panel1.Controls.Add(_screenTree);
-            _engineeringPanel = new EngineeringTransferPanel(Log, ShowError) { Dock = DockStyle.Fill, Visible = false };
+            _engineeringPanel = new EngineeringTransferPanel(Log, ShowError, _safeguards) { Dock = DockStyle.Fill, Visible = false };
             split.Panel1.Controls.Add(_engineeringPanel);
 
             _log.Dock = DockStyle.Fill;
@@ -246,6 +256,7 @@ namespace SiemensMCPServer
                 }
 
                 Log("Attaching to TIA Portal PID " + selected.Process.Id + "...");
+                _safeguards.Current().RequireProject(selected.Process.ProjectPath.FullName);
                 _portal = selected.Process.Attach();
 
                 if (_portal.Projects.Count == 0)
@@ -297,7 +308,7 @@ namespace SiemensMCPServer
             if (engineering)
             {
                 _engineeringPanel.BringToFront();
-                _engineeringPanel.SelectSession(new EngineeringTransferSession(_portal, _project, _activeTarget));
+                _engineeringPanel.SelectSession(new EngineeringTransferSession(_portal, _project, _activeTarget, _safeguards));
             }
             else { _engineeringPanel.SelectSession(null); LoadScreenTree(); }
             UpdateActionState();
@@ -797,6 +808,7 @@ namespace SiemensMCPServer
 
         private void ImportCompleteHmi()
         {
+            if (!DesktopAllowed(GuardedOperation.Apply, _overwriteCheck.Checked)) return;
             if (_activeHmi == null || _project == null)
                 return;
 
@@ -818,13 +830,13 @@ namespace SiemensMCPServer
                 ImportOptions options = _overwriteCheck.Checked ? ImportOptions.Override : ImportOptions.None;
                 string modeText = _overwriteCheck.Checked ? "OVERWRITE existing objects" : "create only / do not overwrite existing objects";
 
-                DialogResult confirm = MessageBox.Show(this,
+                DialogResult confirm = !_safeguards.Current().ConfirmDesktopImports ? DialogResult.Yes : MessageBox.Show(this,
                     "Import this Complete HMI export into:" + Environment.NewLine + Environment.NewLine +
                     GetActiveHmiName() + Environment.NewLine + Environment.NewLine +
                     "Mode: " + modeText + Environment.NewLine + Environment.NewLine +
                     "The project will NOT be saved automatically. Cycles that already exist are always skipped for safety." +
                     Environment.NewLine + Environment.NewLine + "Continue?",
-                    "Confirm Complete HMI import", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    "Confirm Complete HMI import", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
                 if (confirm != DialogResult.Yes)
                     return;
 
@@ -992,6 +1004,7 @@ namespace SiemensMCPServer
             {
                 try
                 {
+                    RequireClassicImport(options);
                     composition.Import(new FileInfo(file), options);
                     count++;
                     Log("  imported " + label + ": " + Path.GetFileName(file));
@@ -1011,6 +1024,7 @@ namespace SiemensMCPServer
             int count = 0;
             foreach (string file in Directory.GetFiles(sourcePath, "*.xml", SearchOption.AllDirectories).OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
             {
+                RequireClassicImport(options);
                 composition.Import(new FileInfo(file), options);
                 count++;
                 Log("  imported " + label + ": " + Path.GetFileName(file));
@@ -1035,6 +1049,7 @@ namespace SiemensMCPServer
                     continue;
                 }
 
+                RequireClassicImport(ImportOptions.None);
                 cycles.Import(new FileInfo(file), ImportOptions.None);
                 imported++;
                 Log("  imported missing cycle: " + name);
@@ -1044,8 +1059,10 @@ namespace SiemensMCPServer
 
         private void ImportTagFolderDynamic(dynamic targetFolder, string sourcePath, ImportOptions options)
         {
+            RequireClassicImport(options);
             foreach (string file in Directory.GetFiles(sourcePath, "*.xml", SearchOption.TopDirectoryOnly).OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
             {
+                RequireClassicImport(options);
                 targetFolder.TagTables.Import(new FileInfo(file), options);
                 Log("  imported tag table: " + Path.GetFileName(file));
             }
@@ -1065,8 +1082,10 @@ namespace SiemensMCPServer
 
         private void ImportVBScriptFolderDynamic(dynamic targetFolder, string sourcePath, ImportOptions options)
         {
+            RequireClassicImport(options);
             foreach (string file in Directory.GetFiles(sourcePath, "*.xml", SearchOption.TopDirectoryOnly).OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
             {
+                RequireClassicImport(options);
                 targetFolder.VBScripts.Import(new FileInfo(file), options);
                 Log("  imported VB script: " + Path.GetFileName(file));
             }
@@ -1086,8 +1105,10 @@ namespace SiemensMCPServer
 
         private void ImportScreenTemplateFolderDynamic(dynamic targetFolder, string sourcePath, ImportOptions options)
         {
+            RequireClassicImport(options);
             foreach (string file in Directory.GetFiles(sourcePath, "*.xml", SearchOption.TopDirectoryOnly).OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
             {
+                RequireClassicImport(options);
                 targetFolder.ScreenTemplates.Import(new FileInfo(file), options);
                 Log("  imported screen template: " + Path.GetFileName(file));
             }
@@ -1107,8 +1128,10 @@ namespace SiemensMCPServer
 
         private void ImportPopupFolderDynamic(dynamic targetFolder, string sourcePath, ImportOptions options)
         {
+            RequireClassicImport(options);
             foreach (string file in Directory.GetFiles(sourcePath, "*.xml", SearchOption.TopDirectoryOnly).OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
             {
+                RequireClassicImport(options);
                 targetFolder.ScreenPopups.Import(new FileInfo(file), options);
                 Log("  imported pop-up screen: " + Path.GetFileName(file));
             }
@@ -1128,8 +1151,10 @@ namespace SiemensMCPServer
 
         private void ImportScreenFolderDynamic(dynamic targetFolder, string sourcePath, ImportOptions options)
         {
+            RequireClassicImport(options);
             foreach (string file in Directory.GetFiles(sourcePath, "*.xml", SearchOption.TopDirectoryOnly).OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
             {
+                RequireClassicImport(options);
                 targetFolder.Screens.Import(new FileInfo(file), options);
                 Log("  imported screen: " + Path.GetFileName(file));
             }
@@ -1149,6 +1174,7 @@ namespace SiemensMCPServer
 
         private void ImportScreensOnly()
         {
+            if (!DesktopAllowed(GuardedOperation.Apply, _overwriteCheck.Checked)) return;
             if (_activeHmi == null || _project == null)
                 return;
 
@@ -1180,7 +1206,7 @@ namespace SiemensMCPServer
                 ImportOptions options = _overwriteCheck.Checked ? ImportOptions.Override : ImportOptions.None;
                 string modeText = _overwriteCheck.Checked ? "OVERWRITE existing screens" : "create only / do not overwrite existing screens";
 
-                DialogResult confirm = MessageBox.Show(this,
+                DialogResult confirm = !_safeguards.Current().ConfirmDesktopImports ? DialogResult.Yes : MessageBox.Show(this,
                     "Import ONLY normal HMI screens into:" + Environment.NewLine + Environment.NewLine +
                     GetActiveHmiName() + Environment.NewLine + Environment.NewLine +
                     "Source: " + screensRoot + Environment.NewLine +
@@ -1191,7 +1217,7 @@ namespace SiemensMCPServer
                     "Each screen is imported separately. A failed or cancelled screen is logged and the utility continues with the remaining screens." +
                     Environment.NewLine + Environment.NewLine +
                     "The project will NOT be saved automatically. Continue?",
-                    "Confirm Screens-Only import", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    "Confirm Screens-Only import", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
                 if (confirm != DialogResult.Yes)
                     return;
 
@@ -1281,6 +1307,7 @@ namespace SiemensMCPServer
         private void ImportScreenFolderResilientDynamic(dynamic targetFolder, string sourcePath, ImportOptions options,
             List<string> summary, ref int imported, ref int failed, ref int index, int total, string relativeFolder)
         {
+            RequireClassicImport(options);
             foreach (string file in Directory.GetFiles(sourcePath, "*.xml", SearchOption.TopDirectoryOnly)
                 .OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
             {
@@ -1292,6 +1319,7 @@ namespace SiemensMCPServer
                 try
                 {
                     Log("  [" + index + "/" + total + "] importing screen: " + displayPath);
+                    RequireClassicImport(options);
                     targetFolder.Screens.Import(new FileInfo(file), options);
                     imported++;
                     summary.Add("OK     [" + index + "/" + total + "] " + displayPath);
@@ -1340,6 +1368,7 @@ namespace SiemensMCPServer
         private void SetImportBusy(bool busy)
         {
             UseWaitCursor = busy;
+            _safeguardsButton.Enabled = !busy;
             _refreshProcessesButton.Enabled = !busy;
             _attachButton.Enabled = !busy;
             _hmiCombo.Enabled = !busy;
@@ -1347,15 +1376,16 @@ namespace SiemensMCPServer
             _exportSelectedButton.Enabled = !busy && _activeHmi != null && _screenTree.SelectedNode != null;
             _exportAllButton.Enabled = !busy && _activeHmi != null;
             _exportCompleteButton.Enabled = !busy && _activeHmi != null;
-            _importCompleteButton.Enabled = !busy && _activeHmi != null;
-            _importScreensOnlyButton.Enabled = !busy && _activeHmi != null;
-            _importButton.Enabled = !busy && _activeHmi != null;
-            _overwriteCheck.Enabled = !busy && _activeHmi != null;
-            _saveProjectButton.Enabled = !busy && _project != null;
+            _importCompleteButton.Enabled = !busy && _activeHmi != null && DesktopAllowed(GuardedOperation.Apply, report: false);
+            _importScreensOnlyButton.Enabled = !busy && _activeHmi != null && DesktopAllowed(GuardedOperation.Apply, report: false);
+            _importButton.Enabled = !busy && _activeHmi != null && DesktopAllowed(GuardedOperation.Apply, report: false);
+            _overwriteCheck.Enabled = !busy && _activeHmi != null && DesktopAllowed(GuardedOperation.Overwrite, report: false);
+            _saveProjectButton.Enabled = !busy && _project != null && DesktopAllowed(GuardedOperation.Save, report: false);
         }
 
         private void ImportScreens()
         {
+            if (!DesktopAllowed(GuardedOperation.Apply, _overwriteCheck.Checked)) return;
             if (_activeHmi == null)
                 return;
 
@@ -1375,6 +1405,7 @@ namespace SiemensMCPServer
                     return;
 
                 ImportOptions options = _overwriteCheck.Checked ? ImportOptions.Override : ImportOptions.None;
+                if (_safeguards.Current().ConfirmDesktopImports && MessageBox.Show(this, "Import " + dialog.FileNames.Length + " screen file(s) into " + GetActiveHmiName() + "?\r\nOverwrite: " + _overwriteCheck.Checked + "\r\nThe project will remain unsaved.", "Review screen import", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
                 int imported = 0;
                 var failures = new List<string>();
 
@@ -1416,11 +1447,12 @@ namespace SiemensMCPServer
             return _activeHmi == null ? null : (object)_activeHmi.ScreenFolder;
         }
 
-        private static void ImportIntoFolder(object folder, FileInfo file, ImportOptions options)
+        private void ImportIntoFolder(object folder, FileInfo file, ImportOptions options)
         {
             var systemFolder = folder as ScreenSystemFolder;
             if (systemFolder != null)
             {
+                RequireClassicImport(options);
                 systemFolder.Screens.Import(file, options);
                 return;
             }
@@ -1428,6 +1460,7 @@ namespace SiemensMCPServer
             var userFolder = folder as ScreenUserFolder;
             if (userFolder != null)
             {
+                RequireClassicImport(options);
                 userFolder.Screens.Import(file, options);
                 return;
             }
@@ -1437,11 +1470,14 @@ namespace SiemensMCPServer
 
         private void SaveProject()
         {
+            if (!DesktopAllowed(GuardedOperation.Save)) return;
             if (_project == null)
                 return;
 
             try
             {
+                if (_safeguards.Current().ConfirmDesktopSave && MessageBox.Show(this, "Save the attached project?\r\n" + _projectLabel.Text, "Review project Save", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+                RequireDesktop(GuardedOperation.Save);
                 _project.Save();
                 Log("Project saved." );
             }
@@ -1463,12 +1499,29 @@ namespace SiemensMCPServer
             _actions.Height = classic ? 82 : 40;
             _exportAllButton.Enabled = connected;
             _exportCompleteButton.Enabled = connected;
-            _importCompleteButton.Enabled = connected;
-            _importScreensOnlyButton.Enabled = connected;
+            _importCompleteButton.Enabled = connected && DesktopAllowed(GuardedOperation.Apply, report: false);
+            _importScreensOnlyButton.Enabled = connected && DesktopAllowed(GuardedOperation.Apply, report: false);
             _exportSelectedButton.Enabled = connected && _screenTree.SelectedNode != null;
-            _importButton.Enabled = connected;
-            _overwriteCheck.Enabled = connected;
-            _saveProjectButton.Enabled = _project != null;
+            _importButton.Enabled = connected && DesktopAllowed(GuardedOperation.Apply, report: false);
+            _overwriteCheck.Enabled = connected && DesktopAllowed(GuardedOperation.Overwrite, report: false);
+            if (!_overwriteCheck.Enabled) _overwriteCheck.Checked = false;
+            _saveProjectButton.Enabled = _project != null && DesktopAllowed(GuardedOperation.Save, report: false);
+        }
+
+        private void RequireDesktop(GuardedOperation operation)
+        {
+            var policy = _safeguards.Current(); policy.Require(operation);
+            if (_project != null) policy.RequireProject(_project.Path.FullName);
+        }
+        private void RequireClassicImport(ImportOptions options)
+        {
+            RequireDesktop(GuardedOperation.Apply);
+            if (options == ImportOptions.Override) _safeguards.Current().Require(GuardedOperation.Overwrite);
+        }
+        private bool DesktopAllowed(GuardedOperation operation, bool overwrite = false, bool report = true)
+        {
+            try { RequireDesktop(operation); if (overwrite) _safeguards.Current().Require(GuardedOperation.Overwrite); return true; }
+            catch (Exception ex) { if (report) ShowError("Operation blocked by Safeguards.", ex); return false; }
         }
 
         private static string SafeName(string name)

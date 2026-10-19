@@ -26,9 +26,10 @@ namespace SiemensMCPServer.Mcp
     {
         private readonly IClassicResourceBackend backend;
         private readonly string root;
+        private readonly PreviewPolicy policy;
         private readonly IFeatureEngine features;
         private readonly Dictionary<string, Plan> plans = new Dictionary<string, Plan>();
-        public ClassicXmlWorkflow(IClassicResourceBackend backend, string root, IFeatureEngine? features = null) { this.backend = backend; this.root = root; this.features = features ?? new LocalFeatureEngine(); }
+        public ClassicXmlWorkflow(IClassicResourceBackend backend, string root, IFeatureEngine? features = null, Func<SafeguardSettings>? settings = null, Func<DateTime>? utcNow = null) { policy = new PreviewPolicy(settings, utcNow); this.backend = backend; this.root = root; this.features = features ?? new LocalFeatureEngine(); }
         public object Read(string hmiId, string path)
         {
             var resource = backend.ReadClassicResource(hmiId, path);
@@ -43,7 +44,7 @@ namespace SiemensMCPServer.Mcp
 
         public object PreviewTransformed(string hmiId, string path, string fingerprint, Func<string, string> transform, object changes)
         {
-            if (plans.Count >= 100) throw new InvalidOperationException("Too many previews; reattach to clear them.");
+            policy.RequireCapacity(plans.Count);
             var before = backend.ReadClassicResource(hmiId, path);
             if (!before.Editable) throw new InvalidOperationException("This classic resource is inspection-only.");
             if (before.Fingerprint != fingerprint) throw new InvalidOperationException("Classic resource changed; read it again.");
@@ -69,18 +70,19 @@ namespace SiemensMCPServer.Mcp
             File.WriteAllText(System.IO.Path.Combine(files, before.XmlFile), candidate, new UTF8Encoding(false));
             TransferFiles.ValidateXmlCompanions(files);
             if (TransferFiles.SemanticHash(files) == fingerprint) throw new ArgumentException("The extension preview contains no changes.");
-            var plan = new Plan { Before = before, BeforeFingerprint = fingerprint, Directory = directory, Created = DateTime.UtcNow,
+            var plan = new Plan { Before = before, BeforeFingerprint = fingerprint, Directory = directory, Created = policy.Now, Expires = policy.Expires,
                 CandidateFingerprint = TransferFiles.SemanticHash(files), Hash = TransferFiles.Hash(TransferFiles.Inventory(files)) };
             var report = new { planId = id, hmiId = before.HmiId, path = before.Path, candidateSha256 = plan.Hash, beforeFingerprint = fingerprint,
                 candidateFingerprint = plan.CandidateFingerprint, changes, artifactDirectory = directory,
-                beforeArtifactDirectory = before.Directory, expiresUtc = plan.Created.AddMinutes(30), projectSaved = false };
+                beforeArtifactDirectory = before.Directory, expiresUtc = plan.Expires, projectSaved = false };
             File.WriteAllText(System.IO.Path.Combine(directory, "preview.json"), JsonSerializer.Serialize(report, JsonDefaults.Options), new UTF8Encoding(false));
             plans.Add(id, plan); return report;
         }
         public object Apply(string id, string hash)
         {
+            policy.RequireApply();
             if (!plans.TryGetValue(id, out var plan)) throw new InvalidOperationException("Unknown or already attempted classic resource plan.");
-            if (DateTime.UtcNow - plan.Created > TimeSpan.FromMinutes(30)) { plans.Remove(id); throw new InvalidOperationException("Classic resource preview expired."); }
+            if (policy.Expired(plan.Created, plan.Expires)) { plans.Remove(id); throw new InvalidOperationException("Classic resource preview expired."); }
             string files = System.IO.Path.Combine(plan.Directory, "candidate-files");
             if (hash != plan.Hash || TransferFiles.Hash(TransferFiles.Inventory(files)) != hash) throw new InvalidOperationException("Candidate files changed; preview again.");
             plans.Remove(id);
@@ -102,7 +104,7 @@ namespace SiemensMCPServer.Mcp
         {
             public ClassicResource Before = null!;
             public string Directory = "", Hash = "", CandidateFingerprint = "", BeforeFingerprint = "";
-            public DateTime Created;
+            public DateTime Created, Expires;
         }
     }
 }

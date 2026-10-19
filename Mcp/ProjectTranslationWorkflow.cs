@@ -16,6 +16,7 @@ namespace SiemensMCPServer.Mcp
     {
         private readonly IProjectTranslationBackend backend;
         private readonly string root;
+        private readonly PreviewPolicy policy;
         private readonly IFeatureEngine features;
         private readonly Dictionary<string, Plan> plans = new Dictionary<string, Plan>();
         private sealed class Plan
@@ -23,14 +24,14 @@ namespace SiemensMCPServer.Mcp
             public string Project = "", Directory = "", Hash = "", Before = "", After = "";
             public bool UpdateSource;
             public ProjectTextCapture Capture = null!;
-            public DateTime Created;
+            public DateTime Created, Expires;
         }
-        public ProjectTranslationWorkflow(IProjectTranslationBackend backend, string root, IFeatureEngine features) { this.backend = backend; this.root = root; this.features = features; }
+        public ProjectTranslationWorkflow(IProjectTranslationBackend backend, string root, IFeatureEngine features, Func<SafeguardSettings>? settings = null, Func<DateTime>? utcNow = null) { this.backend = backend; this.root = root; this.features = features; policy = new PreviewPolicy(settings, utcNow); }
         public object Preview(string expectedFingerprint, ProjectTranslationEdits request)
         {
             request.Validate();
             features.Execute("project", "edit_project_texts", new { phase = "validate", arguments = request });
-            if (plans.Count >= 100) throw new InvalidOperationException("Too many project-text previews; reattach to clear them.");
+            policy.RequireCapacity(plans.Count);
             var before = backend.CaptureProjectTexts(request.ExpectedProjectPath, request.Capture);
             var book = new ProjectTextWorkbook(ProjectTextFiles.Decode(before));
             if (book.Fingerprint != expectedFingerprint) throw new InvalidOperationException("Project-text snapshot changed; read translation units again.");
@@ -46,18 +47,20 @@ namespace SiemensMCPServer.Mcp
             File.WriteAllBytes(Path.Combine(directory, "candidate.xlsx"), candidateBytes);
             var plan = new Plan { Project = request.ExpectedProjectPath, Capture = new ProjectTextCapture { SourceLanguage = request.Capture.SourceLanguage, TargetLanguage = request.Capture.TargetLanguage }, Directory = directory,
                 Hash = SiemensMCPServer.TextListDocument.Hash(candidateBytes), Before = book.Fingerprint, After = candidateFingerprint,
-                UpdateSource = request.UpdateSourceLanguage, Created = DateTime.UtcNow };
+                UpdateSource = request.UpdateSourceLanguage, Created = policy.Now, Expires = policy.Expires };
             var report = new { planId = id, candidateSha256 = plan.Hash, beforeFingerprint = plan.Before, candidateFingerprint = plan.After,
                 request.ExpectedProjectPath, request.Capture, request.UpdateSourceLanguage, edits = request.Edits,
-                beforeNativeExport = before.Evidence, artifactDirectory = directory, expiresUtc = plan.Created.AddMinutes(30), projectSaved = false,
+                beforeNativeExport = before.Evidence, artifactDirectory = directory, expiresUtc = plan.Expires, projectSaved = false,
                 scope = "Existing project-text translations only. Import processes the native workbook; metadata, substitutions, other rows and language slots are preserved. Source text updates require explicit opt-in." };
             File.WriteAllText(Path.Combine(directory, "preview.json"), JsonSerializer.Serialize(report, JsonDefaults.Options), new UTF8Encoding(false));
             plans.Add(id, plan); return report;
         }
         public object Apply(string id, string hash)
         {
+            policy.RequireApply();
+            if (!policy.Current.AllowProjectTextImport) throw new InvalidOperationException("Project translation import is disabled in Safeguards.");
             if (!plans.TryGetValue(id, out var plan)) throw new InvalidOperationException("Unknown or already attempted project-text plan.");
-            if (DateTime.UtcNow - plan.Created > TimeSpan.FromMinutes(30)) { plans.Remove(id); throw new InvalidOperationException("Project-text preview expired."); }
+            if (policy.Expired(plan.Created, plan.Expires)) { plans.Remove(id); throw new InvalidOperationException("Project-text preview expired."); }
             string candidatePath = Path.Combine(plan.Directory, "candidate.xlsx");
             var info = new FileInfo(candidatePath);
             if (!info.Exists || info.Length > ProjectTextFiles.MaxBytes || (info.Attributes & FileAttributes.ReparsePoint) != 0) throw new InvalidDataException("Missing, linked or oversized candidate workbook.");

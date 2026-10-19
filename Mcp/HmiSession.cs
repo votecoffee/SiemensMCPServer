@@ -24,9 +24,10 @@ namespace SiemensMCPServer.Mcp
         private ProjectTranslationWorkflow? projectTranslationWorkflow;
         private readonly string artifactRoot;
         private readonly IFeatureEngine features;
+        private readonly Func<SafeguardSettings> safeguards;
         private int? processId;
 
-        public HmiSession(string artifactRoot, IFeatureEngine features) { this.artifactRoot = artifactRoot; this.features = features; }
+        public HmiSession(string artifactRoot, IFeatureEngine features, Func<SafeguardSettings>? safeguards = null) { this.artifactRoot = artifactRoot; this.features = features; this.safeguards = safeguards ?? (() => new SafeguardSettings()); }
 
         public object ListProcesses()
         {
@@ -96,6 +97,7 @@ namespace SiemensMCPServer.Mcp
             if (string.IsNullOrWhiteSpace(expectedProjectPath) || !Path.IsPathRooted(expectedProjectPath))
                 throw new ArgumentException("Supply the absolute project path returned by tia_list_processes.");
             string expected = Path.GetFullPath(expectedProjectPath);
+            safeguards().RequireProject(expected);
             var selected = TiaPortal.GetProcesses().SingleOrDefault(p => p.Id == pid);
             if (selected == null || selected.ProjectPath == null || !SamePath(selected.ProjectPath.FullName, expected))
                 throw new InvalidOperationException("Process ID and expected project path do not match a running project.");
@@ -369,11 +371,11 @@ namespace SiemensMCPServer.Mcp
         private void ResetWorkflows()
         {
             string sessionRoot = Path.Combine(artifactRoot, Guid.NewGuid().ToString("N"));
-            workflow = new TextListWorkflow(this, Path.Combine(sessionRoot, "classic"), features);
-            unifiedWorkflow = new UnifiedEditWorkflow(this, Path.Combine(sessionRoot, "unified"), features);
-            engineeringWorkflow = new EngineeringWorkflow(this, Path.Combine(sessionRoot, "engineering"));
-            classicXmlWorkflow = new ClassicXmlWorkflow(this, Path.Combine(sessionRoot, "comfort-xml"), features);
-            projectTranslationWorkflow = new ProjectTranslationWorkflow(this, Path.Combine(sessionRoot, "project-texts"), features);
+            workflow = new TextListWorkflow(this, Path.Combine(sessionRoot, "classic"), features, safeguards);
+            unifiedWorkflow = new UnifiedEditWorkflow(this, Path.Combine(sessionRoot, "unified"), features, safeguards);
+            engineeringWorkflow = new EngineeringWorkflow(this, Path.Combine(sessionRoot, "engineering"), safeguards);
+            classicXmlWorkflow = new ClassicXmlWorkflow(this, Path.Combine(sessionRoot, "comfort-xml"), features, safeguards);
+            projectTranslationWorkflow = new ProjectTranslationWorkflow(this, Path.Combine(sessionRoot, "project-texts"), features, safeguards);
             extensionPlans.Clear();
         }
 
@@ -418,6 +420,7 @@ namespace SiemensMCPServer.Mcp
 
         private void CheckProject()
         {
+            if (projectPath != null) safeguards().RequireProject(projectPath);
             if (portal == null || project == null || projectPath == null) throw new InvalidOperationException("Attach to a project first.");
             if (portal.Projects.Count != 1 || !portal.Projects[0].Equals(project) || project.Path == null || !SamePath(project.Path.FullName, projectPath))
                 throw new InvalidOperationException("The attached project changed. Reattach before continuing.");

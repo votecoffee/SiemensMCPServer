@@ -7,6 +7,7 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Shared/SafeguardSettings.cs" Link="SafeguardSettings.cs" />
     <Compile Include="../Mcp/BrokerPublication.cs" Link="BrokerPublication.cs" />
     <EmbeddedResource Include="../plugin/*.md" LogicalName="SiemensWorkflow/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../plugin/skills/**/SKILL.md" LogicalName="SiemensWorkflow/skills/%(RecursiveDir)%(Filename)%(Extension)" />

@@ -18,13 +18,14 @@ namespace SiemensMCPServer.Mcp
     {
         private readonly ITextListBackend backend;
         private readonly string root;
+        private readonly PreviewPolicy policy;
         private readonly IFeatureEngine features;
         private readonly Dictionary<string, Plan> pending = new Dictionary<string, Plan>();
-        public TextListWorkflow(ITextListBackend backend, string root, IFeatureEngine? features = null) { this.backend = backend; this.root = root; this.features = features ?? new LocalFeatureEngine(); }
+        public TextListWorkflow(ITextListBackend backend, string root, IFeatureEngine? features = null, Func<SafeguardSettings>? settings = null, Func<DateTime>? utcNow = null) { policy = new PreviewPolicy(settings, utcNow); this.backend = backend; this.root = root; this.features = features ?? new LocalFeatureEngine(); }
 
         public object Preview(string hmiId, string listName, string expectedFingerprint, TextEdit[] edits)
         {
-            if (pending.Count >= 100) throw new InvalidOperationException("Too many pending previews. Reattach to clear them.");
+            policy.RequireCapacity(pending.Count);
             string originalXml = backend.ReadTextList(hmiId, listName);
             var before = TextListDocuments.Parse(originalXml);
             RequireFingerprint(before, expectedFingerprint);
@@ -38,7 +39,7 @@ namespace SiemensMCPServer.Mcp
 
         public object PreviewStructure(string hmiId, string listName, string expectedFingerprint, ClassicTextListChange[] changes, string[] activeCultures)
         {
-            if (pending.Count >= 100) throw new InvalidOperationException("Too many pending previews. Reattach to clear them.");
+            policy.RequireCapacity(pending.Count);
             string originalXml = backend.ReadTextList(hmiId, listName);
             if (!(TextListDocuments.Parse(originalXml) is TextListDocument before)) throw new NotSupportedException("Structured entry/translation operations require a classic HMI text list.");
             RequireFingerprint(before, expectedFingerprint);
@@ -63,14 +64,14 @@ namespace SiemensMCPServer.Mcp
             string directory = Path.Combine(root, id);
             Directory.CreateDirectory(directory);
             var plan = new Plan { Id = id, HmiId = hmiId, ListName = listName, Before = before.Fingerprint,
-                After = after.Fingerprint, Candidate = after.Serialize(), Extension = after.ArtifactExtension, Directory = directory, Created = DateTime.UtcNow };
+                After = after.Fingerprint, Candidate = after.Serialize(), Extension = after.ArtifactExtension, Directory = directory, Created = policy.Now, Expires = policy.Expires };
             // Original exports are retained separately; no source bytes are overwritten.
             File.WriteAllText(Path.Combine(directory, "before." + plan.Extension), originalXml, new UTF8Encoding(false));
             File.WriteAllText(Path.Combine(directory, "candidate." + plan.Extension), plan.Candidate, new UTF8Encoding(false));
             plan.CandidateHash = TextListDocument.Hash(plan.Candidate);
             var report = new { planId = id, hmiId, listName, beforeFingerprint = plan.Before, afterFingerprint = plan.After,
                 beforeSnapshotSha256 = TextListDocument.Hash(originalXml), snapshotFormat = before.ArtifactExtension, nativeImportScope = before.NativeImportScope, candidateSha256 = plan.CandidateHash, changes = diff,
-                artifactDirectory = directory, expiresUtc = plan.Created.AddMinutes(30) };
+                artifactDirectory = directory, expiresUtc = plan.Expires };
             File.WriteAllText(Path.Combine(directory, "preview.json"), JsonSerializer.Serialize(report, JsonDefaults.Options), new UTF8Encoding(false));
             pending.Add(id, plan);
             return report;
@@ -78,9 +79,10 @@ namespace SiemensMCPServer.Mcp
 
         public object Apply(string planId, string expectedCandidateSha256)
         {
+            policy.RequireApply();
             Plan plan;
             if (!pending.TryGetValue(planId, out plan)) throw new InvalidOperationException("Unknown or already attempted plan. Create a new preview.");
-            if (DateTime.UtcNow - plan.Created > TimeSpan.FromMinutes(30))
+            if (policy.Expired(plan.Created, plan.Expires))
             { pending.Remove(planId); throw new InvalidOperationException("Plan expired. Create a new preview."); }
             if (!string.Equals(expectedCandidateSha256, plan.CandidateHash, StringComparison.Ordinal))
                 throw new InvalidOperationException("Candidate hash does not match the preview.");
@@ -115,7 +117,7 @@ namespace SiemensMCPServer.Mcp
         private sealed class Plan
         {
             public string Id = "", HmiId = "", ListName = "", Before = "", After = "", Candidate = "", CandidateHash = "", Extension = "xml", Directory = "";
-            public DateTime Created;
+            public DateTime Created, Expires;
         }
     }
 

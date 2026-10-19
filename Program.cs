@@ -13,6 +13,11 @@ namespace SiemensMCPServer
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            string settingsFile = (args ?? new string[0]).FirstOrDefault(a => a.StartsWith("--settings-file=", StringComparison.OrdinalIgnoreCase))?.Substring(16);
+            var safeguards = new SafeguardStore(settingsFile);
+            if ((args ?? new string[0]).Any(a => a.Equals("--safeguards", StringComparison.OrdinalIgnoreCase))) {
+                Application.Run(new SafeguardsForm(safeguards)); return;
+            }
 
             IList<string> compatibleVersions = TiaPortalAssemblyResolver.GetCompatibleEngineeringVersions();
             string requestedVersion = GetRequestedVersion(args);
@@ -56,13 +61,13 @@ namespace SiemensMCPServer
             }
 
             TiaPortalAssemblyResolver.Initialize(selectedVersion);
-            RunMainForm();
+            RunMainForm(safeguards);
         }
 
-        private static void RunMainForm()
+        private static void RunMainForm(SafeguardStore safeguards)
         {
             // Keep Siemens.Engineering types out of Main so AssemblyResolve is registered before MainForm is loaded.
-            Application.Run(new MainForm());
+            Application.Run(new MainForm(true, safeguards));
         }
 
         private static string GetRequestedVersion(string[] args)

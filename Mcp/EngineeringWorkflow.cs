@@ -30,12 +30,13 @@ namespace SiemensMCPServer.Mcp
     {
         private readonly IEngineeringBackend backend;
         private readonly string root;
+        private readonly PreviewPolicy policy;
         private readonly Dictionary<string, Pending> pending = new Dictionary<string, Pending>();
-        public EngineeringWorkflow(IEngineeringBackend backend, string root) { this.backend = backend; this.root = root; }
+        public EngineeringWorkflow(IEngineeringBackend backend, string root, Func<SafeguardSettings>? settings = null, Func<DateTime>? utcNow = null) { this.backend = backend; this.root = root; policy = new PreviewPolicy(settings, utcNow); }
         public object Preview(string action, string targetId, string path, string fingerprint, EngineeringEdit[]? edits = null,
             string nativeType = "", CreationArgument[]? arguments = null, string sourceDirectory = "", bool overwrite = false)
         {
-            if (pending.Count >= 100) throw new InvalidOperationException("Too many previews; reattach to clear them.");
+            policy.RequireCapacity(pending.Count);
             var before = backend.ReadEngineering(targetId, path);
             if (before.Fingerprint != fingerprint) throw new InvalidOperationException("Object changed; read it again.");
             if (before.Errors.Length != 0) throw new InvalidOperationException("Object inspection is incomplete: " + string.Join("; ", before.Errors));
@@ -70,20 +71,26 @@ namespace SiemensMCPServer.Mcp
             File.WriteAllText(Path.Combine(plan.Directory, "candidate.json"), json, new UTF8Encoding(false));
             var files = HasFiles(action) ? TransferFiles.Inventory(Path.Combine(plan.Directory, "candidate-files")) : Array.Empty<TransferFile>();
             string hash = TextListDocument.Hash(json + "\n" + TransferFiles.Hash(files));
-            var item = new Pending { Plan = plan, Hash = hash, Created = DateTime.UtcNow };
+            var item = new Pending { Plan = plan, Hash = hash, Created = policy.Now, Expires = policy.Expires };
             var report = new { planId = id, action, targetId, path, candidateSha256 = hash, beforeFingerprint = before.Fingerprint,
                 changes = edits, nativeType, arguments = plan.Arguments, overwrite, files, importOperations, artifactDirectory = plan.Directory,
                 nativeImportScope = action == "source" ? "Offline native source generation. May replace the blocks declared in the reviewed source; retains the external source in the project."
                     : HasFiles(action) ? "Native resource import. Unified directory imports can replace the entire exported composition. Review all candidate files and native scope." : null,
-                expiresUtc = item.Created.AddMinutes(30), projectSaved = false, nativeWriteAcceptance = "pending" };
+                expiresUtc = item.Expires, projectSaved = false, nativeWriteAcceptance = "pending" };
             File.WriteAllText(Path.Combine(plan.Directory, "preview.json"), JsonSerializer.Serialize(report, JsonDefaults.Options), new UTF8Encoding(false));
             pending.Add(id, item); return report;
         }
         public object Apply(string id, string hash)
         {
             if (!pending.TryGetValue(id, out var item)) throw new InvalidOperationException("Unknown or already attempted engineering plan.");
-            if (DateTime.UtcNow - item.Created > TimeSpan.FromMinutes(30)) { pending.Remove(id); throw new InvalidOperationException("Preview expired."); }
+            if (policy.Expired(item.Created, item.Expires)) { pending.Remove(id); throw new InvalidOperationException("Preview expired."); }
             var plan = item.Plan;
+            var guards = policy.Current;
+            if (!guards.AllowApply) throw new InvalidOperationException("Apply is disabled in Safeguards.");
+            if (plan.Action == "delete" && !guards.AllowDelete) throw new InvalidOperationException("Delete is disabled in Safeguards.");
+            if (plan.Overwrite && !guards.AllowOverwrite) throw new InvalidOperationException("Overwrite is disabled in Safeguards.");
+            if (plan.Action == "source" && PlcSourceFiles.Read(Path.Combine(plan.Directory, "candidate-files")).AllowBlockReplacement && !guards.AllowSourceReplacement)
+                throw new InvalidOperationException("PLC source block replacement is disabled in Safeguards.");
             string json = File.ReadAllText(Path.Combine(plan.Directory, "candidate.json"), Encoding.UTF8);
             var files = HasFiles(plan.Action) ? TransferFiles.Inventory(Path.Combine(plan.Directory, "candidate-files")) : Array.Empty<TransferFile>();
             if (hash != item.Hash || TextListDocument.Hash(json + "\n" + TransferFiles.Hash(files)) != hash
@@ -103,7 +110,7 @@ namespace SiemensMCPServer.Mcp
                 File.WriteAllText(log, JsonSerializer.Serialize(new { state = "failed", error = ex.GetBaseException().Message, projectSaved = false, inspectCurrentTargetBeforeRetry = true }, JsonDefaults.Options), new UTF8Encoding(false)); throw;
             }
         }
-        private sealed class Pending { public EngineeringPlan Plan = null!; public string Hash = ""; public DateTime Created; }
+        private sealed class Pending { public EngineeringPlan Plan = null!; public string Hash = ""; public DateTime Created, Expires; }
         private static bool HasFiles(string action) => action == "import" || action == "bundle" || action == "source";
     }
 }

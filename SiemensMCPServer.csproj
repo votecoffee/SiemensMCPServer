@@ -58,6 +58,8 @@
 
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="Shared\SafeguardSettings.cs" />
+    <Compile Include="Desktop\SafeguardsForm.cs" />
     <Compile Include="TiaPortalAssemblyResolver.cs" />
     <Compile Include="Shared\HmiCatalog.cs" />
     <Compile Include="Shared\CompileServiceResolver.cs" />

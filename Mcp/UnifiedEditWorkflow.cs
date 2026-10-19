@@ -18,9 +18,10 @@ namespace SiemensMCPServer.Mcp
     {
         private readonly IUnifiedBackend backend;
         private readonly string root;
+        private readonly PreviewPolicy policy;
         private readonly IFeatureEngine features;
         private readonly Dictionary<string, Plan> plans = new Dictionary<string, Plan>();
-        public UnifiedEditWorkflow(IUnifiedBackend backend, string root, IFeatureEngine? features = null) { this.backend = backend; this.root = root; this.features = features ?? new LocalFeatureEngine(); }
+        public UnifiedEditWorkflow(IUnifiedBackend backend, string root, IFeatureEngine? features = null, Func<SafeguardSettings>? settings = null, Func<DateTime>? utcNow = null) { policy = new PreviewPolicy(settings, utcNow); this.backend = backend; this.root = root; this.features = features ?? new LocalFeatureEngine(); }
 
         public object Preview(string hmiId, string screenPath, string itemPath, string expectedFingerprint, UnifiedEdit[] edits)
             => PreviewTransformed(hmiId, screenPath, itemPath, expectedFingerprint,
@@ -29,14 +30,14 @@ namespace SiemensMCPServer.Mcp
 
         public object PreviewTransformed(string hmiId, string screenPath, string itemPath, string expectedFingerprint, Func<UnifiedObjectState, UnifiedObjectState> transform, object changes)
         {
-            if (plans.Count >= 100) throw new InvalidOperationException("Too many previews; reattach to clear them.");
+            policy.RequireCapacity(plans.Count);
             var before = backend.ReadUnified(hmiId, screenPath, itemPath);
             if (before.Fingerprint != expectedFingerprint) throw new InvalidOperationException("Unified object changed. Read it again before previewing.");
             var after = transform(before);
             before.RequireAllowedCandidate(after);
             if (before.Fingerprint == after.Fingerprint) throw new ArgumentException("The preview contains no changes.");
             string id = Guid.NewGuid().ToString("N");
-            var plan = new Plan { Before = before, After = after, Directory = Path.Combine(root, id), Created = DateTime.UtcNow };
+            var plan = new Plan { Before = before, After = after, Directory = Path.Combine(root, id), Created = policy.Now, Expires = policy.Expires };
             Directory.CreateDirectory(plan.Directory);
             string candidate = JsonSerializer.Serialize(after, JsonDefaults.Options);
             plan.Hash = TextListDocument.Hash(candidate);
@@ -44,7 +45,7 @@ namespace SiemensMCPServer.Mcp
             File.WriteAllText(Path.Combine(plan.Directory, "candidate.json"), candidate, new UTF8Encoding(false));
             var report = new { planId = id, hmiId, screenPath, itemPath, beforeFingerprint = before.Fingerprint, afterFingerprint = after.Fingerprint,
                 candidateSha256 = plan.Hash, changes,
-                artifactDirectory = plan.Directory, expiresUtc = plan.Created.AddMinutes(30), projectSaved = false };
+                artifactDirectory = plan.Directory, expiresUtc = plan.Expires, projectSaved = false };
             File.WriteAllText(Path.Combine(plan.Directory, "preview.json"), JsonSerializer.Serialize(report, JsonDefaults.Options), new UTF8Encoding(false));
             plans.Add(id, plan);
             return report;
@@ -52,9 +53,10 @@ namespace SiemensMCPServer.Mcp
 
         public object Apply(string planId, string candidateSha256)
         {
+            policy.RequireApply();
             Plan plan;
             if (!plans.TryGetValue(planId, out plan)) throw new InvalidOperationException("Unknown or already attempted Unified plan.");
-            if (DateTime.UtcNow - plan.Created > TimeSpan.FromMinutes(30))
+            if (policy.Expired(plan.Created, plan.Expires))
             { plans.Remove(planId); throw new InvalidOperationException("Unified plan expired. Create a new preview."); }
             if (candidateSha256 != plan.Hash || TextListDocument.Hash(File.ReadAllBytes(Path.Combine(plan.Directory, "candidate.json"))) != plan.Hash)
                 throw new InvalidOperationException("Unified candidate hash does not match the preview.");
@@ -78,7 +80,7 @@ namespace SiemensMCPServer.Mcp
         {
             public UnifiedObjectState Before = null!, After = null!;
             public string Hash = "", Directory = "";
-            public DateTime Created;
+            public DateTime Created, Expires;
         }
     }
 }
