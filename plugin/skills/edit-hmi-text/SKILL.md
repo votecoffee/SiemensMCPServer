@@ -43,4 +43,6 @@ For a native project backup, `tia_archive_project` requires the exact attached p
 
 On a stale fingerprint, re-read and create a new preview. On an uncertain write or transport failure, inspect the current HMI before proceeding; never replay a consumed plan or assume rollback. Native import/readback, compile, save, and device/runtime acceptance are distinct results. The tools do not download to an HMI or control runtime.
 
+For exact Comfort tag/connection rebinding, use `inspect_references` on the read native XML, optionally scoped to the copied control's exact path and `linkType="Tag"`. Preview `rebind_references` with complete returned selections and literal replacement names, including native quoting. Only supported symbolic Tag/ControllerTag/Connection names change; native ownership/type links stay protected. The worker does not verify destination existence, types or connection partners and does not rewrite script/computed names. Read [reference arguments and limits](../../COMFORT-REFERENCES.md). This worker reloads on host 0.10.0; use the native resource path/fingerprint for preview and apply through `tia_apply_extension_plan` within existing authorization.
+
 For setup and build-specific version requirements, read [the bundled guide](../../README.md).

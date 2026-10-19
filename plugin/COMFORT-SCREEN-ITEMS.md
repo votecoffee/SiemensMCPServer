@@ -55,6 +55,8 @@ Every prototype is frozen from the initial snapshot before batch changes. Native
 
 Optional edits change existing scalar values only. They cannot override mapped control names or change IDs, `TargetID` links, composition, culture identities or external-file metadata flags. Companion paths still have to resolve inside the staged resource. Native field validity remains subject to import/compile checks.
 
+After an authorized clone is applied, reread the native resource and use [reference inspection/rebinding](COMFORT-REFERENCES.md) to change explicitly selected symbolic tag links inside the new control. This leaves the original control's links unchanged; target lookup/type checks and native acceptance remain separate.
+
 ## Remove controls
 
 For removal, supply only `action="remove"` and the complete returned `selection`; omit destination, names and edits. Removing a group includes its descendants. A batch may remove several disjoint subtrees together.
