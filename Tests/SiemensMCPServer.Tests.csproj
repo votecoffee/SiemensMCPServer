@@ -7,6 +7,7 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Analysis/*.cs" Link="Analysis/%(Filename)%(Extension)"/>
     <Compile Include="../Shared/DesktopTransferSelection.cs" Link="DesktopTransferSelection.cs" />
     <Compile Include="../Shared/CompileServiceResolver.cs" Link="CompileServiceResolver.cs" />
     <Compile Include="../Shared/SiemensApiTypes.cs" Link="SiemensApiTypes.cs" />

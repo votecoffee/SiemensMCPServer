@@ -6,6 +6,7 @@
     <AssemblyName>SiemensMCPServer.ExtensionWorker</AssemblyName><Version>0.10.5</Version>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Analysis/*.cs" Link="Analysis/%(Filename)%(Extension)"/>
     <PackageReference Include="System.Text.Json" Version="10.0.10"/><PackageReference Include="YamlDotNet" Version="18.1.0"/>
     <Reference Include="System.Xml.Linq"/><Reference Include="System.Drawing"/>
     <Reference Include="System.IO.Compression"/>

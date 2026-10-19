@@ -16,6 +16,7 @@
     <IntermediateOutputPath>obj/$(TiaPortalVersion)/$(Configuration)/</IntermediateOutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Analysis/*.cs" Link="Analysis/%(Filename)%(Extension)"/>
     <Compile Include="../Extensions/ExtensionContract.cs" Link="Extensions/ExtensionContract.cs" />
     <Compile Include="../Extensions/FeatureOperations.cs" Link="Extensions/FeatureOperations.cs" />
     <Compile Include="../Extensions/ComfortPackage.cs" Link="Extensions/ComfortPackage.cs" />
