@@ -83,7 +83,7 @@ namespace SiemensMCPServer.Mcp
                 }
                 if (!anyReference) Add(fields, null, null, ancestry);
                 if (stopped) return;
-                Sources(Each(source, "Children"), ancestry.Concat(new[] { PlcInspectionFiles.Prefix(fields["Name"], 128) }).ToArray(), depth + 1);
+                Sources(Each(source, "Children"), ancestry.Concat(new[] { fields["Name"] }).ToArray(), depth + 1);
                 if (stopped) return;
             }
         }

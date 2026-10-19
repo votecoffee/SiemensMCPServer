@@ -86,6 +86,7 @@ namespace SiemensMCPServer.Mcp
     {
         private readonly Process process;
         private StreamWriter? input;
+        private Task? stderrTask;
         private readonly int timeoutMs;
         private long nextId;
         private bool faulted;
@@ -108,7 +109,7 @@ namespace SiemensMCPServer.Mcp
                 ProcessId = process.Id;
                 input = new StreamWriter(process.StandardInput.BaseStream, new UTF8Encoding(false, true)) { AutoFlush = true };
                 // Drain stderr continuously with bounded retained diagnostics.
-                Task.Run(() => {
+                stderrTask = Task.Run(() => {
                     try { int c; while ((c = process.StandardError.Read()) >= 0) lock (errors) { if (errors.Length >= 4096) errors.Remove(0, 2048); errors.Append((char)c); } }
                     catch (ObjectDisposedException) { } catch (IOException) { }
                 });
@@ -143,7 +144,9 @@ namespace SiemensMCPServer.Mcp
             {
                 faulted = true; Stop(true);
                 string stderr; lock (errors) stderr = errors.ToString();
-                throw new InvalidOperationException("Extension worker failed; no TIA operation was dispatched by the worker. " + ex.GetBaseException().Message + " " + stderr, ex);
+                // Tool error conversion unwraps inner exceptions. Keep bounded worker
+                // diagnostics in the exception that reaches the client.
+                throw new InvalidOperationException("Extension worker failed; no TIA operation was dispatched by the worker. " + ex.GetBaseException().Message + " " + stderr);
             }
             if (response.Error != null) throw new InvalidOperationException("Extension rejected the request: " + response.Error);
             return response.Result.Clone();
@@ -159,6 +162,7 @@ namespace SiemensMCPServer.Mcp
             if (force) try { if (!process.HasExited) process.Kill(); } catch (InvalidOperationException) { } catch (System.ComponentModel.Win32Exception) { }
             try { input?.Close(); } catch (InvalidOperationException) { } catch (IOException) { }
             try { if (!process.WaitForExit(2000)) { process.Kill(); process.WaitForExit(2000); } } catch (InvalidOperationException) { } catch (System.ComponentModel.Win32Exception) { }
+            try { stderrTask?.Wait(1000); } catch (AggregateException) { }
             process.Dispose();
         }
     }

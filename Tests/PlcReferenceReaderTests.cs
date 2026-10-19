@@ -56,4 +56,10 @@ public sealed class PlcReferenceReaderTests
         Assert.Throws<NotSupportedException>(() => PlcReferenceReader.Read(new { }, 10));
         Assert.Throws<NotSupportedException>(() => PlcReferenceReader.Read(new { Sources = new[] { new { Name = "Incomplete" } } }, 10));
     }
+    [Fact] public void LongAncestorNamesRetainTheSameTextAsTheirSourceRows()
+    {
+        string name = new string('x', 500);
+        var result = PlcReferenceReader.Read(new { Sources = new[] { new Source { Name = name, Children = new[] { new Source() } } } }, 10);
+        Assert.Equal(name, Assert.Single(result.Rows[1].SourceAncestry)); Assert.False(result.FieldsTruncated);
+    }
 }

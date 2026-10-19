@@ -20,9 +20,14 @@ namespace SiemensMCPServer.Extensions
                 string recipePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "recipes.json");
                 if (File.Exists(recipePath) && new FileInfo(recipePath).Length > 65536) throw new ArgumentException("Recipe catalog is too large.");
                 var recipes = new FeatureRecipes(module, File.Exists(recipePath) ? File.ReadAllText(recipePath, Encoding.UTF8) : null);
-                string? line;
+                string? line; bool firstFrame = true;
                 while ((line = ExtensionWire.ReadLine(Console.In)) != null)
                 {
+                    // .NET Framework's Process.StandardInput can emit a UTF-8 BOM
+                    // when started from a UTF-8 console. Normalize only the first
+                    // transport frame; later frames retain strict JSON parsing.
+                    if (firstFrame && line.StartsWith("\uFEFF", StringComparison.Ordinal)) line = line.Substring(1);
+                    firstFrame = false;
                     var request = JsonSerializer.Deserialize<ExtensionRequest>(line, ExtensionWire.Options)!;
                     var response = new ExtensionResponse { Id = request.Id };
                     try
