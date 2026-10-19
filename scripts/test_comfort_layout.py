@@ -86,7 +86,7 @@ def probe_host(executable, bundle, root, repo):
     try:
         initial = client.call('tia_list_extensions')
         before = next(m for m in initial['modules'] if m['module'] == 'comfort')
-        tools = client.send('tools/list', {})['tools']; assert len(tools) == 51
+        tools = client.send('tools/list', {})['tools']; assert len(tools) in (51, 54)
         def stage(source):
             result = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(repo/'build/Install-Extension.ps1'),
                                      '-BundleDirectory', str(source), '-ExtensionRoot', str(root/'external')],
@@ -141,7 +141,7 @@ def main():
         root = Path(temporary)
         for number, executable in enumerate([args.executable] + ([args.previous_host] if args.previous_host else [])):
             hosts.append(probe_host(executable.resolve(), bundle, root/str(number), repo))
-    checks += ['Persistent hosts load new layout operations with unchanged PID, binary and 51-tool schema',
+    checks += ['Persistent hosts load new layout operations with unchanged PID, binary and unchanged tool schemas',
                'MCP refuses mutation through read tools and native preview without attachment',
                'Rejected conflicting worker recipe retains active generation and functioning layout inspection']
     report = {'checks': checks, 'count': len(checks), 'hosts': hosts, 'projectAttached': False,

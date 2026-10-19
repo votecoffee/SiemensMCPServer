@@ -64,6 +64,9 @@ def validate(files):
         assert "scripts/Edit-ProjectTexts.ps1" in files
     if version >= (0, 13, 0):
         assert "CONCURRENCY.md" in files
+    if version >= (0, 14, 0):
+        assert "BROKER-INTEGRATION.md" in files
+        assert "scripts/New-BrokerRegistration.ps1" in files
     return len(manifest)
 
 

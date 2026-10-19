@@ -97,7 +97,7 @@ def main():
         def hold():
             return client.tool('tia_read_extension', module='concurrency', operation='hold', argumentsJson='{}')
         try:
-            tools = client.request('tools/list', {})[1].result(10)['result']['tools']; assert len(tools) == 51
+            tools = client.request('tools/list', {})[1].result(10)['result']['tools']; assert len(tools) in (51, 54)
             initial = status(); host_pid = client.process.pid
             first = [hold(), hold()]; until(lambda: len(list(root.glob('running-*'))) == 2)
             busy = status(); assert busy['requests']['local']['active'] == 2 and busy['requests']['native']['active'] == 0

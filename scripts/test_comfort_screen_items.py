@@ -85,7 +85,7 @@ def host_probe(executable, bundle, root, repo):
     digest = hashlib.sha256(executable.read_bytes()).hexdigest(); client = Client(executable, root)
     try:
         before = client.call('tia_list_extensions'); modules = {m['module']: m for m in before['modules']}
-        tools = client.send('tools/list', {})['tools']; assert len(tools) == 51
+        tools = client.send('tools/list', {})['tools']; assert len(tools) in (51, 54)
         stage(repo, bundle, root); good_registry = (root/'external/active.json').read_bytes()
         client.call('tia_reload_extensions', module='comfort')
         after = client.call('tia_list_extensions'); updated = {m['module']: m for m in after['modules']}
@@ -108,7 +108,7 @@ def host_probe(executable, bundle, root, repo):
         assert client.send('tools/list', {})['tools'] == tools and not client.call('tia_get_status')['attached']
         assert hashlib.sha256(executable.read_bytes()).hexdigest() == digest
         return {'hostSha256': digest, 'workerVersion': updated['comfort']['version'], 'hostPidUnchanged': True, 'hostBinaryUnchanged': True,
-                'fixedTools': 51, 'otherModulesUnchanged': True, 'failedReloadPreservedGeneration': True}
+                'fixedTools': len(tools), 'otherModulesUnchanged': True, 'failedReloadPreservedGeneration': True}
     finally:
         client.close()
 
@@ -125,7 +125,7 @@ def main():
         root = Path(temporary); hosts.append(host_probe(executable, bundle, root/'current', repo))
         if args.previous_host:
             hosts.append(host_probe(args.previous_host.resolve(), bundle, root/'previous', repo))
-    checks += ['Persistent host reload retains PID, executable, 51-tool schema and other module generations',
+    checks += ['Persistent host reload retains PID, executable, unchanged tool schemas and other module generations',
                'Rejected update preserves working generation; mutation through read tools or unattached previews is blocked']
     report = {'checks': checks, 'count': len(checks), 'hosts': hosts, 'projectAttached': False, 'nativeControlAcceptance': False}
     if args.report:

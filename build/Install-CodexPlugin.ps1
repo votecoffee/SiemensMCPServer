@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$Package,
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'SiemensMCPServer\CodexMarketplace'),
+    [ValidateSet('Standalone', 'Broker')][string]$Integration = 'Standalone',
     [switch]$PrepareOnly
 )
 $ErrorActionPreference = 'Stop'
@@ -73,6 +74,14 @@ if (Test-Path -LiteralPath $destination) {
     }
 }
 $catalogDirectory = Join-Path $root '.agents\plugins'
+if ($Integration -eq 'Broker') {
+    # Explicit staging route: do not register/uninstall plugins or touch live
+    # broker state. Presence alone is insufficient to accept a migration.
+    $helper = Join-Path $PSScriptRoot 'New-BrokerRegistration.ps1'
+    $registration = Join-Path $root ('broker\siemens-' + $slug + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8) + '.json')
+    & $helper -PluginRoot $destination -OutputPath $registration
+    exit 0
+}
 [IO.Directory]::CreateDirectory($catalogDirectory) | Out-Null
 $catalogPath = Join-Path $catalogDirectory 'marketplace.json'
 $backupDirectory = Join-Path $root ('backups\' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss') + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8))

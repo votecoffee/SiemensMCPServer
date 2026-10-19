@@ -68,7 +68,7 @@ The build prints the ZIP path and creates its SHA-256 sidecar under `artifacts/`
 powershell.exe -NoProfile -File build/Install-CodexPlugin.ps1 -Package 'C:\path\to\plugin.zip'
 ```
 
-Use `-PrepareOnly` to verify and stage a package without changing Codex settings. Load the installed tools and skills in a new Codex chat. The [plugin guide](plugin/README.md) covers client setup, direct MCP registration and migration from the former `siemens-tia-openness` identity.
+Use `-PrepareOnly` to verify and stage a package without changing Codex settings. Load the installed tools and skills in a new Codex chat. The standalone plugin remains supported independently of Universal Tools. `-Integration Broker` stages a verified server and read-only exclusive-session registration descriptor while skipping Siemens plugin installation; it does not change live registrations. Automatic broker preference remains gated on workflow migration acceptance. See [broker integration and installation choices](plugin/BROKER-INTEGRATION.md) and the [plugin guide](plugin/README.md).
 
 ## Usage
 
@@ -150,7 +150,7 @@ Keep machine-specific notes, project exports, acceptance evidence, logs and cust
 
 ## API
 
-The server currently exposes 51 tools. Their descriptions and JSON schemas are available through MCP `tools/list`.
+The server currently exposes 54 tools: 51 engineering tools plus three read-only broker catalog/workflow readers. Their descriptions and JSON schemas are available through MCP `tools/list`.
 
 - `tia_*`: API/process discovery, project attachment, status, archive/save/reopen and extension discovery/reload.
 - `hmi_*`: Comfort/classic and capability-checked Unified inspection, previews, edits, transfers and compilation.

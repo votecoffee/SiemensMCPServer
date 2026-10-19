@@ -83,7 +83,7 @@ def main():
         assert workbook_path.read_bytes() == data
         client = Client(host, root/'current')
         try:
-            tools = client.send('tools/list', {})['tools']; assert len(tools) == 51
+            tools = client.send('tools/list', {})['tools']; assert len(tools) in (51, 54)
             before = client.call('tia_list_extensions'); previous = {m['module']: m['generation'] for m in before['modules']}
             stage(repo, bundle, root/'current'); client.call('tia_reload_extensions', module='project')
             after_host = client.call('tia_list_extensions'); current = {m['module']: m['generation'] for m in after_host['modules']}

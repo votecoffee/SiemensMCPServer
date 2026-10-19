@@ -93,7 +93,7 @@ def host_probe(executable, bundle, root, repo, old=False):
     client = Client(executable, root)
     try:
         initial = client.call('tia_list_extensions'); modules = {m['module']: m for m in initial['modules']}
-        tools = client.send('tools/list', {})['tools']; assert len(tools) == 51
+        tools = client.send('tools/list', {})['tools']; assert len(tools) in (51, 54)
         stage(repo, bundle, root)
         if old:
             message = client.rejected('tia_reload_extensions', module='comfort')
@@ -125,7 +125,7 @@ def host_probe(executable, bundle, root, repo, old=False):
         assert initial['hostProcessId'] == after['hostProcessId'] == client.process.pid
         assert not client.call('tia_get_status')['attached']
         assert hashlib.sha256(executable.read_bytes()).hexdigest() == before_hash
-        return {'hostSha256': before_hash, 'fixedTools': 51, 'hostPidUnchanged': True, 'hostBinaryUnchanged': True,
+        return {'hostSha256': before_hash, 'fixedTools': len(tools), 'hostPidUnchanged': True, 'hostBinaryUnchanged': True,
                 'olderHostRejectedNewContract': old, 'failedReloadPreservedActiveGeneration': True}
     finally:
         client.close()

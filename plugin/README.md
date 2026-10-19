@@ -1,4 +1,4 @@
-# SiemensMCPServer plugin 0.13.0
+# SiemensMCPServer plugin 0.14.0
 
 The project and GitHub repository are now **SiemensMCPServer**. The plugin/MCP ID is `siemens-mcp-server`, the local marketplace is `siemens-mcp-server-local`, and the host is `SiemensMCPServer.Mcp.exe`. Remove the old `siemens-tia-openness` plugin or direct MCP registration through Codex before installing the renamed plugin. The installer refuses to register a second copy while the old server is enabled. Do not remove its cache manually while it is running. This rename needs a host upgrade; feature-worker reload remains available afterward.
 
@@ -6,7 +6,9 @@ This local Windows plugin provides Comfort/classic and Unified engineering objec
 
 ## Install the built package
 
-Host 0.13.0 adds [concurrent requests](CONCURRENCY.md): bounded parallel local analysis, separate control/status, cancellable queues and generation-safe reload. Native calls and transactions remain serialized on the owning STA. Upgrade/reconnect the host once for this scheduling change; the MCP interface retains 51 tools.
+Host 0.14.0 adds [Universal Tools compatibility](BROKER-INTEGRATION.md): normalized workflow discovery and hash-pinned guide readers, with explicit broker-route preparation that skips installation of this plugin. Standalone use remains supported. Automatic route selection awaits workflow migration acceptance. The host exposes 54 tools; the existing 51 engineering schemas are unchanged.
+
+Host 0.13.0 added [concurrent requests](CONCURRENCY.md): bounded parallel local analysis, separate control/status, cancellable queues and generation-safe reload. Native calls and transactions remain serialized on the owning STA. These host changes require an upgrade/reconnect once.
 
 Version 0.12.0 adds [multilingual project texts](PROJECT-TEXTS.md): comments, descriptions, captions and text values with native categories/paths, missing-translation filters, exact previews and reviewed import/readback. The new native import route needs a 0.12.0 host upgrade/reconnect once; later worker logic can reload. `scripts/Edit-ProjectTexts.ps1` extracts complete retained workbooks or prepares disk-only candidates. Native import acceptance remains pending.
 
@@ -182,7 +184,7 @@ powershell.exe -NoProfile -File scripts/test_native_contracts.ps1 -Version V15.1
 powershell -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1
 ```
 
-The protocol test checks all 51 tools, required schemas, same-host extension reload, classic export conversion, and apply/compile/save write guards. It never attaches, imports, compiles, or saves a project. `--native-read-only` exercises real Siemens process enumeration, API-member checks, and unattached-object rejection. The native contract script checks installed classic/PLC signatures and production export dispatch without creating a TiaPortal instance. Unit tests cover XML/YAML, caption styling, object preview lifecycles, typed bounds, companion files, legacy category/folder conversion, hashes, DTD rejection and unsafe bundle paths. These checks do not simulate Siemens transactions or establish native acceptance.
+The protocol test checks all 54 tools, required schemas, same-host extension reload, classic export conversion, and apply/compile/save write guards. It never attaches, imports, compiles, or saves a project. `--native-read-only` exercises real Siemens process enumeration, API-member checks, and unattached-object rejection. The native contract script checks installed classic/PLC signatures and production export dispatch without creating a TiaPortal instance. Unit tests cover XML/YAML, caption styling, object preview lifecycles, typed bounds, companion files, legacy category/folder conversion, hashes, DTD rejection and unsafe bundle paths. These checks do not simulate Siemens transactions or establish native acceptance.
 
 The packaging script emits a fresh ZIP and SHA-256 file under `artifacts/`, with a payload manifest, source-file hash manifest, build identity, and dependency notices in the ZIP. It accepts the same `TiaPortalVersion`, `TiaPortalInstallVersion`, and `TiaPublicApiDir` choices as the desktop build. It rejects packages containing Siemens engineering DLLs. Verify a built ZIP and run its freshly extracted executable with `py -3 -X utf8 scripts/verify_plugin.py PATH-TO-ZIP --native-read-only`; the verifier also rejects tampered payloads, unexpected members, and path traversal controls.
 

@@ -48,7 +48,7 @@ def host_probe(executable, bundle, root, repo, version):
     digest = hashlib.sha256(executable.read_bytes()).hexdigest(); client = Client(executable, root)
     try:
         before = client.call('tia_list_extensions'); modules = {m['module']: m for m in before['modules']}
-        tools = client.send('tools/list', {})['tools']; assert len(tools) == 51
+        tools = client.send('tools/list', {})['tools']; assert len(tools) in (51, 54)
         stage(repo, bundle, root); registry = (root/'external/active.json').read_bytes()
         client.call('tia_reload_extensions', module='comfort')
         after = client.call('tia_list_extensions'); updated = {m['module']: m for m in after['modules']}
@@ -69,7 +69,7 @@ def host_probe(executable, bundle, root, repo, version):
         assert client.send('tools/list', {})['tools'] == tools and not client.call('tia_get_status')['attached']
         assert hashlib.sha256(executable.read_bytes()).hexdigest() == digest
         return {'hostSha256': digest, 'workerVersion': version, 'hostPidUnchanged': True, 'hostBinaryUnchanged': True,
-                'fixedTools': 51, 'otherModulesUnchanged': True, 'failedReloadPreservedGeneration': True}
+                'fixedTools': len(tools), 'otherModulesUnchanged': True, 'failedReloadPreservedGeneration': True}
     finally:
         client.close()
 

@@ -11,11 +11,13 @@
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <AssemblyName>SiemensMCPServer.Mcp</AssemblyName>
-    <Version>0.13.0</Version>
+    <Version>0.14.0</Version>
     <OutputPath>bin/$(Configuration)/$(TiaPortalVersion)/</OutputPath>
     <IntermediateOutputPath>obj/$(TiaPortalVersion)/$(Configuration)/</IntermediateOutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="../plugin/*.md" LogicalName="SiemensWorkflow/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../plugin/skills/**/SKILL.md" LogicalName="SiemensWorkflow/skills/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="../Analysis/*.cs" Link="Analysis/%(Filename)%(Extension)"/>
     <Compile Include="../Extensions/ExtensionContract.cs" Link="Extensions/ExtensionContract.cs" />
     <Compile Include="../Extensions/FeatureOperations.cs" Link="Extensions/FeatureOperations.cs" />

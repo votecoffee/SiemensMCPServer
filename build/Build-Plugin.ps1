@@ -31,6 +31,7 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $
 $helperDirectory = Join-Path $packageRoot 'scripts'
 New-Item -ItemType Directory -Path $helperDirectory -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Install-CodexPlugin.ps1') -Destination $helperDirectory
+Copy-Item -LiteralPath (Join-Path $repoRoot 'build\New-BrokerRegistration.ps1') -Destination $helperDirectory
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Install-Extension.ps1') -Destination $helperDirectory
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Write-ComfortPackage.ps1') -Destination $helperDirectory
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Analyze-HmiReferences.ps1') -Destination $helperDirectory
