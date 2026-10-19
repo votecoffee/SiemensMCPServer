@@ -7,6 +7,7 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>SiemensMCPServer</RootNamespace>
     <AssemblyName>SiemensMCPServer</AssemblyName>
+    <ApplicationIcon>assets\SiemensMCPServer.ico</ApplicationIcon>
     <TargetFramework>net48</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <EnableDefaultItems>false</EnableDefaultItems>

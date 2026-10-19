@@ -48,6 +48,7 @@ namespace SiemensMCPServer
             Height = 760;
             MinimumSize = new Size(1050, 620);
             StartPosition = FormStartPosition.CenterScreen;
+            Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
 
             BuildUi();
             if (discoverProcesses) RefreshProcesses();
