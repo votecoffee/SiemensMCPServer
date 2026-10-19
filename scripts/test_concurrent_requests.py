@@ -148,7 +148,7 @@ def main():
             report = {'hostVersion': client.version, 'parallelLocalRequestsObserved': 2, 'fullLocalQueueObserved': 32,
                 'nativeLaneResponsiveDuringLocalWork': True, 'queuedCancellationRemovedBeforeDispatch': True, 'overloadRejected': True,
                 'reloadDrainedInflightGeneration': True, 'distinctUnicodeResponsesMatched': 48, 'hostPidAndBinaryUnchanged': True,
-                'toolCount': 51, 'nativeTransactions': 'serialized; scheduler/unit tests only', 'projectAttached': False, 'nativeWrites': False}
+                'toolCount': len(tools), 'nativeTransactions': 'serialized; scheduler/unit tests only', 'projectAttached': False, 'nativeWrites': False}
         finally:
             gate.touch()
             client.close()

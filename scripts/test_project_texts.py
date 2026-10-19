@@ -117,7 +117,7 @@ def main():
             request['options'] = {'query': '', 'caseSensitive': True}
             assert 'query' in client.rejected('tia_read_extension', module='project', operation='find_in_project_texts', argumentsJson=json.dumps(request)).lower()
             assert not client.call('tia_get_status')['attached']
-            checks.append('Host retains 51 tools and rejects unattached reads, ambiguous languages, output-path overrides, client snapshots and invalid search before capture')
+            checks.append('Host retains engineering schemas and rejects unattached reads, ambiguous languages, output-path overrides, client snapshots and invalid search before capture')
             client.call('tia_reload_extensions', module='project')
             after = client.call('tia_list_extensions')
             assert after['hostProcessId'] == catalog['hostProcessId'] == client.process.pid

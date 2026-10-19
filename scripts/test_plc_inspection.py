@@ -114,7 +114,7 @@ def main():
             assert after['hostProcessId'] == catalog['hostProcessId'] == client.process.pid
             assert next(m for m in after['modules'] if m['module'] == 'plc')['generation'] != plc['generation']
             assert client.send('tools/list', {})['tools'] == tools
-            checks.append('MCP preserves 51 tools, reports API limits, rejects unattached reads/injected snapshots and reloads PLC in one host')
+            checks.append('MCP preserves engineering schemas, reports API limits, rejects unattached reads/injected snapshots and reloads PLC in one host')
             generation = next(m for m in after['modules'] if m['module'] == 'plc')['generation']
             bad_bundle = root/'bad-bundle'; shutil.copytree(bundle, bad_bundle)
             (bad_bundle/'recipes.json').write_text('[{"name":"bad","xPath":"//Name","newValue":"x"}]',encoding='utf-8')

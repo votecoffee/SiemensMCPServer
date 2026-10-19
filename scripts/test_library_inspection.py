@@ -88,7 +88,7 @@ def main():
             arguments['options'] = {'save': True}
             assert 'options' in client.rejected('tia_read_extension', module='project', operation='browse_library', argumentsJson=json.dumps(arguments)).lower()
             assert not client.call('tia_get_status')['attached']
-            checks.append('Host keeps 51 tools, reports library APIs and rejects unattached reads, unsupported navigation, open/save options and injected snapshots')
+            checks.append('Host keeps engineering schemas, reports library APIs and rejects unattached reads, unsupported navigation, open/save options and injected snapshots')
             client.call('tia_reload_extensions', module='project')
             after = client.call('tia_list_extensions')
             project = next(m for m in after['modules'] if m['module'] == 'project')
