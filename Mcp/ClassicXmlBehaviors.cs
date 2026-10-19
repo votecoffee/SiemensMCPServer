@@ -19,7 +19,7 @@ namespace SiemensMCPServer.Mcp
     internal sealed partial class ClassicXmlDocument
     {
         private static readonly string[] BehaviorCompositions = { "Animations", "Events", "Dynamizations", "EventHandlers" };
-        private static bool Behavior(XElement node) => node.Parent?.Name == "ObjectList" && node.Name.LocalName.StartsWith("Hmi.", StringComparison.Ordinal)
+        private static bool Behavior(XElement node) => node.Name.NamespaceName.Length == 0 && node.Parent?.Name == "ObjectList" && node.Name.LocalName.StartsWith("Hmi.", StringComparison.Ordinal)
             && node.AncestorsAndSelf().Any(e => BehaviorCompositions.Contains((string?)e.Attribute("CompositionName"), StringComparer.Ordinal));
         public object BehaviorCatalog(bool editable)
         {
@@ -34,46 +34,8 @@ namespace SiemensMCPServer.Mcp
         public string ChangeBehaviors(ClassicBehaviorChange[] changes)
         {
             if (changes == null || changes.Length == 0 || changes.Length > 100) throw new ArgumentException("Supply 1 to 100 native behavior changes.");
-            var operations = new List<Tuple<ClassicBehaviorChange, XElement, XElement?>>();
-            foreach (var change in changes)
-            {
-                if (change == null || change.Action == null || change.XPath == null || change.ExpectedFingerprint == null || change.DestinationXPath == null || change.Edits == null) throw new ArgumentException("Behavior change fields cannot be null.");
-                var selected = Select(change.XPath);
-                if (!Behavior(selected)) throw new ArgumentException("Select a native event/animation/binding object from behaviorCatalog.");
-                if (ObjectFingerprint(selected) != change.ExpectedFingerprint) throw new InvalidOperationException("Behavior fingerprint differs; read the resource again.");
-                if (operations.Any(o => o.Item2.AncestorsAndSelf().Contains(selected) || selected.AncestorsAndSelf().Contains(o.Item2))) throw new ArgumentException("Overlapping behavior changes require separate previews.");
-                XElement? destination = null;
-                if (change.Action == "clone")
-                {
-                    destination = Select(change.DestinationXPath);
-                    if (!destination.Name.LocalName.StartsWith("Hmi.", StringComparison.Ordinal)) throw new ArgumentException("Clone destination must be a native Hmi.* owner inside this resource.");
-                }
-                else if (change.Action != "remove" || change.Edits.Length != 0 || change.DestinationXPath.Length != 0) throw new ArgumentException("Use clone with an explicit destination/optional edits, or remove without destination/edits.");
-                operations.Add(Tuple.Create(change, selected, destination));
-            }
-            foreach (var operation in operations)
-            {
-                if (operation.Item3 != null && operations.Any(o => o.Item1.Action == "remove" && operation.Item3.AncestorsAndSelf().Contains(o.Item2))) throw new ArgumentException("Clone destination is removed by this preview.");
-                var selectedIds = new HashSet<string>(operation.Item2.DescendantsAndSelf().Attributes("ID").Select(a => a.Value), StringComparer.Ordinal);
-                if (operation.Item1.Action == "remove" && document.Descendants().Attributes("TargetID").Any(a => selectedIds.Contains(a.Value) && !a.Parent!.AncestorsAndSelf().Contains(operation.Item2)))
-                    throw new InvalidOperationException("Another exported object references this behavior; update that reference before removing it.");
-            }
-            foreach (var operation in operations)
-            {
-                if (operation.Item1.Action == "remove") { operation.Item2.Remove(); continue; }
-                XElement clone = NativeXmlIds.Clone(operation.Item2, document);
-                if (operation.Item1.Edits.Length != 0)
-                {
-                    // Edit paths are relative to this Document-wrapped clone, never the original screen.
-                    string xml = new ClassicXmlDocument(new XDocument(new XElement("Document", clone)).ToString(SaveOptions.DisableFormatting), preserveResourceIdentity: false).Edit(operation.Item1.Edits);
-                    clone = TransferFiles.Xml(xml).Root!.Elements().Single();
-                }
-                var list = operation.Item3!.Element("ObjectList");
-                NativeXmlIds.VerifyReferences(clone, document);
-                if (list == null) { list = new XElement("ObjectList"); operation.Item3.Add(list); }
-                list.Add(clone);
-            }
-            return document.ToString(SaveOptions.DisableFormatting);
+            return ChangeReviewedBehaviors(changes.Select(c => c == null ? null! : new ClassicBehaviorOperation { Action = c.Action, XPath = c.XPath,
+                ExpectedFingerprint = c.ExpectedFingerprint, DestinationXPath = c.DestinationXPath, Edits = c.Edits }).ToArray());
         }
         private XElement Select(string xpath)
         {

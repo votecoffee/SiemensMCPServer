@@ -22,6 +22,7 @@ namespace SiemensMCPServer.Extensions
                     Op("list_libraries", "List the attached project library and already-open global libraries with exact IDs and bounded metadata. Does not open, upgrade or save libraries.", "projectRead", false, LibraryInspectionOperations.Schema(false), "libraryCatalog"),
                     Op("browse_library", "Browse one returned library/path: folders, types, versions or master-copy content descriptions. Read-only metadata; no instance creation, dependency traversal or library updates.", "projectRead", false, LibraryInspectionOperations.Schema(true), "libraryCatalog") };
                 case "comfort": return new[] {
+                    Op("inspect_behaviors", "Inspect bounded exported event/animation prototypes and exact external Owner/Control link targets, with owner-subtree paging. Supplied XML only; native acceptance remains separate.", "local", false, BehaviorSchema(false)),
                     Op("inspect_references", "Inspect exported classic LinkList references, exact symbolic names and owning controls. Native-ID and unsupported roles are inspection-only; supplied XML only, with bounded pages and exact owner/type filters.", "local", false, ReferenceSchema(false)),
                     Op("rebind_references", "Change exact existing symbolic Tag, ControllerTag and Connection names with per-link fingerprints and old values. Preserves native quoting verbatim; does not verify target existence/types or rewrite scripts. Requires host 0.10.0+ whitespace-preserving contract.", "classicXml", true, ReferenceSchema(true), "screenText"),
                     Op("inspect_screen_items", "Inspect exact exported classic screen control prototypes, fingerprints and existing destination containers. Reports clone eligibility and standalone removal references; supplied XML only.", "local", false, ScreenItemSchema(false)),
@@ -34,7 +35,7 @@ namespace SiemensMCPServer.Extensions
                     Op("validate_package_bindings", "Check screen-to-HMI-tag references and symbolic PLC connection/type declarations in supplied XML. Offline only; no native connection partner verification.", "local", false, ComfortPackage.Schema(false)),
                     Op("inspect_xml", "Inspect supplied classic XML without attaching to TIA.", "local", false, xmlSchema),
                     Op("edit_xml", "Edit existing scalar XML fields in the selected native resource.", "classicXml", true, new { type = "object", required = new[] { "edits" }, properties = new { edits = new { type = "array", items = new { type = "object", required = new[] { "xPath", "expectedValue", "newValue" }, properties = new { xPath = new { type = "string" }, expectedValue = new { type = "string" }, newValue = new { type = "string" } } } } } }),
-                    Op("change_behaviors", "Clone/remove existing native behavior prototypes.", "classicXml", true, new { type = "object", required = new[] { "changes" } }),
+                    Op("change_behaviors", "Clone/remove frozen native event/animation prototypes. Clone owner types must match; explicit same-type Owner/Control maps may retarget external native links. Combined removals guard retained references; scalar edits preserve identity metadata.", "classicXml", true, BehaviorSchema(true), "screenText"),
                     Op("edit_text_list", "Transform supplied classic text-list translations.", "internal", true, new { type = "object" }),
                     Op("change_text_list", "Transform supplied classic text-list structure.", "internal", true, new { type = "object" }) };
                 case "unified": return new[] {
@@ -57,6 +58,12 @@ namespace SiemensMCPServer.Extensions
             JsonElement args = input.TryGetProperty("arguments", out var nested) ? nested : input;
             if (module == "comfort")
             {
+                if (operation == "inspect_behaviors")
+                {
+                    var request = ExtensionWire.Parse<ClassicBehaviorInspection>(args);
+                    RequireScreenXml(request.Xml);
+                    return ExtensionWire.Json(new ClassicXmlDocument(request.Xml).InspectBehaviors(request));
+                }
                 if (operation == "inspect_references")
                 {
                     var request = ExtensionWire.Parse<ClassicReferenceInspection>(args);
@@ -115,9 +122,10 @@ namespace SiemensMCPServer.Extensions
                 }
                 if (operation == "edit_xml" || operation == "change_behaviors")
                 {
-                    var doc = new ClassicXmlDocument(input.GetProperty("snapshot").GetString()!);
+                    string snapshot = input.GetProperty("snapshot").GetString()!; RequireScreenXml(snapshot);
+                    var doc = new ClassicXmlDocument(snapshot);
                     string xml = operation == "edit_xml" ? doc.Edit(ExtensionWire.Parse<ClassicXmlEdit[]>(args.GetProperty("edits")))
-                        : doc.ChangeBehaviors(ExtensionWire.Parse<ClassicBehaviorChange[]>(args.GetProperty("changes")));
+                        : doc.ChangeReviewedBehaviors(ExtensionWire.Parse<ClassicBehaviorOperation[]>(args.GetProperty("changes")));
                     return ExtensionWire.Json(new { candidateXml = xml, changes = args });
                 }
                 if (operation == "change_text_list")
@@ -150,6 +158,22 @@ namespace SiemensMCPServer.Extensions
         private static void RequireScreenXml(string xml)
         {
             if (xml == null || xml.Length == 0 || xml.Length > 16 * 1024 * 1024) throw new ArgumentException("Supply native screen XML within the 16 MiB limit.");
+        }
+        private static object BehaviorSchema(bool edit)
+        {
+            if (!edit) return new { type = "object", additionalProperties = false, required = new[] { "xml" }, properties = new {
+                xml = new { type = "string", minLength = 1, maxLength = 16777216 }, rootXPath = new { type = "string", maxLength = 4096 },
+                offset = new { type = "integer", minimum = 0, maximum = 5000 }, maxItems = new { type = "integer", minimum = 1, maximum = 200 } } };
+            return new { type = "object", additionalProperties = false, required = new[] { "changes" }, properties = new {
+                changes = new { type = "array", minItems = 1, maxItems = 100, items = new { type = "object", additionalProperties = false,
+                    required = new[] { "action", "xPath", "expectedFingerprint" }, properties = new {
+                        action = new { type = "string", @enum = new[] { "clone", "remove" } }, xPath = new { type = "string", maxLength = 4096 },
+                        expectedFingerprint = new { type = "string", pattern = "^[0-9a-f]{64}$" }, destinationXPath = new { type = "string", maxLength = 4096 },
+                        edits = new { type = "array", maxItems = 100, items = new { type = "object", required = new[] { "xPath", "expectedValue", "newValue" }, properties = new {
+                            xPath = new { type = "string", maxLength = 4096 }, expectedValue = new { type = "string", maxLength = 4096 }, newValue = new { type = "string", maxLength = 4096 } } } },
+                        referenceTargets = new { type = "array", maxItems = 50, items = new { type = "object", additionalProperties = false,
+                            required = new[] { "xPath", "expectedTargetXPath", "newTargetXPath" }, properties = new {
+                                xPath = new { type = "string", maxLength = 4096 }, expectedTargetXPath = new { type = "string", maxLength = 4096 }, newTargetXPath = new { type = "string", maxLength = 4096 } } } } } } } } };
         }
         private static object ReferenceSchema(bool edit)
         {

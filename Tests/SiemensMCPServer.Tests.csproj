@@ -46,6 +46,7 @@
     <Compile Include="../Mcp/TransferBundle.cs" Link="TransferBundle.cs" />
     <Compile Include="../Mcp/ClassicXmlDocument.cs" Link="ClassicXmlDocument.cs" />
     <Compile Include="../Mcp/ClassicXmlBehaviors.cs" Link="ClassicXmlBehaviors.cs" />
+    <Compile Include="../Mcp/ClassicBehaviorOperations.cs" Link="ClassicBehaviorOperations.cs" />
     <Compile Include="../Mcp/ClassicXmlLayout.cs" Link="ClassicXmlLayout.cs" />
     <Compile Include="../Mcp/ClassicScreenText.cs" Link="ClassicScreenText.cs" />
     <Compile Include="../Mcp/ClassicScreenItems.cs" Link="ClassicScreenItems.cs" />
