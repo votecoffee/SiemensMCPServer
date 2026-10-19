@@ -143,7 +143,7 @@ public sealed class ClassicScreenItemTests
     }
     [Fact] public void RejectsSelfOrRemovedDestinationAndExtraRemoveParameters()
     {
-        string xml = Screen(Complex + Group); var clone = Clone(xml, source: "G", destination: Row(xml, "G").GetProperty("containerXPath").GetString());
+        string xml = Screen(Complex + Group); var clone = Clone(xml, source: "A", destination: Row(xml, "G").GetProperty("containerXPath").GetString());
         Assert.Throws<ArgumentException>(() => Change(xml, Remove(xml, "Group"), clone));
         var group = Clone(xml, source: "Group", destination: Row(xml, "G").GetProperty("containerXPath").GetString()); Assert.Throws<ArgumentException>(() => Change(xml, group));
         var remove = Remove(xml, "A"); remove.Names = Array.Empty<ClassicScreenItemName>(); Assert.Throws<ArgumentException>(() => Change(xml, remove));
