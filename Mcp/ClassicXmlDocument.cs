@@ -119,9 +119,18 @@ namespace SiemensMCPServer.Mcp
                 changes.Add(new KeyValuePair<XObject, string>(node, edit.NewValue));
             }
             if (changes.All(c => (c.Key is XAttribute a ? a.Value : ((XElement)c.Key).Value) == c.Value)) throw new ArgumentException("No changes in preview.");
+            var previous = changes.Select(c => c.Key is XAttribute a ? a.Value : ((XElement)c.Key).Value).ToArray();
             foreach (var change in changes)
                 if (change.Key is XAttribute attribute) attribute.Value = change.Value;
                 else ((XElement)change.Key).Value = change.Value;
+            try { ValidateNativeLineGeometry(); }
+            catch
+            {
+                for (int i = 0; i < changes.Count; i++)
+                    if (changes[i].Key is XAttribute attribute) attribute.Value = previous[i];
+                    else ((XElement)changes[i].Key).Value = previous[i];
+                throw;
+            }
             return document.ToString(SaveOptions.DisableFormatting);
         }
     }

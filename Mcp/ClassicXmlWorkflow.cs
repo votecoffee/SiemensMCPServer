@@ -51,6 +51,7 @@ namespace SiemensMCPServer.Mcp
             string candidate = transform(original);
             if (candidate == null || candidate.Length > 16 * 1024 * 1024) throw new ArgumentException("Extension candidate XML exceeds the resource limit.");
             var baseline = new ClassicXmlDocument(original); var updated = new ClassicXmlDocument(candidate);
+            updated.ValidateNativeLineGeometry();
             if (baseline.Name != updated.Name || baseline.NativeType != updated.NativeType) throw new InvalidOperationException("Extension cannot change resource identity.");
             if (baseline.NativeType == "Hmi.Screen.ScreenSlidein"
                 && TransferFiles.Xml(original).Root!.Element(baseline.NativeType)?.Element("AttributeList")?.Element("SlideinType")?.Value

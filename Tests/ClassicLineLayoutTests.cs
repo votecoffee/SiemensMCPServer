@@ -126,4 +126,16 @@ public sealed class ClassicLineLayoutTests
         Assert.Throws<ArgumentException>(() => document.ArrangeLayout(new ClassicLayoutRequest { Action = "resize", Items = Select(xml), Width = 11 }));
         Assert.Equal(before, JsonSerializer.Serialize(document.LayoutCatalog(0, 200)));
     }
+    [Fact] public void ScalarEditsCannotAuthorInconsistentLineBoundsAndRestoreRejectedChanges()
+    {
+        string xml = Screen(Line("Line", 10, 80, 0)); var document = new ClassicXmlDocument(xml);
+        string before = JsonSerializer.Serialize(document.LayoutCatalog(0, 200));
+        var edit = new ClassicXmlEdit { XPath = "//Hmi.Screen.Line/AttributeList/Left", ExpectedValue = "10", NewValue = "11" };
+        Assert.Throws<ArgumentException>(() => document.Edit(new[] { edit }));
+        Assert.Equal(before, JsonSerializer.Serialize(document.LayoutCatalog(0, 200)));
+        var candidate = document.Edit(new[] { edit,
+            new ClassicXmlEdit { XPath = "//Hmi.Screen.Line/AttributeList/StartLeft", ExpectedValue = "10", NewValue = "11" },
+            new ClassicXmlEdit { XPath = "//Hmi.Screen.Line/AttributeList/EndLeft", ExpectedValue = "90", NewValue = "91" } });
+        Assert.True(Catalog(candidate).GetProperty("items")[0].GetProperty("geometryAvailable").GetBoolean());
+    }
 }

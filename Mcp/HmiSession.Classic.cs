@@ -36,6 +36,7 @@ namespace SiemensMCPServer.Mcp
                 if (!current.Editable || current.Fingerprint != expectedFingerprint) throw new InvalidOperationException("Classic resource changed or is protected; read it again.");
                 var baseline = new ClassicXmlDocument(File.ReadAllText(Path.Combine(current.Directory, current.XmlFile), Encoding.UTF8));
                 var candidate = new ClassicXmlDocument(File.ReadAllText(Path.Combine(candidateDirectory, before.XmlFile), Encoding.UTF8));
+                candidate.ValidateNativeLineGeometry();
                 if (candidate.Name != baseline.Name || candidate.NativeType != baseline.NativeType) throw new InvalidOperationException("Candidate resource identity differs.");
                 string expected = TransferFiles.SemanticHash(candidateDirectory);
                 object node = ResolveEngineering(before.HmiId, before.Path);

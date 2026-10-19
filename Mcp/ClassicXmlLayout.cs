@@ -61,6 +61,12 @@ namespace SiemensMCPServer.Mcp
             public XElement[] EndpointFields = Array.Empty<XElement>();
             public int[]? Endpoints;
         }
+        public void ValidateNativeLineGeometry()
+        {
+            if (!resource.Descendants().Any(n => n.Name == "Hmi.Screen.Line" && (string?)n.Attribute("CompositionName") == "ScreenItems")) return;
+            var invalid = LayoutItems().FirstOrDefault(i => i.Node.Name == "Hmi.Screen.Line" && i.Bounds == null);
+            if (invalid != null) throw new ArgumentException("Invalid native Line geometry: " + invalid.UnsupportedReason);
+        }
         private LayoutItem[] LayoutItems()
         {
             if (!new[] { "Hmi.Screen.Screen", "Hmi.Screen.ScreenTemplate", "Hmi.Screen.ScreenPopup", "Hmi.Screen.ScreenSlidein",
