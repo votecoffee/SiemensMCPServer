@@ -1,4 +1,4 @@
-# Reloadable feature extensions — 0.8.0
+# Reloadable feature extensions — 0.9.0
 
 The MCP host retains its connection to Codex and owns the Siemens attachment, single STA queue, transactions, offline checks, preview stores, candidate hashes and native readback. Pure feature workers receive JSON snapshots, never Siemens CLR objects. The host copies complete, hash-checked bundles into private generation directories before starting workers, so they do not lock the source of the next update.
 
@@ -15,7 +15,7 @@ flowchart LR
 
 - `tia_list_extensions`: loaded versions, worker/host process IDs, generation IDs and operation input schemas.
 - `tia_reload_extensions(module="comfort")`: replace one worker; empty module replaces all configured modules atomically.
-- `tia_read_extension`: run an advertised local, PLC or project snapshot inspection with `argumentsJson` matching its schema. PLC capture requires an attachment, explicit PLC/object paths and verified Offline state; source export writes local artifacts. Project library capture requires the exact attached-project path and inspects only project/already-open global library metadata.
+- `tia_read_extension`: run an advertised local, PLC or project snapshot inspection with `argumentsJson` matching its schema. PLC capture requires an attachment, explicit PLC/object paths and verified Offline state; source export writes local artifacts. Project capture requires the exact attached-project path and supports library metadata, active languages or native project-text XLSX export/read/search.
 - `tia_preview_extension`: prepare an advertised operation against an explicit native target/snapshot/fingerprint.
 - `tia_apply_extension_plan`: apply the authorized plan/hash through the broker; compile/save remain separate.
 
@@ -30,6 +30,8 @@ The 0.7.3 host adds the `plcRead` snapshot route for [readable-source export/sea
 The 0.7.4 host changes API loading, project graphics access and older Unified screen discovery. Those native adapters require a host upgrade/reconnect. The worker protocol and existing routes are unchanged; see [API compatibility](API-COMPATIBILITY.md).
 
 The 0.8.0 host adds `projectRead` and a fourth bundled `project` module for [library inspection](LIBRARY-INSPECTION.md). Upgrade/reconnect the host before installing that module; pre-0.8.0 hosts reject its route. Existing routes are unchanged; the newer PLC worker was checked on a 0.7.4 host. Discovery/reload-all includes module names from both bundled and external registries. Future project worker operations may format the same bounded library snapshot without another native route.
+
+The 0.9.0 host adds `projectLanguages` and `projectTexts` snapshots for [native project-text XLSX inspection](PROJECT-TEXTS.md). This requires another host upgrade/reconnect; 0.8.0 rejects the new kinds and keeps its previous project worker. The existing library capture contract is unchanged. Subsequent workbook formatting/search operations can reload on the same snapshot contract.
 
 Reload uses the native engineering queue and waits for active operations to finish. All replacements must pass file-integrity checks, protocol negotiation and worker startup/self-tests before activation. Successful reload invalidates **all** outstanding previews, including those from dedicated tools. Re-read and preview afterward. Rejected replacements retain the old workers and previews. Reload never detaches, saves, discards changes or reopens the project. Crashed or timed-out pure workers require reload; the host never replays a native write automatically. Replies have a 30-second deadline and 32 MiB frame limit.
 
@@ -65,7 +67,9 @@ UTF-8 JSON-line requests contain `id`, `operation`, `input`; responses return th
 
 `plcRead` operations must belong to module `plc`, set `preview=false` and declare `snapshotKind="source"` or `"crossReferences"`. Caller arguments contain exact `plcId`/`path`, host-validated `capture`, and worker-specific `options`. The host calls the worker with `phase="validate"` before capture, then with `phase="snapshot"` and the serialized native snapshot. The worker must support both phases. Capture settings come from the caller and are never taken from worker output. The route cannot import, generate blocks, compile, save or navigate native services beyond the two declared read capabilities. Workers normalize one optional UTF-8 BOM at the first input frame; JSON content is preserved. Failed worker starts retain bounded stderr diagnostics and the previous generation.
 
-`projectRead` operations must belong to module `project`, set `preview=false` and declare `snapshotKind="libraryCatalog"`. Arguments contain exact `expectedProjectPath`, host-validated `capture` (`libraryId`, `path`, `offset`, `maxRows`) and worker-specific `options`. Empty `libraryId` lists libraries; a returned ID selects a library/path. The same validate/capture/snapshot sequence applies. The broker restricts capture to documented metadata compositions and scalar fields; it does not open/upgrade/save libraries, instantiate contents, traverse dependencies or expose native handles. Client-supplied snapshot fields are rejected. Reads do not require `--allow-writes`.
+`projectRead` operations must belong to module `project`, set `preview=false` and declare a known snapshot kind. `libraryCatalog` arguments contain exact `expectedProjectPath`, host-validated `capture` (`libraryId`, `path`, `offset`, `maxRows`) and worker-specific `options`. Empty `libraryId` lists libraries; a returned ID selects a library/path. The broker restricts capture to documented metadata compositions and scalar fields; it does not open/upgrade/save libraries, instantiate contents, traverse dependencies or expose native handles.
+
+`projectLanguages` takes empty capture and returns active culture metadata. `projectTexts` requires explicit active `sourceLanguage`/`targetLanguage`, exports a new native XLSX to a host-owned artifact directory and supplies bounded base64url bytes plus the exact file length/hash. Workers verify the snapshot and inspect it without file extraction, Excel, formula evaluation or external-link access. These kinds use the same validate/capture/snapshot phases. No native project-text import or language activation is exposed. Client-supplied snapshot/destination fields are rejected. Project reads do not require `--allow-writes`.
 
 Comfort supports optional `recipes.json` presets covered by the bundle manifest and loaded at startup. This example adds an operation without changing host code:
 

@@ -13,7 +13,7 @@ from test_extension_reload import Client
 from test_library_inspection import stage
 
 
-def workbook():
+def workbook(budget=False):
     main = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
     rel = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
     package = 'http://schemas.openxmlformats.org/package/2006/relationships'
@@ -24,6 +24,11 @@ def workbook():
         'xl/sharedStrings.xml': f'<sst xmlns="{main}"><si><r><t xml:space="preserve">Über 😀 </t></r><r><t>Über</t></r></si></sst>',
         'xl/worksheets/sheet.xml': f'<worksheet xmlns="{main}"><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="str"><f>HYPERLINK("https://example.invalid/REMOTE")</f><v>Cache</v></c></row></sheetData></worksheet>',
     }
+    if budget:
+        text = 'x' * 4096
+        parts['xl/sharedStrings.xml'] = f'<sst xmlns="{main}"><si><t>{text}</t></si></sst>'
+        cells = (f'<c t="s"><f>{text}</f><v>0</v></c>') * 100
+        parts['xl/worksheets/sheet.xml'] = f'<worksheet xmlns="{main}"><sheetData><row r="1">{cells}</row></sheetData></worksheet>'
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
         for path, text in parts.items():
@@ -40,6 +45,10 @@ def worker_probe(executable):
     search = {**args, 'options': {'query': 'über', 'caseSensitive': False, 'maxMatches': 1}}
     formula = {**args, 'options': {'query': 'REMOTE', 'caseSensitive': True}}
     bad = {**snapshot, 'fileSha256': 'tamper'}
+    large = workbook(budget=True)
+    large_snapshot = {**snapshot, 'bytes': len(large), 'fileSha256': hashlib.sha256(large).hexdigest(),
+                      'workbookBase64Url': base64.urlsafe_b64encode(large).decode().rstrip('=')}
+    large_args = {**args, 'options': {'maxCells': 100, 'maxCharacters': 4096}}
     packets = [
         {'id': 1, 'operation': '$hello', 'input': {}},
         {'id': 2, 'operation': 'read_project_texts', 'input': {'phase': 'validate', 'arguments': args}},
@@ -47,13 +56,14 @@ def worker_probe(executable):
         {'id': 4, 'operation': 'find_in_project_texts', 'input': {'phase': 'snapshot', 'arguments': search, 'snapshot': snapshot}},
         {'id': 5, 'operation': 'find_in_project_texts', 'input': {'phase': 'snapshot', 'arguments': formula, 'snapshot': snapshot}},
         {'id': 6, 'operation': 'read_project_texts', 'input': {'phase': 'snapshot', 'arguments': args, 'snapshot': bad}},
+        {'id': 7, 'operation': 'read_project_texts', 'input': {'phase': 'snapshot', 'arguments': large_args, 'snapshot': large_snapshot}},
     ]
     result = subprocess.run([str(executable), '--module=project'],
         input='\ufeff' + '\n'.join(json.dumps(p, ensure_ascii=False) for p in packets) + '\n',
         capture_output=True, encoding='utf-8', timeout=30, creationflags=subprocess.CREATE_NO_WINDOW)
     assert result.returncode == 0, result.stderr
     replies = [json.loads(line) for line in result.stdout.splitlines()]
-    assert [r['id'] for r in replies] == list(range(1, 7))
+    assert [r['id'] for r in replies] == list(range(1, 8))
     assert {'projectTexts', 'projectLanguages'} <= {op['snapshotKind'] for op in replies[0]['result']['operations']}
     assert replies[1]['result']['validated']
     cells = replies[2]['result']
@@ -63,6 +73,9 @@ def worker_probe(executable):
     assert found['totalMatches'] == 2 and found['truncated'] and '😀' in found['matches'][0]['context']
     assert replies[4]['result']['totalMatches'] == 0
     assert 'hash mismatch' in replies[5]['error'].lower()
+    page = replies[6]['result']
+    assert page['payloadLimited'] and page['hasMore'] and 0 < len(page['cells']) < 100
+    assert page['nextOffset'] == len(page['cells'])
 
 
 def main():

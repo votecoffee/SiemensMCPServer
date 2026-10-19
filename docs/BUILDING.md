@@ -101,6 +101,14 @@ py -3 -B -X utf8 scripts/test_library_inspection.py Mcp/bin/Release/V15.1/net48/
 
 Optional `--previous-host` accepts a 0.7.4 executable with its bundled workers to verify that the newer existing PLC module still loads on that host. The new project module requires host 0.8.0; see [library inspection](../plugin/LIBRARY-INSPECTION.md).
 
+The project-text probe uses a synthetic XLSX with the real net48 worker and checks Unicode/cell paging/search, hash failures, host preflight, reload and optional rejection/rollback on a 0.8.0 host. It never attaches or performs a native text export:
+
+```powershell
+py -3 -B -X utf8 scripts/test_project_texts.py Mcp/bin/Release/V15.1/net48/SiemensMCPServer.Mcp.exe
+```
+
+Use `--previous-host` with an extracted 0.8.0 executable retaining its bundled project worker for the snapshot-kind upgrade check. See [project-text inspection](../plugin/PROJECT-TEXTS.md) for capture limits and native acceptance boundaries.
+
 ## Desktop verification
 
 The desktop project uses SDK-style .NET Framework 4.8 builds and locked NuGet dependencies. Its native transfer adapter source is shared with MCP, without a reference to the MCP executable or host dependencies.
