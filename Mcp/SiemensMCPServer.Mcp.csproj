@@ -11,7 +11,7 @@
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <AssemblyName>SiemensMCPServer.Mcp</AssemblyName>
-    <Version>0.8.0</Version>
+    <Version>0.9.0</Version>
     <OutputPath>bin/$(Configuration)/$(TiaPortalVersion)/</OutputPath>
     <IntermediateOutputPath>obj/$(TiaPortalVersion)/$(Configuration)/</IntermediateOutputPath>
   </PropertyGroup>
@@ -21,11 +21,13 @@
     <Compile Include="../Extensions/ComfortPackage.cs" Link="Extensions/ComfortPackage.cs" />
     <Compile Include="../Extensions/PlcInspectionOperations.cs" Link="Extensions/PlcInspectionOperations.cs" />
     <Compile Include="../Extensions/LibraryInspectionOperations.cs" Link="Extensions/LibraryInspectionOperations.cs" />
+    <Compile Include="../Extensions/ProjectTextOperations.cs" Link="Extensions/ProjectTextOperations.cs" />
     <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
     <PackageReference Include="YamlDotNet" Version="18.1.0" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.IO.Compression" />
     <Compile Include="../TiaPortalAssemblyResolver.cs" Link="Shared/TiaPortalAssemblyResolver.cs" />
     <Compile Include="../Shared/*.cs" Link="Shared/%(Filename)%(Extension)" />
   </ItemGroup>

@@ -165,6 +165,9 @@ def run(executable, native=False):
                 assert profile["comfortXmlResourceEdits"] is True and profile["plcEngineering"]["available"] is True, profile
                 if host_version >= (0, 8, 0):
                     assert profile["projectLibraries"]["projectLibraryApiPresent"] and profile["projectLibraries"]["openGlobalLibrariesApiPresent"], profile
+                if host_version >= (0, 9, 0):
+                    assert profile["projectTexts"]["nativeExportApiPresent"] and profile["projectTexts"]["activeLanguageApiPresent"], profile
+                    assert profile["projectTexts"]["importImplemented"] is False, profile
                 api_major = int(profile["apiVersion"].split(".")[0])
                 if 16 <= api_major <= 19:
                     assert profile["unifiedDiscovery"] and profile["unifiedScreenInspection"] and profile["unifiedScreenEdits"], profile

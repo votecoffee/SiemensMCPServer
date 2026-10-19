@@ -188,7 +188,7 @@ public sealed class LibraryInspectionTests
     }
     [Fact] public void ProjectSnapshotRouteCannotBeUsedAsAWriteOrByAnotherModule()
     {
-        var operation = FeatureOperations.Describe("project").First();
+        var operation = FeatureOperations.Describe("project").Single(o => o.Name == "list_libraries");
         Assert.True(operation.IsCompatible("project")); Assert.False(operation.IsCompatible("plc"));
         operation.Preview = true; Assert.False(operation.IsCompatible("project"));
         operation.Preview = false; operation.SnapshotKind = "source"; Assert.False(operation.IsCompatible("project"));

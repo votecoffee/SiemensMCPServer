@@ -3,11 +3,12 @@
     <OutputType>Exe</OutputType><TargetFramework>net48</TargetFramework><PlatformTarget>x64</PlatformTarget>
     <LangVersion>latest</LangVersion><Nullable>annotations</Nullable><AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType><RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <AssemblyName>SiemensMCPServer.ExtensionWorker</AssemblyName><Version>0.8.0</Version>
+    <AssemblyName>SiemensMCPServer.ExtensionWorker</AssemblyName><Version>0.9.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Text.Json" Version="10.0.10"/><PackageReference Include="YamlDotNet" Version="18.1.0"/>
     <Reference Include="System.Xml.Linq"/><Reference Include="System.Drawing"/>
+    <Reference Include="System.IO.Compression"/>
     <Compile Include="../Shared/ITextListDocument.cs" Link="Shared/ITextListDocument.cs"/>
     <Compile Include="../Shared/TextListDocument.cs" Link="Shared/TextListDocument.cs"/>
     <Compile Include="../Shared/TextListStructure.cs" Link="Shared/TextListStructure.cs"/>
@@ -22,6 +23,8 @@
     <Compile Include="../Mcp/PlcInspection.cs" Link="Features/PlcInspection.cs"/>
     <Compile Include="../Mcp/LibraryInspection.cs" Link="Features/LibraryInspection.cs"/>
     <Compile Include="../Mcp/LibraryCatalogReader.cs" Link="Features/LibraryCatalogReader.cs"/>
+    <Compile Include="../Mcp/ProjectTextInspection.cs" Link="Features/ProjectTextInspection.cs"/>
+    <Compile Include="../Mcp/ProjectTextWorkbook.cs" Link="Features/ProjectTextWorkbook.cs"/>
     <Compile Include="../Mcp/PlcPolicy.cs" Link="Core/PlcPolicy.cs"/>
   </ItemGroup>
 </Project>

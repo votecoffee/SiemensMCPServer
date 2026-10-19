@@ -23,6 +23,9 @@
     <Compile Include="../Extensions/LibraryInspectionOperations.cs" Link="LibraryInspectionOperations.cs" />
     <Compile Include="../Mcp/LibraryInspection.cs" Link="LibraryInspection.cs" />
     <Compile Include="../Mcp/LibraryCatalogReader.cs" Link="LibraryCatalogReader.cs" />
+    <Compile Include="../Extensions/ProjectTextOperations.cs" Link="ProjectTextOperations.cs" />
+    <Compile Include="../Mcp/ProjectTextInspection.cs" Link="ProjectTextInspection.cs" />
+    <Compile Include="../Mcp/ProjectTextWorkbook.cs" Link="ProjectTextWorkbook.cs" />
     <Compile Include="../Mcp/PlcReferenceReader.cs" Link="PlcReferenceReader.cs" />
     <Compile Include="../Extensions/FeatureRecipes.cs" Link="FeatureRecipes.cs" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />

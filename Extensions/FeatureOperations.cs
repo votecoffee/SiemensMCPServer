@@ -16,6 +16,9 @@ namespace SiemensMCPServer.Extensions
             switch (module)
             {
                 case "project": return new[] {
+                    Op("list_project_languages", "List already-active project cultures and editing/reference language flags. Requires the exact attached project path; never activates a language.", "projectRead", false, ProjectTextOperations.Schema("list_project_languages"), "projectLanguages"),
+                    Op("read_project_texts", "Export native project texts for two explicit active cultures to retained XLSX, then read bounded cells/sheets. Fresh export per call; includes headers/metadata, with no translation-column inference or import.", "projectRead", false, ProjectTextOperations.Schema("read_project_texts"), "projectTexts"),
+                    Op("find_in_project_texts", "Export project-text XLSX and search decoded cells/cached formula values for literal text. Includes hidden sheets, headers and metadata. Never evaluates formulas, opens external links, edits or imports the workbook.", "projectRead", false, ProjectTextOperations.Schema("find_in_project_texts"), "projectTexts"),
                     Op("list_libraries", "List the attached project library and already-open global libraries with exact IDs and bounded metadata. Does not open, upgrade or save libraries.", "projectRead", false, LibraryInspectionOperations.Schema(false), "libraryCatalog"),
                     Op("browse_library", "Browse one returned library/path: folders, types, versions or master-copy content descriptions. Read-only metadata; no instance creation, dependency traversal or library updates.", "projectRead", false, LibraryInspectionOperations.Schema(true), "libraryCatalog") };
                 case "comfort": return new[] {
@@ -41,7 +44,8 @@ namespace SiemensMCPServer.Extensions
         public static JsonElement Execute(string module, string operation, JsonElement input)
         {
             if (!Describe(module).Any(o => o.Name == operation)) throw new ArgumentException("Unknown extension operation.");
-            if (module == "project") return LibraryInspectionOperations.Execute(operation, input);
+            if (module == "project") return operation == "list_libraries" || operation == "browse_library"
+                ? LibraryInspectionOperations.Execute(operation, input) : ProjectTextOperations.Execute(operation, input);
             JsonElement args = input.TryGetProperty("arguments", out var nested) ? nested : input;
             if (module == "comfort")
             {

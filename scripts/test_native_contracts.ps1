@@ -110,6 +110,13 @@ if ($Version -eq 'V19') {
     }
 }
 $projectType = Get-ApiType 'Siemens.Engineering.Project'
+$textExport = $projectType.GetMethod('ExportProjectTexts', [Type[]]@([IO.FileInfo], [Globalization.CultureInfo], [Globalization.CultureInfo]))
+Assert-Contract ($null -ne $textExport -and $textExport.ReturnType -eq [void]) 'Project-text XLSX export uses explicit source/target cultures and a file output'
+$languageSettings = Get-ApiType 'Siemens.Engineering.LanguageSettings'
+foreach ($member in @('ActiveLanguages', 'ReferenceLanguage', 'EditingLanguage')) {
+    Assert-Contract ($null -ne $languageSettings.GetProperty($member)) ('Project languages expose ' + $member)
+}
+Assert-Contract ((Get-ApiType 'Siemens.Engineering.Language').GetProperty('Culture').PropertyType -eq [Globalization.CultureInfo]) 'Project language identities use native CultureInfo values'
 Assert-Contract ($null -ne $projectType.GetProperty('ProjectLibrary')) 'Project exposes its library without opening a separate file'
 Assert-Contract ($null -ne (Get-ApiType 'Siemens.Engineering.TiaPortal').GetProperty('GlobalLibraries')) 'Portal exposes its already-open global library composition'
 foreach ($entry in @(

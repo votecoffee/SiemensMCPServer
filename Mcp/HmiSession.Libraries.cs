@@ -6,7 +6,8 @@ namespace SiemensMCPServer.Mcp
     internal sealed partial class HmiSession : ILibraryInspectionBackend
     {
         public object ReadProjectExtension(string operation, string kind, JsonElement arguments)
-            => new LibraryInspectionWorkflow(this, features).Read(operation, kind, arguments);
+            => kind == "libraryCatalog" ? new LibraryInspectionWorkflow(this, features).Read(operation, kind, arguments)
+                : new ProjectTextWorkflow(this, features).Read(operation, kind, arguments);
 
         public LibrarySnapshot CaptureLibraries(string expectedProjectPath, LibraryCapture capture)
         {

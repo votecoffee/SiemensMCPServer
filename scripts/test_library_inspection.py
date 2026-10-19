@@ -36,8 +36,9 @@ def worker_probe(executable):
     replies = [json.loads(line) for line in result.stdout.splitlines()]
     assert [r['id'] for r in replies] == [1, 2, 3, 4]
     operations = replies[0]['result']['operations']
-    assert {o['name'] for o in operations} == {'list_libraries', 'browse_library'}
-    assert all(o['route'] == 'projectRead' and o['snapshotKind'] == 'libraryCatalog' and not o['preview'] for o in operations)
+    library_operations = [o for o in operations if o['name'] in ('list_libraries', 'browse_library')]
+    assert len(library_operations) == 2
+    assert all(o['route'] == 'projectRead' and o['snapshotKind'] == 'libraryCatalog' and not o['preview'] for o in library_operations)
     assert replies[1]['result']['validated'] and not replies[1].get('error')
     assert replies[2]['result']['rows'][0]['name'] == 'Über 😀'
     assert replies[2]['result']['rows'][0]['fields']['Author'] == 'テスト'

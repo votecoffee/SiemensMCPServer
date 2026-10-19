@@ -35,6 +35,7 @@ namespace SiemensMCPServer.Mcp
                     downloadOrRuntimeControl = false },
                 plcInspection = PlcInspectionNative.Capabilities(),
                 projectLibraries = LibraryInspectionNative.Capabilities(),
+                projectTexts = ProjectTextNative.Capabilities(),
                 unifiedScreenEdits = edits, unifiedScreenGroups = Has(software, "ScreenGroups"),
                 unifiedTextListNativeApiPresent = Has(software, "HmiTextLists"), unifiedTextListEditing = UnifiedTextListNative.Supports(software),
                 engineeringObjectTools = new { browse = true, typedScalarEdits = true, nativeCreationAndDeletion = "per-object self-description", nativeImportExport = "per-object method presence", bulkImport = "native resources and supported folder hierarchy only" },
