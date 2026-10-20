@@ -1,6 +1,6 @@
 # Standalone app host
 
-Plugin 0.18.1 uses framework 0.17.0, Python MCP SDK 2.3.0 and matching wire types. Its 14 frontend tools discover and invoke the existing 51 Siemens engineering operations. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. The framework's `broker_status` tool reports this app host's status.
+Plugin 0.18.2 uses framework 0.17.0, Python MCP SDK 2.3.0 and matching wire types. Its 14 frontend tools discover and invoke the existing 51 Siemens engineering operations. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. The framework's `broker_status` tool reports this app host's status.
 
 ## Engineering workflow
 
@@ -74,6 +74,8 @@ Existing chat connections may try to restart the idle host during an update. For
 ```
 
 Then rerun the normal installer against that same verified package to update the plugin selection. `--allow-writes` retains the usual installation ceiling; native safeguards remain independent. Old launchers reject a mismatched active deployment rather than restarting retired code. This command never forces a process to exit or acknowledges evidence automatically.
+
+Version 0.18.2 also invokes the framework's supported `ApplicationHost.acknowledge_reload_outcome` app-admin API for those exact reviewed receipts. This preserves the original request rows and allows the framework to publish the new backend. The command verifies the actual backend initialization version against the candidate plugin, rather than treating updated plugin files as proof that the backend changed. Discovery during this check only initializes/lists metadata; it does not acquire a TIA context or run project operations.
 
 ## Optional APIs and validation scope
 

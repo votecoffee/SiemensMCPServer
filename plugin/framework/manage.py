@@ -1,5 +1,6 @@
 """App-owned framework installation/lifecycle; no Universal Tools registration route."""
 import argparse
+import asyncio
 import hashlib
 from contextlib import contextmanager, nullcontext
 from importlib.metadata import version
@@ -15,7 +16,7 @@ import time
 import venv
 
 from integrity import FRAMEWORK_COMMIT, FRAMEWORK_VERSION, MCP_VERSION, atomic_json, digest, ordinary, verify_payload, verify_wheels
-from reconciliation import reconcile, require_reconciled
+from reconciliation import reconcile, require_reconciled, pending_rows, valid_attestation
 
 SERVICE = 'siemens-engineering'
 INSTRUCTIONS = (
@@ -273,6 +274,29 @@ def ensure_running(config_path, config):
         raise ValueError('Siemens app host startup timed out; no request was replayed')
 
 
+async def activate_reconciled(config, request_ids):
+    """Use the framework's app-admin API; retain every original write claim."""
+    from universal_tools.framework import ApplicationHost
+    from universal_tools.models import load_settings
+    state = ordinary(config['state'])
+    settings = load_settings(state)
+    rows = {row['request_id']: row for row in pending_rows(state)}
+    for request_id in request_ids:
+        if request_id not in rows or not valid_attestation(state, rows[request_id]):
+            raise ValueError('Framework activation requires intact reviewed outcome evidence for '+request_id)
+    async with ApplicationHost(state, Path(config['publication']), max_request_body_bytes=settings.max_request_body_bytes) as host:
+        for request_id in request_ids:
+            await host.acknowledge_reload_outcome(request_id, expected_updated_at=rows[request_id]['updated_at'])
+        refreshed = await host.refresh()
+        if any(row['status'] in {'deferred', 'rejected'} for row in refreshed.get('backend_publications', [])):
+            raise ValueError('Framework backend publication remains deferred/rejected; original state was retained')
+        description = await host.client().invoke('describe_service', {'service_id': SERVICE})
+        expected_version = json.loads((Path(config['payloadRoot'])/'plugin.json').read_bytes())['version']
+        if description.is_error or description.structured_content['initialization']['serverInfo']['version'] != expected_version:
+            raise ValueError('Framework backend initialization does not match the installed plugin version')
+        return {'backendVersion': expected_version, 'frameworkPublication': 'applied', 'nativeProjectOperationPerformed': False}
+
+
 def reconcile_upgrade(args, config):
     if not args.acknowledge_outcome or not args.reconciliation_batch or not args.payload:
         raise ValueError('Supply a reviewed --reconciliation-batch, --payload and --acknowledge-outcome')
@@ -307,7 +331,9 @@ def reconcile_upgrade(args, config):
         # launchers then fail their payload fingerprint check, rather than
         # restarting the retired deployment between reconciliation and install.
         configure(args, _startup_locked=True)
-        return {'state': 'reconciled-upgrade-ready', 'requests': receipts, 'nativeOperationPerformed': False}
+        configured = json.loads((args.root/'active.json').read_bytes())
+        activation = asyncio.run(activate_reconciled(configured, [review['requestId'] for review in batch]))
+        return {'state': 'reconciled-upgrade-ready', 'requests': receipts, **activation, 'nativeOperationPerformed': False}
 
 
 def main():
@@ -349,8 +375,12 @@ def main():
     elif args.command == 'reconcile-request':
         if not args.evidence_json:
             raise ValueError('Supply --evidence-json for the independently reviewed outcome')
-        print(json.dumps(reconcile(state, args.request_id, args.expected_fingerprint, args.evidence_json,
-            args.expected_evidence_sha256, args.summary, args.acknowledge_outcome), indent=2))
+        from universal_tools.daemon import InstanceLock
+        with InstanceLock(state/'startup.lock'):
+            receipt = reconcile(state, args.request_id, args.expected_fingerprint, args.evidence_json,
+                args.expected_evidence_sha256, args.summary, args.acknowledge_outcome, _startup_locked=True)
+            activation = asyncio.run(activate_reconciled(config, [args.request_id]))
+            print(json.dumps({**receipt, **activation}, indent=2))
     elif args.command == 'serve':
         from universal_tools.framework import serve_application
         serve_application(state, Path(config['publication']))

@@ -121,9 +121,11 @@ class ReconciliationTests(unittest.TestCase):
                 pass
             require_reconciled(self.state)
             configured.append(True)
+            (self.root/'active.json').write_text(json.dumps({'state': str(self.state)}))
         with patch.object(manage, '__file__', str(manager)), patch.object(manage, 'verify_payload'), \
              patch.object(manage, 'configure', side_effect=publish), patch('universal_tools.cli.probe', return_value=False), \
-             patch('universal_tools.cli.stop') as stop, patch('universal_tools.models.load_settings'):
+             patch('universal_tools.cli.stop') as stop, patch('universal_tools.models.load_settings'), \
+             patch.object(manage, 'activate_reconciled', return_value={'frameworkPublication': 'applied'}):
             result = manage.reconcile_upgrade(args, {'state': str(self.state)})
             self.assertEqual(result['state'], 'reconciled-upgrade-ready')
             stop.assert_not_called()

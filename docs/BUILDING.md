@@ -167,6 +167,6 @@ The installer profile uses disposable Codex homes and fake CLI commands to verif
 
 ## App-owned framework build
 
-Plugin 0.18.1 pins `universal-codex-tools==0.17.0`, MCP Python 2.3.0 and matching wire types in `plugin/framework/requirements-lock.txt`. Build or obtain a verified wheel from framework commit `87157f88de4a5320d2712224216b1e6f18a0ec8d`, then supply it through `-FrameworkWheel`. Packaging checks its RECORD/metadata and collects the exact binary dependency wheels. Runtime installation uses `--no-index` and the bundled wheelhouse. The C# SDK remains 2.2.0.
+Plugin 0.18.2 pins `universal-codex-tools==0.17.0`, MCP Python 2.3.0 and matching wire types in `plugin/framework/requirements-lock.txt`. Build or obtain a verified wheel from framework commit `87157f88de4a5320d2712224216b1e6f18a0ec8d`, then supply it through `-FrameworkWheel`. Packaging checks its RECORD/metadata and collects the exact binary dependency wheels. Runtime installation uses `--no-index` and the bundled wheelhouse. The C# SDK remains 2.2.0.
 
 Use `scripts/test_framework_integrity.py` for deployment/bundle rejection controls and the pinned framework environment for `scripts/test_framework_adapter.py <extracted>/server/SiemensMCPServer.Mcp.exe`. The latter exercises two independent app frontends, complete direct/routed results, review guards, reload, receipts and a lost reply with a durable restart barrier, using a test-only native provider. Actual native acceptance remains separate. See [app lifecycle](../plugin/APP-HOST.md).

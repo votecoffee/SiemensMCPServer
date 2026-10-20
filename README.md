@@ -76,7 +76,7 @@ The installer installs the standalone Siemens Codex plugin with its app-owned fr
 
 Fresh installations and upgrades always install the standalone plugin. Obsolete integration-choice files do not affect installation. Concurrent installers using one root are rejected before settings changes.
 
-Version 0.18.1 also retains [evidence-backed request reconciliation](plugin/APP-HOST.md#reconciled-requests-and-upgrades) for upgrades after independently reviewed interrupted work. Original error/uncertainty receipts and replay protection remain intact; the installer does not acknowledge outcomes automatically.
+Version 0.18.2 also retains [evidence-backed request reconciliation](plugin/APP-HOST.md#reconciled-requests-and-upgrades) for upgrades after independently reviewed interrupted work. Original error/uncertainty receipts and replay protection remain intact; the installer does not acknowledge outcomes automatically.
 
 ## Usage
 
