@@ -8,9 +8,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Shared/SafeguardSettings.cs" Link="SafeguardSettings.cs" />
-    <Compile Include="../Mcp/BrokerPublication.cs" Link="BrokerPublication.cs" />
-    <EmbeddedResource Include="../plugin/*.md" LogicalName="SiemensWorkflow/%(Filename)%(Extension)" />
-    <EmbeddedResource Include="../plugin/skills/**/SKILL.md" LogicalName="SiemensWorkflow/skills/%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="../Analysis/*.cs" Link="Analysis/%(Filename)%(Extension)"/>
     <Compile Include="../Shared/DesktopTransferSelection.cs" Link="DesktopTransferSelection.cs" />
     <Compile Include="../Shared/CompileServiceResolver.cs" Link="CompileServiceResolver.cs" />

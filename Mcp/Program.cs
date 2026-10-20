@@ -49,7 +49,7 @@ namespace SiemensMCPServer.Mcp
                 builder.Services.AddMcpServer(options => {
                     options.ServerInfo = new ModelContextProtocol.Protocol.Implementation { Name = sessionFactory == null ? "siemens-mcp-server" : "siemens-mcp-server-fixture", Version = typeof(Program).Assembly.GetName().Version!.ToString(3) };
                     options.ServerInstructions = "Use explicit TIA process, project path, and HMI IDs. Read a text list, preview edits, and inspect the diff before applying authorized changes. Apply never saves; compile and save are separate tools. Classic and capability-checked Unified operations; use tia_get_api_capabilities and the target family. Do not retry an uncertain write; inspect current state first.";
-                }).WithStdioServerTransport().WithTools<McpTools>().WithTools<BrokerTools>();
+                }).WithStdioServerTransport().WithTools<McpTools>();
                 using (var host = builder.Build()) await host.RunAsync().ConfigureAwait(false);
                 return 0;
             }

@@ -120,7 +120,7 @@ public sealed class UnifiedTests
         Assert.Throws<InvalidOperationException>(() => workflow.Apply(preview.GetProperty("planId").GetString(), preview.GetProperty("candidateSha256").GetString()));
     }
     [Fact]
-    public void ExtensionCannotBypassBrokerFieldAndIdentityPolicy()
+    public void ExtensionCannotBypassHostFieldAndIdentityPolicy()
     {
         var before = State(); var candidate = State(); candidate.HmiId = "other";
         Assert.Throws<InvalidOperationException>(() => before.RequireAllowedCandidate(candidate));

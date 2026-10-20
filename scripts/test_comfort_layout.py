@@ -86,7 +86,7 @@ def probe_host(executable, bundle, root, repo):
     try:
         initial = client.call('tia_list_extensions')
         before = next(m for m in initial['modules'] if m['module'] == 'comfort')
-        tools = client.send('tools/list', {})['tools']; assert len(tools) in (51, 54)
+        tools = client.send('tools/list', {})['tools']; assert len(tools) == 51
         def stage(source):
             result = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(repo/'build/Install-Extension.ps1'),
                                      '-BundleDirectory', str(source), '-ExtensionRoot', str(root/'external')],

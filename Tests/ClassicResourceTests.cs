@@ -97,7 +97,7 @@ public sealed class ClassicResourceTests
         workflow.Apply(id, hash); Assert.Equal(1, fixture.Attempts);
         Assert.Throws<InvalidOperationException>(() => workflow.Apply(id, hash));
     }
-    [Fact] public void BrokerRejectsExtensionIdentityAndSlideinEdgeChanges()
+    [Fact] public void HostRejectsExtensionIdentityAndSlideinEdgeChanges()
     {
         using var fixture = new Fixture(); var workflow = new ClassicXmlWorkflow(fixture, fixture.Plans);
         var before = fixture.ReadClassicResource("hmi", "screen");
@@ -116,7 +116,7 @@ public sealed class ClassicResourceTests
         File.AppendAllText(Path.Combine(plan.GetProperty("artifactDirectory").GetString()!, "candidate-files", "image.png"), "tamper");
         Assert.Throws<InvalidOperationException>(() => workflow.Apply(plan.GetProperty("planId").GetString()!, plan.GetProperty("candidateSha256").GetString()!)); Assert.Equal(0, fixture.Attempts);
     }
-    [Fact] public void BrokerRejectsInconsistentLineCandidatesFromAnExtensionBeforeStaging()
+    [Fact] public void HostRejectsInconsistentLineCandidatesFromAnExtensionBeforeStaging()
     {
         using var fixture = new Fixture(); var workflow = new ClassicXmlWorkflow(fixture, fixture.Plans);
         var before = fixture.ReadClassicResource("hmi", "screen");

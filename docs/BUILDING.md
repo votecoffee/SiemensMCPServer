@@ -154,6 +154,13 @@ powershell.exe -NoProfile -STA -File scripts/test_desktop_smoke.ps1 -DesktopDire
 
 These use isolated settings files. They verify production-host permission gates before native dispatch, live policy refresh, configured scheduling, malformed/deleted policy rejection, and save/reload through the real desktop property grid. They do not attach or invoke native project writes. Unit tests cover preview expiry, revoked permissions after preview and stale-editor rejection. See [Safeguards](../plugin/SAFEGUARDS.md).
 
-## Optional shared framework profile
+## Standalone adapter verification
 
-The isolated baseline is framework 0.14.0 / MCP Python 2.3.0, recorded in `framework/compatibility.json` with `productionAdoption: false`. Use a separately verified wheel and `framework/requirements-lock.txt` in a new private environment, then run `scripts/test_app_framework.py` against a freshly extracted Siemens package. The profile rejects mismatched framework/SDK/wire-types versions before importing the SDK or starting a host. See [preparation and acceptance](../plugin/APP-FRAMEWORK.md). The GUI/.NET SDK has no Python dependency; live plugins, registrations and native projects stay untouched.
+```powershell
+py -3 -B -X utf8 scripts/test_adapter_integration.py 'C:\packages\extracted\server\SiemensMCPServer.Mcp.exe'
+py -3 -B -X utf8 scripts/test_codex_installer.py 'C:\packages\siemens.zip'
+```
+
+The adapter profile builds a separate test executable with a fake `IHmiSession` below the production handlers, queues and feature workers. It uses only Python's standard library, temporary settings and fake project state; Siemens assemblies are prohibited. Checks cover exact multilingual readback, plan ownership/hash/staleness, successful/failed reload, separate compile/save/reopen, process restart and a lost reply without replay. Native transactions and actual Codex chat behavior need their own acceptance.
+
+The installer profile uses disposable Codex homes and fake CLI commands to verify standalone installation, repeats, obsolete choice files, concurrent admission and package rejection controls. It never changes the normal Codex profile.

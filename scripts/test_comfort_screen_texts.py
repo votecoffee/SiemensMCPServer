@@ -93,7 +93,7 @@ def host_probe(executable, bundle, root, repo, old=False):
     client = Client(executable, root)
     try:
         initial = client.call('tia_list_extensions'); modules = {m['module']: m for m in initial['modules']}
-        tools = client.send('tools/list', {})['tools']; assert len(tools) in (51, 54)
+        tools = client.send('tools/list', {})['tools']; assert len(tools) == 51
         stage(repo, bundle, root)
         if old:
             message = client.rejected('tia_reload_extensions', module='comfort')

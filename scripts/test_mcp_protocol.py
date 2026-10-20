@@ -73,17 +73,8 @@ def run(executable, native=False):
                         "plc_preview_import_bundle", "plc_preview_generate_source", "plc_apply_object_plan", "plc_compile",
                         "hmi_prepare_classic_export_bundle", "hmi_preview_classic_text_list_changes", "hmi_preview_classic_behavior_changes",
                         "tia_list_extensions", "tia_reload_extensions", "tia_read_extension", "tia_preview_extension", "tia_apply_extension_plan"}
-            metadata_tools = {"tia_list_broker_capabilities", "tia_read_workflow", "tia_read_workflow_reference"}
-            if host_version >= (0, 14, 0):
-                expected |= metadata_tools
-                for name in metadata_tools:
-                    assert tools[name]["annotations"]["readOnlyHint"] is True
-                publication = call("tia_list_broker_capabilities")
-                assert publication["structuredContent"]["schema_version"] == 1 and len(publication["structuredContent"]["capabilities"]) == 4
             assert set(tools) == expected, set(tools)
-            for name, tool in tools.items():
-                if name in metadata_tools:
-                    continue
+            for tool in tools.values():
                 assert "result" in tool["outputSchema"]["properties"], tool
             assert tools["hmi_apply_text_edits"]["annotations"]["destructiveHint"] is True
             assert tools["tia_save_project"]["annotations"]["readOnlyHint"] is False

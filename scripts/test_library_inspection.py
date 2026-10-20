@@ -69,7 +69,7 @@ def main():
         client = Client(executable, root)
         try:
             tools = client.send('tools/list', {})['tools']
-            assert len(tools) in (51, 54)
+            assert len(tools) == 51
             before = client.call('tia_list_extensions')
             modules = {m['module']: m for m in before['modules']}
             assert set(modules) == {'comfort', 'unified', 'plc', 'project'}

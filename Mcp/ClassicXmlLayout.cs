@@ -147,7 +147,7 @@ namespace SiemensMCPServer.Mcp
             }
             return new { Name, NativeType, items = rows, totalItems = all.Length, offset, nextOffset = next, hasMore = next < all.Length,
                 payloadLimited = rows.Count < Math.Min(maxItems, Math.Max(0, all.Length - offset)),
-                scope = "Stored classic XML geometry only. The native broker checks resource editability and the fresh resource fingerprint. Coordinates remain in each returned container; runtime dynamizations, rotation, canvas bounds and collisions are not evaluated." };
+                scope = "Stored classic XML geometry only. The native host checks resource editability and the fresh resource fingerprint. Coordinates remain in each returned container; runtime dynamizations, rotation, canvas bounds and collisions are not evaluated." };
         }
         public object ArrangeLayout(ClassicLayoutRequest request)
         {

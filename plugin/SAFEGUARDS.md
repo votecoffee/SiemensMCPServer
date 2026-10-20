@@ -16,7 +16,7 @@ The root command needs an installed desktop 1.3.0 or newer; rerun `InstallAndRun
 
 | Group | Settings | Effect |
 | --- | --- | --- |
-| Write permissions | Desktop writes; MCP writes; apply; compile; save; archive; reopen | Independent permission ceilings. MCP also requires the launch flag `--allow-writes` and any client/broker authorization. |
+| Write permissions | Desktop writes; MCP writes; apply; compile; save; archive; reopen | Independent permission ceilings. MCP also requires the launch flag `--allow-writes` and any client authorization. |
 | Restricted changes | Native object Delete; overwrite; PLC source block replacement; project translation import; feature extension reload | Restrict the corresponding reviewed action. Overwrite still requires explicit selection for each import. |
 | Desktop confirmations | Confirm imports; confirm Save | Controls the desktop review dialogs. Defaults are on, with **No** selected. Disabling a dialog does not disable native validation. |
 | Preview limits | Lifetime in minutes (1–1440); pending previews per workflow (1–1000) | Defaults: 30 minutes and 100 plans. MCP uses both limits in all five reviewed workflow types; desktop Unified/PLC imports use expiry. |
@@ -30,7 +30,7 @@ The classic Comfort desktop workflows retain their documented per-object import 
 
 ## Persistence and when changes apply
 
-The default file is `%LOCALAPPDATA%\SiemensMCPServer\safeguards.json`. **Save settings** validates and atomically replaces the file, retaining one previous version as `safeguards.json.previous`. A stale editor cannot overwrite a policy another editor saved. **Load defaults** changes the displayed draft; **Save settings** is still required. Compatibility defaults retain existing permissions, while MCP launch authorization remains required. No project or Codex/broker registration is changed by editing this file.
+The default file is `%LOCALAPPDATA%\SiemensMCPServer\safeguards.json`. **Save settings** validates and atomically replaces the file, retaining one previous version as `safeguards.json.previous`. A stale editor cannot overwrite a policy another editor saved. **Load defaults** changes the displayed draft; **Save settings** is still required. Compatibility defaults retain existing permissions, while MCP launch authorization remains required. No project or Codex registration is changed by editing this file.
 
 Permissions, project scope, confirmations and preview limits are read again for subsequent operations. Already dispatched native work finishes under its existing transaction rules; editing settings does not abort it. New scheduler limits, worker timeouts and the MCP artifact location require restarting/reconnecting the host. Extension reload does not rebuild the host scheduler.
 
@@ -51,7 +51,7 @@ The GUI lists these checks for inspection; they are not bypass switches:
 - File/path/parser/package integrity protections and their bounded payload limits.
 - Separate apply, compile and save; imports do not automatically save a project.
 
-Siemens access prompts/group membership, Codex approvals, and Universal Tools service allowlists, leases and recovery barriers belong to those applications. This editor does not alter them. A local policy cannot grant a permission denied by the host launch, client or broker.
+Siemens access prompts/group membership and Codex approvals belong to those applications. This editor does not alter them. A local policy cannot grant a permission denied by the host launch or client.
 
 ## Verification scope
 

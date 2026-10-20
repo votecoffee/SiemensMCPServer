@@ -18,7 +18,7 @@ namespace SiemensMCPServer
         [Browsable(false)] public int SchemaVersion { get; set; } = 1;
         [Category("1. Write permissions"), DisplayName("Desktop writes"), Description("Allow desktop imports and explicit Save. Disabling this does not prevent export or browsing.")]
         public bool DesktopWritesEnabled { get; set; } = true;
-        [Category("1. Write permissions"), DisplayName("MCP writes"), Description("Allow MCP engineering writes only when the host was also launched with --allow-writes. Broker and Codex permissions still apply independently.")]
+        [Category("1. Write permissions"), DisplayName("MCP writes"), Description("Allow MCP engineering writes only when the host was also launched with --allow-writes. Client and Codex permissions still apply independently.")]
         public bool McpWritesEnabled { get; set; } = true;
         [Category("1. Write permissions"), DisplayName("Apply edits and imports")]
         public bool AllowApply { get; set; } = true;
@@ -76,7 +76,7 @@ namespace SiemensMCPServer
         [JsonIgnore, Category("8. Always enforced"), DisplayName("File and parser protections")]
         public string FileChecks => "Bounded files, safe paths, hash-verified packages, XML/YAML/workbook validation";
         [JsonIgnore, Category("8. Always enforced"), DisplayName("External authorization")]
-        public string ExternalAuthorization => "Siemens access prompts and Codex/broker permissions are controlled by their owners";
+        public string ExternalAuthorization => "Siemens access prompts and Codex/client permissions are controlled by their owners";
 
         internal void Validate()
         {

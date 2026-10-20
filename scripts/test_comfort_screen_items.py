@@ -85,7 +85,7 @@ def host_probe(executable, bundle, root, repo):
     digest = hashlib.sha256(executable.read_bytes()).hexdigest(); client = Client(executable, root)
     try:
         before = client.call('tia_list_extensions'); modules = {m['module']: m for m in before['modules']}
-        tools = client.send('tools/list', {})['tools']; assert len(tools) in (51, 54)
+        tools = client.send('tools/list', {})['tools']; assert len(tools) == 51
         stage(repo, bundle, root); good_registry = (root/'external/active.json').read_bytes()
         client.call('tia_reload_extensions', module='comfort')
         after = client.call('tia_list_extensions'); updated = {m['module']: m for m in after['modules']}

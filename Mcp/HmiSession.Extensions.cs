@@ -15,7 +15,7 @@ namespace SiemensMCPServer.Mcp
             CheckProject();
             var manager = features as ExtensionManager ?? throw new InvalidOperationException("Extension manager is unavailable.");
             var descriptor = manager.Operation(module, operation);
-            if (!descriptor.Preview || descriptor.Route == "local" || descriptor.Route == "internal") throw new ArgumentException("This operation has no broker preview route.");
+            if (!descriptor.Preview || descriptor.Route == "local" || descriptor.Route == "internal") throw new ArgumentException("This operation has no host preview route.");
             object preview;
             switch (descriptor.Route)
             {
@@ -45,7 +45,7 @@ namespace SiemensMCPServer.Mcp
                     PlcSourceFiles.Write(directory, source);
                     preview = PreviewPlc("source", targetId, "", fingerprint, null, "", null, directory, true);
                     break;
-                default: throw new ArgumentException("Unsupported broker route.");
+                default: throw new ArgumentException("Unsupported host route.");
             }
             var native = JsonSerializer.SerializeToElement(preview, JsonDefaults.Options);
             string id = native.GetProperty("planId").GetString()!, hash = native.GetProperty("candidateSha256").GetString()!;

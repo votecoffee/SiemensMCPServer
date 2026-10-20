@@ -1,6 +1,6 @@
 # Project and global library inspection
 
-Host/worker **0.8.0** adds a `project` extension module with `list_libraries` and `browse_library`, through the existing `tia_read_extension` tool. The server retains 51 MCP tools. The broker owns native handles and reads documented library metadata; the worker receives serialized pages.
+Host/worker **0.8.0** adds a `project` extension module with `list_libraries` and `browse_library`, through the existing `tia_read_extension` tool. The server retains 51 MCP tools. The host owns native handles and reads documented library metadata; the worker receives serialized pages.
 
 Upgrade/reconnect the host before installing the new project module. Older hosts do not support its `projectRead` route. Existing Comfort/Unified/PLC routes remain compatible; the 0.8.0 PLC worker was exercised on a 0.7.4 host. After the upgrade, project-worker updates using the same capture contract can reload with `tia_reload_extensions(module="project")`. See [extension updates](EXTENSIONS.md).
 

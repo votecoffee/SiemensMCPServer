@@ -90,7 +90,7 @@ def main():
             catalog = client.call('tia_list_extensions')
             plc = next(m for m in catalog['modules'] if m['module'] == 'plc')
             tools = client.send('tools/list', {})['tools']
-            assert len(tools) in (51, 54)
+            assert len(tools) == 51
             assert next(t for t in tools if t['name'] == 'tia_read_extension')['annotations']['readOnlyHint'] is False
             assert {'read_source','find_in_source','cross_references'} <= {o['name'] for o in plc['operations']}
             capability = client.call('tia_get_api_capabilities')

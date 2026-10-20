@@ -2,11 +2,11 @@
 
 The MCP host retains its connection to Codex and owns the Siemens attachment, native STA queue, transactions, offline checks, preview stores, candidate hashes and native readback. Host 0.13.0 also has bounded local-analysis and control lanes, with separate pure worker pools. Workers receive JSON snapshots, never Siemens CLR objects. The host copies complete, hash-checked bundles into private generation directories before starting workers, so they do not lock the source of the next update.
 
-Existing Comfort XML scalar/behavior previews, classic/Unified text-list transformations, Unified caption/property previews and PLC source preparation use workers. Native browsing, transfers, compile, save and security policy remain in the broker. New native broker capabilities or Siemens API versions still require a host upgrade/reconnect.
+Existing Comfort XML scalar/behavior previews, classic/Unified text-list transformations, Unified caption/property previews and PLC source preparation use workers. Native browsing, transfers, compile, save and security policy remain in the host. New native host capabilities or Siemens API versions still require a host upgrade/reconnect.
 
 ```mermaid
 flowchart LR
-    C[Codex: fixed MCP tools] <--> H[Stable host and TIA broker]
+    C[Codex: fixed MCP tools] <--> H[Stable host and TIA host]
     H <--> T[TIA Portal: one STA queue]
     H <--> W[Replaceable Comfort / Unified / PLC / project workers]
 ```
@@ -17,15 +17,15 @@ flowchart LR
 - `tia_reload_extensions(module="comfort")`: replace one worker; empty module replaces all configured modules atomically.
 - `tia_read_extension`: run an advertised local, PLC or project snapshot inspection with `argumentsJson` matching its schema. PLC capture requires an attachment, explicit PLC/object paths and verified Offline state; source export writes local artifacts. Project capture requires the exact attached-project path and supports library metadata, active languages or native project-text XLSX export/read/search.
 - `tia_preview_extension`: prepare an advertised operation against an explicit native target/snapshot/fingerprint.
-- `tia_apply_extension_plan`: apply the authorized plan/hash through the broker; compile/save remain separate.
+- `tia_apply_extension_plan`: apply the authorized plan/hash through the host; compile/save remain separate.
 
 Dedicated HMI/PLC tools remain available. New operations appear in the extension catalog and use the same five facade tools, so Codex need not discover new MCP tool names. Its existing connection stays open.
 
 Worker 0.7.2 adds Comfort `build_screen_package` and `validate_package_bindings` as local operations on the existing 0.7.1 host. They consume supplied native XML and PLC declarations without an attachment. See [Comfort packages](COMFORT-PACKAGES.md) for generation, reviewed file materialization and native import steps.
 
-The 0.7.2 host also adds Unified owning-device compile-service lookup and reports its native scope. That change is broker code and requires a host upgrade/reconnect. It cannot be delivered by worker reload.
+The 0.7.2 host also adds Unified owning-device compile-service lookup and reports its native scope. That change is host code and requires a host upgrade/reconnect. It cannot be delivered by worker reload.
 
-The 0.7.3 host adds the `plcRead` snapshot route for [readable-source export/search and cross-references](PLC-INSPECTION.md). It requires a host upgrade/reconnect; older hosts reject the route and keep the previous worker. Subsequent worker operations can format/search these same native snapshot kinds without another broker change.
+The 0.7.3 host adds the `plcRead` snapshot route for [readable-source export/search and cross-references](PLC-INSPECTION.md). It requires a host upgrade/reconnect; older hosts reject the route and keep the previous worker. Subsequent worker operations can format/search these same native snapshot kinds without another host change.
 
 The 0.7.4 host changes API loading, project graphics access and older Unified screen discovery. Those native adapters require a host upgrade/reconnect. The worker protocol and existing routes are unchanged; see [API compatibility](API-COMPATIBILITY.md).
 
@@ -98,7 +98,7 @@ An existing route may also declare a capability contract that older hosts cannot
 
 `plcRead` operations must belong to module `plc`, set `preview=false` and declare `snapshotKind="source"` or `"crossReferences"`. Caller arguments contain exact `plcId`/`path`, host-validated `capture`, and worker-specific `options`. The host calls the worker with `phase="validate"` before capture, then with `phase="snapshot"` and the serialized native snapshot. The worker must support both phases. Capture settings come from the caller and are never taken from worker output. The route cannot import, generate blocks, compile, save or navigate native services beyond the two declared read capabilities. Workers normalize one optional UTF-8 BOM at the first input frame; JSON content is preserved. Failed worker starts retain bounded stderr diagnostics and the previous generation.
 
-`projectRead` operations must belong to module `project`, set `preview=false` and declare a known snapshot kind. `libraryCatalog` arguments contain exact `expectedProjectPath`, host-validated `capture` (`libraryId`, `path`, `offset`, `maxRows`) and worker-specific `options`. Empty `libraryId` lists libraries; a returned ID selects a library/path. The broker restricts capture to documented metadata compositions and scalar fields; it does not open/upgrade/save libraries, instantiate contents, traverse dependencies or expose native handles.
+`projectRead` operations must belong to module `project`, set `preview=false` and declare a known snapshot kind. `libraryCatalog` arguments contain exact `expectedProjectPath`, host-validated `capture` (`libraryId`, `path`, `offset`, `maxRows`) and worker-specific `options`. Empty `libraryId` lists libraries; a returned ID selects a library/path. The host restricts capture to documented metadata compositions and scalar fields; it does not open/upgrade/save libraries, instantiate contents, traverse dependencies or expose native handles.
 
 `projectLanguages` takes empty capture and returns active culture metadata. The `projectTexts` read snapshot requires explicit active `sourceLanguage`/`targetLanguage`, exports a new native XLSX to a host-owned artifact directory and supplies bounded base64url bytes plus length/hash. Workers verify and inspect it without file extraction, Excel, formula evaluation or external-link access. These kinds use validate/capture/snapshot phases. Client-supplied snapshot/destination fields are rejected. Project reads do not require `--allow-writes` or activate languages.
 

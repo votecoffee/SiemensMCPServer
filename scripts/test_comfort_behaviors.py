@@ -63,7 +63,7 @@ def host_probe(executable, bundle, root, repo, version, clone):
     digest = hashlib.sha256(executable.read_bytes()).hexdigest(); client = Client(executable, root)
     try:
         before = client.call('tia_list_extensions'); initial = {m['module']: m for m in before['modules']}
-        tools = client.send('tools/list', {})['tools']; assert len(tools) in (51, 54)
+        tools = client.send('tools/list', {})['tools']; assert len(tools) == 51
         stage(repo, bundle, root); client.call('tia_reload_extensions', module='comfort')
         after = client.call('tia_list_extensions'); updated = {m['module']: m for m in after['modules']}
         assert before['hostProcessId'] == after['hostProcessId'] == client.process.pid

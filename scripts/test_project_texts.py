@@ -95,7 +95,7 @@ def main():
         client = Client(executable, root)
         try:
             tools = client.send('tools/list', {})['tools']
-            assert len(tools) in (51, 54)
+            assert len(tools) == 51
             catalog = client.call('tia_list_extensions')
             project = next(m for m in catalog['modules'] if m['module'] == 'project')
             assert {'list_project_languages', 'read_project_texts', 'find_in_project_texts'} <= {o['name'] for o in project['operations']}

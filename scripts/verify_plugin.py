@@ -64,21 +64,13 @@ def validate(files):
         assert "scripts/Edit-ProjectTexts.ps1" in files
     if version >= (0, 13, 0):
         assert "CONCURRENCY.md" in files
-    if version >= (0, 14, 0):
-        assert "BROKER-INTEGRATION.md" in files
-        assert "scripts/New-BrokerRegistration.ps1" in files
-    if version >= (0, 15, 1):
-        profile = json.loads(files["framework/compatibility.json"])
-        assert profile["acceptedFrameworkVersion"] == "0.14.0"
-        assert profile["acceptedMcpPythonVersion"] == "2.3.0"
-        assert profile["wireProtocolVersion"] == "2025-11-25"
-        assert profile["productionAdoption"] is False
-        pins = files["framework/requirements-lock.txt"].decode("utf-8").splitlines()
-        assert "universal-codex-tools==0.14.0" in pins
-        assert "mcp==2.3.0" in pins and "mcp-types==2.3.0" in pins
-        assert "scripts/New-FrameworkPublication.ps1" in files
-        assert "scripts/test_app_framework.py" in files
-        assert not any(name.endswith(".whl") or name.startswith("universal_tools/") for name in files)
+    if version >= (0, 16, 0):
+        removed = {"BROKER-INTEGRATION.md", "APP-FRAMEWORK.md", "scripts/New-BrokerRegistration.ps1",
+                   "scripts/New-FrameworkPublication.ps1", "scripts/test_app_framework.py"}
+        assert not removed.intersection(files)
+        assert not any(name.startswith("framework/") or name.startswith("universal_tools/") or name.endswith(".whl") for name in files)
+        installer = files["scripts/Install-CodexPlugin.ps1"].decode("utf-8-sig")
+        assert "$Integration" not in installer and "integration-choice.json" not in installer
     assert not any('fixture' in name.lower() or '/fixtures/' in name.lower() for name in files), 'Test fixtures must not be distributed'
     return len(manifest)
 

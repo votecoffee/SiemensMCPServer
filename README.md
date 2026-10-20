@@ -70,9 +70,9 @@ The build prints the ZIP path and creates its SHA-256 sidecar under `artifacts/`
 powershell.exe -NoProfile -File build/Install-CodexPlugin.ps1 -Package 'C:\path\to\plugin.zip'
 ```
 
-Use `-PrepareOnly` to verify and stage a package without changing Codex settings. Load the installed tools and skills in a new Codex chat. The standalone plugin remains supported independently of Universal Tools. `-Integration Broker` stages a verified server and read-only exclusive-session registration descriptor while skipping Siemens plugin installation; it does not change live registrations. Automatic broker preference remains gated on workflow migration acceptance. See [broker integration and installation choices](plugin/BROKER-INTEGRATION.md) and the [plugin guide](plugin/README.md).
+The installer installs the standalone Siemens Codex plugin. Use `-PrepareOnly` to verify and stage a package without changing Codex settings. Load the installed tools and skills in a new Codex chat. See the [plugin guide](plugin/README.md).
 
-Reinstall defaults to `-Integration Preserve`: a recorded Broker or Standalone choice is retained; first use selects Standalone. Explicit choices remain available. `-PrepareOnly` leaves that choice intact, and concurrent installers using one root are rejected before settings changes.
+Fresh installations and upgrades always install the standalone plugin. Obsolete integration-choice files do not affect installation. Concurrent installers using one root are rejected before settings changes.
 
 ## Usage
 
@@ -94,7 +94,7 @@ Open the project in TIA Portal, attach to its process and select a target labele
 
 ### Safeguards settings
 
-Desktop 1.3.0 adds **Safeguards...** for the shared desktop/MCP policy: write permissions, native deletion and overwrite ceilings, import/Save confirmations, preview expiry, request limits, project scope and evidence folders. Open the editor without connecting to TIA with `Run.cmd -Safeguards`. Host 0.15.0 reads the same per-user policy before subsequent protected operations; scheduler changes require a host restart. MCP still requires `--allow-writes` and client/broker permission. Mandatory integrity checks are visible and remain enforced. See [all settings and their exact scope](plugin/SAFEGUARDS.md).
+Desktop 1.3.0 adds **Safeguards...** for the shared desktop/MCP policy: write permissions, native deletion and overwrite ceilings, import/Save confirmations, preview expiry, request limits, project scope and evidence folders. Open the editor without connecting to TIA with `Run.cmd -Safeguards`. Host 0.15.0 reads the same per-user policy before subsequent protected operations; scheduler changes require a host restart. MCP still requires `--allow-writes` and client permission. Mandatory integrity checks are visible and remain enforced. See [all settings and their exact scope](plugin/SAFEGUARDS.md).
 
 ### CLI
 
@@ -123,8 +123,6 @@ tia_get_api_capabilities()
 ```
 
 Keep a persistent MCP connection for engineering workflows: attachments, preview plans and worker generations belong to the running host. A transport that starts a fresh host for each call cannot carry an attach/preview/apply sequence. Inspect current native state and retained artifacts before retrying an uncertain write.
-
-The optional [shared app framework profile](plugin/APP-FRAMEWORK.md) has an isolated compatibility baseline of **framework 0.14.0 / MCP Python 2.3.0**, with the .NET server behind a versioned out-of-process publication. The package includes exact dependency pins and tests for persistent MCP ownership, refresh and recovery. Production adoption and Codex/native framework acceptance remain pending. The Siemens .NET MCP SDK and standalone plugin remain supported, and Universal Tools is optional. No native .NET framework package or public package feed is assumed.
 
 ### Reload feature workers
 
@@ -160,7 +158,7 @@ Keep machine-specific notes, project exports, acceptance evidence, logs and cust
 
 ## API
 
-The server currently exposes 54 tools: 51 engineering tools plus three read-only broker catalog/workflow readers. Their descriptions and JSON schemas are available through MCP `tools/list`.
+The server exposes 51 engineering tools directly through MCP. Their descriptions and JSON schemas are available through MCP `tools/list`.
 
 - `tia_*`: API/process discovery, project attachment, status, archive/save/reopen and extension discovery/reload.
 - `hmi_*`: Comfort/classic and capability-checked Unified inspection, previews, edits, transfers and compilation.

@@ -32,96 +32,51 @@ def main():
             assert not (root/'valid/integration-choice.json').exists()
         with zipfile.ZipFile(args.package) as archive:
             files = {info.filename: archive.read(info.filename) for info in archive.infolist() if not info.is_dir()}
-        if tuple(int(part) for part in json.loads(files['plugin.json'])['version'].split('.')) >= (0, 14, 0):
-            # Broker preparation must not even consult a Codex executable.
-            broker_cli = root/'broker-cli'; broker_cli.mkdir()
-            (broker_cli/'codex.cmd').write_text('@echo off\necho called>"%CODEX_HOME%\\unexpected-call"\nexit /b 99\n', encoding='ascii')
-            broker_home = root/'broker-home'; broker_home.mkdir()
-            (broker_home/'config.toml').write_text('# Preserve existing plugin choices\n', encoding='utf-8')
-            broker_root = root/'broker-prepared'
-            broker_result = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(installer),
-                '-Package', str(args.package.resolve()), '-InstallRoot', str(broker_root), '-Integration', 'Broker'],
-                env={**os.environ, 'PATH': str(broker_cli)+os.pathsep+os.environ['PATH'], 'CODEX_HOME': str(broker_home)},
-                capture_output=True, text=True, encoding='utf-8', timeout=60)
-            assert broker_result.returncode == 0, broker_result.stdout+broker_result.stderr
-            staged = json.loads(broker_result.stdout)
-            assert staged['state'] == 'broker-registration-prepared' and not staged['codexPluginInstalled'] and not staged['brokerSettingsChanged']
-            descriptor = json.loads(Path(staged['registration']).read_text(encoding='utf-8'))
-            assert descriptor['session_mode'] == 'exclusive' and descriptor['allow_writes'] is False
-            assert descriptor['allowed_write_tools'] == [] and descriptor['transport']['args'] == []
-            assert descriptor['capability_catalog']['tool'] == 'tia_list_broker_capabilities'
-            assert Path(descriptor['transport']['command']).is_file()
-            assert not (broker_root/'.agents').exists() and not (broker_home/'unexpected-call').exists()
-            assert (broker_home/'config.toml').read_text(encoding='utf-8') == '# Preserve existing plugin choices\n'
-            if 'selectionRecorded' in staged:
-                choice_path = broker_root/'integration-choice.json'
-                assert json.loads(choice_path.read_text(encoding='utf-8'))['integration'] == 'Broker'
-                unchanged_env = {**os.environ, 'PATH': str(broker_cli)+os.pathsep+os.environ['PATH'], 'CODEX_HOME': str(broker_home)}
-                preserved = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(installer),
-                    '-Package', str(args.package.resolve()), '-InstallRoot', str(broker_root)],
-                    env=unchanged_env, capture_output=True, text=True, encoding='utf-8', timeout=60)
-                assert preserved.returncode == 0, preserved.stdout+preserved.stderr
-                assert json.loads(preserved.stdout)['previousSelectionPreserved'] is True
-                selected = choice_path.read_bytes()
-                dry_override = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(installer),
-                    '-Package', str(args.package.resolve()), '-InstallRoot', str(broker_root), '-Integration', 'Standalone', '-PrepareOnly'],
-                    env=unchanged_env, capture_output=True, text=True, encoding='utf-8', timeout=60)
-                assert dry_override.returncode == 0, dry_override.stdout+dry_override.stderr
-                assert choice_path.read_bytes() == selected and not (broker_home/'unexpected-call').exists()
-                # An explicit successful standalone override records its choice;
-                # this CLI is synthetic and never changes actual Codex settings.
-                standalone_cli = root/'standalone-cli'; standalone_cli.mkdir()
-                (standalone_cli/'codex.cmd').write_text('@echo off\nif "%1"=="mcp" (\necho []\nexit /b 0\n)\nif "%3"=="marketplace" (\necho registered\nexit /b 0\n)\necho {"installed":true}\nexit /b 0\n', encoding='ascii')
-                standalone_env = {**unchanged_env, 'PATH': str(standalone_cli)+os.pathsep+os.environ['PATH']}
-                for selected_args in [['-Integration', 'Standalone'], []]:
-                    changed = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(installer),
-                        '-Package', str(args.package.resolve()), '-InstallRoot', str(broker_root), *selected_args],
-                        env=standalone_env, capture_output=True, text=True, encoding='utf-8', timeout=60)
-                    assert changed.returncode == 0, changed.stdout+changed.stderr
-                    assert json.loads(changed.stdout)['integration'] == 'Standalone'
-                    assert json.loads(choice_path.read_text(encoding='utf-8'))['integration'] == 'Standalone'
-                assert (broker_root/'integration-choice.json.previous').exists()
-                choice_path.write_text('{"schemaVersion":1,"integration":"Unknown"}', encoding='utf-8')
-                malformed = prepare(args.package.resolve(), broker_root)
-                assert malformed.returncode != 0 and 'Invalid integration choice' in ' '.join(malformed.stderr.split())
-                assert json.loads(choice_path.read_text(encoding='utf-8'))['integration'] == 'Unknown'
-                # Hold the install mutex from another process. Admission must fail
-                # before an extraction or a setting/choice change can occur.
-                locked_root = root/'locked-root'
-                ready, release = root/'lock-ready', root/'lock-release'
-                holder_code = r'''$ErrorActionPreference='Stop'
+        # Old route-choice files have no authority over the standalone installer.
+        standalone_cli = root/'standalone-cli'; standalone_cli.mkdir()
+        (standalone_cli/'codex.cmd').write_text('@echo off\nif "%1"=="mcp" (\necho []\nexit /b 0\n)\nif "%2"=="marketplace" (\necho registered\nexit /b 0\n)\necho {"installed":true}\nexit /b 0\n', encoding='ascii')
+        standalone_home = root/'standalone-home'; standalone_home.mkdir()
+        original_config = '# Preserve unrelated Codex settings\n'
+        (standalone_home/'config.toml').write_text(original_config, encoding='utf-8')
+        standalone_env = {**os.environ, 'PATH': str(standalone_cli)+os.pathsep+os.environ['PATH'], 'CODEX_HOME': str(standalone_home)}
+        for old_choice in ['{"schemaVersion":1,"integration":"Broker","selectionOnly":true}', '{malformed']:
+            install_root = root/('upgrade-'+str(len(old_choice))); install_root.mkdir()
+            choice = install_root/'integration-choice.json'; choice.write_text(old_choice, encoding='utf-8')
+            for _ in range(2):
+                installed = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(installer),
+                    '-Package', str(args.package.resolve()), '-InstallRoot', str(install_root)],
+                    env=standalone_env, capture_output=True, text=True, encoding='utf-8', timeout=60)
+                assert installed.returncode == 0, installed.stdout+installed.stderr
+                installed_report = json.loads(installed.stdout)
+                assert installed_report['state']=='installed' and installed_report['integration']=='Standalone'
+                assert choice.read_text(encoding='utf-8')==old_choice
+                assert (standalone_home/'config.toml').read_text(encoding='utf-8')==original_config
+        removed_route = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(installer),
+            '-Package', str(args.package.resolve()), '-InstallRoot', str(root/'removed-route'), '-Integration', 'Broker'],
+            env=standalone_env, capture_output=True, text=True, encoding='utf-8', timeout=30)
+        assert removed_route.returncode != 0 and not (root/'removed-route').exists()
+        # Hold the install mutex from another process. Admission must fail before writes.
+        locked_root = root/'locked-root'
+        ready, release = root/'lock-ready', root/'lock-release'
+        holder_code = r'''$ErrorActionPreference='Stop'
 $algorithm=[Security.Cryptography.SHA256]::Create()
 $key=([BitConverter]::ToString($algorithm.ComputeHash([Text.Encoding]::UTF8.GetBytes([IO.Path]::GetFullPath($env:SIEMENS_INSTALL_TEST_ROOT).ToLowerInvariant())))).Replace('-','').ToLowerInvariant()
 $mutex=[Threading.Mutex]::new($false,('Local\SiemensMCPServer-Install-'+$key))
 try { if (-not $mutex.WaitOne(0)) { throw 'Cannot acquire test lock' }; [IO.File]::WriteAllText($env:SIEMENS_INSTALL_TEST_READY,'ready'); $deadline=[DateTime]::UtcNow.AddSeconds(30); while (-not [IO.File]::Exists($env:SIEMENS_INSTALL_TEST_RELEASE) -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 50 } } finally { $mutex.ReleaseMutex(); $mutex.Dispose() }
 '''
-                holder = subprocess.Popen(['powershell.exe', '-NoProfile', '-Command', holder_code],
-                    env={**os.environ, 'SIEMENS_INSTALL_TEST_ROOT': str(locked_root), 'SIEMENS_INSTALL_TEST_READY': str(ready), 'SIEMENS_INSTALL_TEST_RELEASE': str(release)},
-                    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=subprocess.CREATE_NO_WINDOW)
-                try:
-                    deadline = time.monotonic()+10
-                    while not ready.exists():
-                        assert holder.poll() is None and time.monotonic() < deadline, 'Install mutex fixture did not start'
-                        time.sleep(0.05)
-                    locked = prepare(args.package.resolve(), locked_root)
-                    assert locked.returncode != 0 and 'Another installation' in ' '.join(locked.stderr.split())
-                    assert not locked_root.exists()
-                finally:
-                    release.touch(); holder.communicate(timeout=10)
-            helper = installer.parent/'New-BrokerRegistration.ps1'
-            scoped_path = root/'scoped-pilot.json'
-            scoped = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(helper),
-                '-PluginRoot', descriptor['transport']['cwd'], '-OutputPath', str(scoped_path), '-AllowedWriteTools', 'tia_attach'],
-                capture_output=True, text=True, encoding='utf-8', timeout=30)
-            assert scoped.returncode == 0, scoped.stdout+scoped.stderr
-            pilot = json.loads(scoped_path.read_text(encoding='utf-8'))
-            assert pilot['allow_writes'] is True and pilot['allowed_write_tools'] == ['tia_attach']
-            assert pilot['transport']['args'] == ['--allow-writes']
-            retained = scoped_path.read_bytes()
-            repeated = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(helper),
-                '-PluginRoot', descriptor['transport']['cwd'], '-OutputPath', str(scoped_path)],
-                capture_output=True, text=True, encoding='utf-8', timeout=30)
-            assert repeated.returncode != 0 and scoped_path.read_bytes() == retained
+        holder = subprocess.Popen(['powershell.exe', '-NoProfile', '-Command', holder_code],
+            env={**os.environ, 'SIEMENS_INSTALL_TEST_ROOT': str(locked_root), 'SIEMENS_INSTALL_TEST_READY': str(ready), 'SIEMENS_INSTALL_TEST_RELEASE': str(release)},
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=subprocess.CREATE_NO_WINDOW)
+        try:
+            deadline = time.monotonic()+10
+            while not ready.exists():
+                assert holder.poll() is None and time.monotonic() < deadline, 'Install mutex fixture did not start'
+                time.sleep(0.05)
+            locked = prepare(args.package.resolve(), locked_root)
+            assert locked.returncode != 0 and 'Another installation' in ' '.join(locked.stderr.split())
+            assert not locked_root.exists()
+        finally:
+            release.touch(); holder.communicate(timeout=10)
         # A renamed plugin must not register beside the enabled old identity.
         mock_cli=root/'mock-cli';mock_cli.mkdir()
         (mock_cli/'codex.cmd').write_text('@echo off\nif "%1"=="mcp" (\necho [{"name":"siemens-tia-openness","enabled":true,"transport":{}}]\nexit /b 0\n)\necho Unexpected Codex registration call\nexit /b 99\n',encoding='ascii')
@@ -148,11 +103,9 @@ try { if (-not $mutex.WaitOne(0)) { throw 'Cannot acquire test lock' }; [IO.File
             assert not (root / name).exists() and not (root / "outside.txt").exists(), name
             controls[name] = "rejected before extraction"
     report = {"preparation": "passed", "repeatPreparation": "passed", "settingsChanged": False, "legacyDuplicateServer": "rejected before Codex registration", "negativeControls": controls}
-    if 'staged' in locals():
-        report['brokerPreparation'] = 'passed; exclusive/read-only default, explicit scoped write opt-in, existing outputs preserved, no Codex calls or settings changes'
-    if 'preserved' in locals():
-        report['integrationChoice'] = 'passed; broker/standalone reinstalls retain selection, explicit override works, dry run cannot change choice, malformed records retained'
-        report['concurrentInstaller'] = 'rejected before extraction or setting changes'
+    report['standaloneInstallation'] = 'passed; fresh/repeated installs and stale or malformed legacy choice files always install the plugin'
+    report['removedIntegrationOption'] = 'rejected before extraction'
+    report['concurrentInstaller'] = 'rejected before extraction or settings changes'
     if args.report:
         args.report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2))

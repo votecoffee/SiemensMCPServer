@@ -38,7 +38,7 @@ namespace SiemensMCPServer.Mcp
             => Result(() => runtime.PreviewExtension(module, operation, targetId, path, expectedFingerprint, argumentsJson, token));
 
         [McpServerTool(Name = "tia_apply_extension_plan", ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false, UseStructuredContent = true, OutputSchemaType = typeof(ToolPayload))]
-        [Description("Apply an authorized extension preview once with its plan ID and candidate hash. Rejects reloaded generations and delegates to the broker's existing native transaction/readback guards. Requires --allow-writes. Does not save; compile/save remain separate.")]
+        [Description("Apply an authorized extension preview once with its plan ID and candidate hash. Rejects reloaded generations and delegates to the host's existing native transaction/readback guards. Requires --allow-writes. Does not save; compile/save remain separate.")]
         public Task<CallToolResult> ApplyExtension(string planId, string candidateSha256, CancellationToken token)
             => Result(() => runtime.Invoke(s => s.ApplyExtension(planId, candidateSha256), token, writes: true));
 
