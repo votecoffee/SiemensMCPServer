@@ -1,6 +1,6 @@
 # Standalone app host
 
-Plugin 0.17.1 uses framework 0.17.0, Python MCP SDK 2.3.0 and matching wire types. Its 14 frontend tools discover and invoke the existing 51 Siemens engineering operations. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. The framework's `broker_status` tool reports this app host's status.
+Plugin 0.17.2 uses framework 0.17.0, Python MCP SDK 2.3.0 and matching wire types. Its 14 frontend tools discover and invoke the existing 51 Siemens engineering operations. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. The framework's `broker_status` tool reports this app host's status.
 
 ## Engineering workflow
 
@@ -31,6 +31,8 @@ $siemensManager = Join-Path $siemensRuntime.payloadRoot 'framework\manage.py'
 ```
 
 Startup verifies the entire payload, publication and pinned module origins before serving requests. An update refuses to replace a running different deployment, retained ownership or non-completed write receipts. Finish/reconcile work, release contexts and stop this app host before updating. Prior runtime pointers and Codex configuration backups are retained. Do not edit immutable installed payloads; rebuild and reinstall them. Start a new Codex chat after installation to load updated skills and tools.
+
+The Windows launcher waits for its frontend and returns that process's exit status. The client can therefore track the connection lifetime until shutdown. Verification checks this lifetime and explicitly releases its test context before reporting success.
 
 ## Interrupted writes and recovery
 

@@ -58,6 +58,8 @@ def main():
                 messages.put(json.loads(line))
         except Exception as exc:
             messages.put(exc)
+        finally:
+            messages.put(None)
 
     threading.Thread(target=read, daemon=True).start()
     threading.Thread(target=lambda: errors.extend(process.stderr), daemon=True).start()
@@ -74,9 +76,14 @@ def main():
         if notification:
             return
         while True:
-            result = messages.get(timeout=30)
+            try:
+                result = messages.get(timeout=60 if method == 'initialize' else 30)
+            except queue.Empty:
+                raise TimeoutError('Plugin did not answer '+method+'; '+''.join(errors)[-2000:]) from None
             if isinstance(result, Exception):
                 raise result
+            if result is None:
+                raise EOFError('Plugin closed before answering '+method+'; '+''.join(errors)[-2000:])
             if result.get("id") == next_id:
                 assert "error" not in result, result
                 return result["result"]
@@ -105,6 +112,7 @@ def main():
 
     try:
         initialized = send("initialize", {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "codex-registration-probe", "version": "1.0.0"}})
+        assert process.poll() is None, 'Launcher exited while the MCP frontend was still running'
         assert initialized["serverInfo"]["version"] == (framework_version if gateway else manifest["version"])
         send("notifications/initialized", {}, notification=True)
         tools = {t["name"]: t for t in send("tools/list", {})["tools"]}
@@ -122,10 +130,16 @@ def main():
         assert capabilities["classicTextListStructureChanges"] is True and capabilities["classicAlarmDefinitions"]["available"] is False
         processes = call("tia_list_processes")
         assert call("tia_get_status")["attached"] is False
+        if gateway:
+            released = unwrapped(raw("release_service", {"service_id": "siemens-engineering", "context_id": context}))
+            assert released['released'] is True
+            context = None
+        assert process.poll() is None, 'Launcher exited before frontend shutdown'
         report = {"version": manifest["version"], "codexRegistration": "enabled", "pluginRoot": str(plugin_root),
                   "server": str(server_binary), "launcher": str(command), "toolCount": len(tools), "skills": skills,
                   "configuredTransportProbe": "passed", "frameworkVersion": framework_version,
                   "backendEngineeringTools": 51, "writesEnabled": versions["writesEnabled"], "apiVersion": capabilities["apiVersion"],
+                  "launcherLifetime": "retained through workflow", "testContextReleased": gateway,
                   "nativeProcessCount": len(processes), "projectAttached": False, "projectChanged": False,
                   "chatActivation": "Start a new chat; this probe validates the installed Codex transport without making a model request."}
         if args.report:
@@ -133,7 +147,7 @@ def main():
         print(json.dumps(report, indent=2))
     finally:
         try:
-            if context is not None and process.poll() is None:
+            if context is not None:
                 unwrapped(raw("release_service", {"service_id": "siemens-engineering", "context_id": context}))
         finally:
             process.stdin.close()

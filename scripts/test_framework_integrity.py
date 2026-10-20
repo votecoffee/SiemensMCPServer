@@ -5,9 +5,14 @@ import csv
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
+import queue
+import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -128,6 +133,48 @@ class DeploymentTests(unittest.TestCase):
     def test_wheel_record_detects_changed_code(self):
         with self.assertRaisesRegex(ValueError, 'RECORD mismatch'):
             integrity.wheel_metadata(self.wheel(changed=True))
+
+    def test_launcher_retains_process_and_relays_exit_status(self):
+        framework = self.payload/'framework'
+        framework.mkdir()
+        for name in ('launch.py', 'integrity.py'):
+            (framework/name).write_bytes((FRAMEWORK/name).read_bytes())
+        manager = framework/'manage.py'
+        manager.write_text("import sys\nprint('frontend-ready', flush=True)\nfor line in sys.stdin:\n print(line.strip(), flush=True)\nsys.exit(7)\n", encoding='utf-8')
+        self.entries = [{'path':path.relative_to(self.payload).as_posix(), 'bytes':path.stat().st_size,
+                         'sha256':integrity.digest(path)} for path in self.payload.rglob('*')
+                        if path.is_file() and path.name!='manifest.json']
+        self.manifest()
+        config = self.root/'active.json'
+        integrity.atomic_json(config, {'payloadRoot':str(self.payload), 'python':sys.executable,
+            'payloadManifestSha256':integrity.digest(self.payload/'manifest.json'),
+            'managerSha256':integrity.digest(manager)})
+        process = subprocess.Popen([sys.executable, '-B', str(framework/'launch.py')],
+            env={**os.environ, 'SIEMENS_MCP_APPHOST':str(config), 'PYTHONDONTWRITEBYTECODE':'1'},
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, encoding='utf-8')
+        messages = queue.Queue()
+        def read():
+            for line in process.stdout:
+                messages.put(line.strip())
+            messages.put(None)
+        threading.Thread(target=read, daemon=True).start()
+        try:
+            self.assertEqual(messages.get(timeout=15), 'frontend-ready')
+            time.sleep(0.2)
+            self.assertIsNone(process.poll(), 'Launcher exited while its frontend was still running')
+            process.stdin.write('ping\n'); process.stdin.flush()
+            self.assertEqual(messages.get(timeout=5), 'ping')
+            process.stdin.close()
+            self.assertEqual(process.wait(timeout=10), 7)
+        finally:
+            if not process.stdin.closed:
+                process.stdin.close()
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                process.kill(); process.wait(timeout=5)
+            process.stdout.close(); process.stderr.close()
 
 
 if __name__ == '__main__':

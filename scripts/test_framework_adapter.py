@@ -89,9 +89,10 @@ async def exercise(broker, fixture, native, external):
     env = {**os.environ, 'SIEMENS_FIXTURE_STATE': str(native)}
     counter = 0
     async with AsyncExitStack() as stack:
-        proxy_args = ['-B', str(broker.manager), 'proxy', '--config', str(broker.config)]
-        owner = await connect(stack, sys.executable, proxy_args)
-        other = await connect(stack, sys.executable, proxy_args)
+        proxy_args = ['-B', str(broker.payload/'framework/launch.py')]
+        frontend_env = {**os.environ, 'SIEMENS_MCP_APPHOST':str(broker.config)}
+        owner = await connect(stack, sys.executable, proxy_args, frontend_env)
+        other = await connect(stack, sys.executable, proxy_args, frontend_env)
         direct = await connect(stack, fixture, ['--allow-writes', policy_arg, '--artifact-root='+str(native/'direct-artifacts'), '--extensions-root='+str(external)], env)
         outer = await list_all_tools(owner.session)
         assert len(outer) == 14

@@ -22,13 +22,15 @@ def main():
     command = [str(python), '-B', str(manager), 'proxy', '--config', str(config)]
     if os.name == 'nt':
         import subprocess
-        command = [subprocess.list2cmdline([argument]) for argument in command]
+        # Windows exec terminates the tracked launcher while its child keeps the pipes.
+        # Wait instead, preserving the MCP client's process lifetime and exit status.
+        return subprocess.call(command)
     os.execv(str(python), command)
 
 
 if __name__ == '__main__':
     try:
-        main()
+        raise SystemExit(main())
     except Exception as error:
         print('Siemens framework startup failed: '+str(error), file=sys.stderr)
         raise SystemExit(1)

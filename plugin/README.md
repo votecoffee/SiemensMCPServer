@@ -1,4 +1,4 @@
-# SiemensMCPServer plugin 0.17.1
+# SiemensMCPServer plugin 0.17.2
 
 The project and GitHub repository are now **SiemensMCPServer**. The plugin/MCP ID is `siemens-mcp-server`, the local marketplace is `siemens-mcp-server-local`, and the host is `SiemensMCPServer.Mcp.exe`. Remove the old `siemens-tia-openness` plugin or direct MCP registration through Codex before installing the renamed plugin. The installer refuses to register a second copy while the old server is enabled. Do not remove its cache manually while it is running. This rename needs a host upgrade; feature-worker reload remains available afterward.
 
@@ -10,7 +10,7 @@ A selected historical V15.1 native pilot passed single-line English/German Unico
 
 Host 0.15.0 and desktop 1.3.0 share [GUI-editable safeguards](SAFEGUARDS.md): write ceilings, operation restrictions, confirmations, preview limits, project scope and request limits. Permissions are rechecked for subsequent operations; scheduling/location changes require a host restart. Local settings do not grant client or Siemens permission.
 
-Host/plugin **0.17.1** uses the app-owned framework 0.17.0 gateway: 14 stable front-door tools discover/invoke 51 native engineering operations. The native executable retains direct access to those 51 tools. Fresh installations and upgrades always install the standalone Siemens plugin; no Universal Tools plugin or shared registration is used. See [app host operation](APP-HOST.md).
+Host/plugin **0.17.2** uses the app-owned framework 0.17.0 gateway: 14 stable front-door tools discover/invoke 51 native engineering operations. The native executable retains direct access to those 51 tools. Fresh installations and upgrades always install the standalone Siemens plugin; no Universal Tools plugin or shared registration is used. See [app host operation](APP-HOST.md).
 
 ## Install the built package
 
