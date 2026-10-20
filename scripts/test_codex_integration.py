@@ -40,6 +40,7 @@ def main():
     assert all((plugin_root / "skills" / name / "SKILL.md").is_file() for name in skills)
     manifest = json.loads((plugin_root / "plugin.json").read_text(encoding="utf-8-sig"))
     gateway = tuple(map(int, manifest["version"].split("."))) >= (0, 17, 0)
+    framework_version = json.loads((plugin_root/"framework/wheels.json").read_bytes())["frameworkVersion"] if gateway else None
     if gateway:
         assert transport["args"] == ["-3.13", "-B", "framework/launch.py"]
     else:
@@ -104,7 +105,7 @@ def main():
 
     try:
         initialized = send("initialize", {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "codex-registration-probe", "version": "1.0.0"}})
-        assert initialized["serverInfo"]["version"] == ("0.16.0" if gateway else manifest["version"])
+        assert initialized["serverInfo"]["version"] == (framework_version if gateway else manifest["version"])
         send("notifications/initialized", {}, notification=True)
         tools = {t["name"]: t for t in send("tools/list", {})["tools"]}
         if gateway:
@@ -123,7 +124,7 @@ def main():
         assert call("tia_get_status")["attached"] is False
         report = {"version": manifest["version"], "codexRegistration": "enabled", "pluginRoot": str(plugin_root),
                   "server": str(server_binary), "launcher": str(command), "toolCount": len(tools), "skills": skills,
-                  "configuredTransportProbe": "passed", "frameworkVersion": "0.16.0" if gateway else None,
+                  "configuredTransportProbe": "passed", "frameworkVersion": framework_version,
                   "backendEngineeringTools": 51, "writesEnabled": versions["writesEnabled"], "apiVersion": capabilities["apiVersion"],
                   "nativeProcessCount": len(processes), "projectAttached": False, "projectChanged": False,
                   "chatActivation": "Start a new chat; this probe validates the installed Codex transport without making a model request."}

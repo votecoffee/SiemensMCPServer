@@ -10,9 +10,9 @@ from pathlib import Path, PurePosixPath
 import re
 import zipfile
 
-FRAMEWORK_VERSION = '0.16.0'
+FRAMEWORK_VERSION = '0.17.0'
 MCP_VERSION = '2.3.0'
-FRAMEWORK_COMMIT = '579b065ecc37f98af72cb148ba47a65587bd167b'
+FRAMEWORK_COMMIT = '87157f88de4a5320d2712224216b1e6f18a0ec8d'
 
 
 def digest(path):

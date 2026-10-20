@@ -1,6 +1,6 @@
 # Standalone app host
 
-Plugin 0.17.0 uses framework 0.16.0, Python MCP SDK 2.3.0 and matching wire types. Its 14 frontend tools discover and invoke the existing 51 Siemens engineering operations. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. The framework's `broker_status` tool reports this app host's status.
+Plugin 0.17.1 uses framework 0.17.0, Python MCP SDK 2.3.0 and matching wire types. Its 14 frontend tools discover and invoke the existing 51 Siemens engineering operations. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. The framework's `broker_status` tool reports this app host's status.
 
 ## Engineering workflow
 
@@ -41,5 +41,16 @@ Recovery is an operator action after independent native reconciliation, using th
 ## Optional APIs and validation scope
 
 Framework Tasks and Skill extensions are not registered by this app. Native engineering calls are not automatically wrapped as Tasks. The four workflow skills ship as ordinary Codex plugin skills; framework Skill publication is not required to load them.
+
+Framework 0.17 adds optional notification, federation, UI, authentication and shared-store profiles. This app keeps the authenticated loopback, single-owner process model:
+
+| Framework feature | Siemens integration |
+| --- | --- |
+| Tasks and push notifications | Deferred until an app-owned durable job adapter can reconcile the actual engineering operation. Existing synchronous calls retain native receipts and uncertainty barriers. |
+| Skills discovery and live catalogs | Four packaged Codex skills remain the entrypoints; no downstream skill sources are configured. Native skill updates still require plugin installation and a new chat. |
+| Resources, prompts and completion relay | No relay sources are configured. The current backend exposes engineering tools; no implicit target acquisition or downstream forwarding is added. |
+| MCP Apps | The desktop GUI remains available. No web UI extension or iframe rendering is claimed. |
+| OAuth, service grants and DPoP | No remote endpoint is configured. The dedicated local host retains its loopback authentication and per-frontend ownership. |
+| Redis and replicated native SDK hosting | Not enabled or installed in the application runtime. One process owns the TIA adapter, journals and resource reservations; live engineering sessions are not portable between replicas. |
 
 Package tests cover integrity rejection, installed dependency health, actual frontend/native transport, ownership, result parity, native review guards, reload and durable lost-reply handling with a test provider. They do not attach to a TIA project or establish native transaction, device, runtime or model-driven chat acceptance. See [native acceptance](NATIVE-ACCEPTANCE.md) for engineering evidence and limits.

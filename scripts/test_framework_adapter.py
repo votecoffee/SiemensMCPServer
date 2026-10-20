@@ -18,7 +18,7 @@ import tempfile
 import time
 
 from mcp import Client, StdioServerParameters
-from universal_tools import __version__ as broker_version
+from universal_tools import __version__ as framework_version
 from universal_tools.transport import list_all_tools
 from universal_tools.cli import initialize, probe, process_options, recover_context, stop
 
@@ -260,6 +260,7 @@ def main():
         external = root/'external'
         os.environ['SIEMENS_FIXTURE_STATE'] = str(native)
         payload = host.parent.parent
+        assert json.loads((payload/'framework/wheels.json').read_bytes())['frameworkVersion'] == framework_version
         broker = AppHost(root/'app-state', payload)
         registration = {'schema_version': 1, 'id': 'siemens-engineering', 'display_name': 'Siemens adapter fixture',
             'transport': {'type': 'stdio', 'command': str(fixture), 'args': ['--allow-writes', '--settings-file='+str(policy), '--artifact-root='+str(root/'artifacts'), '--extensions-root='+str(external)],
@@ -272,7 +273,7 @@ def main():
             'instructions': 'Isolated fake-native fixture only; preserve targets, reviewed candidates and receipts.',
             'backends': [{'revision': 'fixture-v1', 'artifact': {'path': str(fixture), 'sha256': hashlib.sha256(fixture.read_bytes()).hexdigest()}, 'service': registration}]}
         publication.write_text(json.dumps(value), encoding='utf-8')
-        config = {'schemaVersion': 1, 'frameworkVersion': '0.16.0', 'python': sys.executable,
+        config = {'schemaVersion': 1, 'frameworkVersion': framework_version, 'python': sys.executable,
             'payloadRoot': str(payload), 'payloadManifestSha256': hashlib.sha256((payload/'manifest.json').read_bytes()).hexdigest(),
             'managerSha256': hashlib.sha256(broker.manager.read_bytes()).hexdigest(),
             'state': str(broker.root), 'publication': str(publication),
@@ -290,7 +291,7 @@ def main():
             recover_context(broker.root, 'siemens-engineering', context, acknowledged=True)
             assert len(events(native, 'import-effect')) == 3
             report.update({'durableBarrierAfterRestart': True, 'fixtureReconciliationAddsNoEffect': True,
-                'hostSha256': hashlib.sha256(host.read_bytes()).hexdigest(), 'frameworkVersion': broker_version})
+                'hostSha256': hashlib.sha256(host.read_bytes()).hexdigest(), 'frameworkVersion': framework_version})
             if args.previous_host:
                 asyncio.run(previous_host_rejects_worker(args.previous_host.resolve(), host, root))
                 report['previousHostRejectedNewWorkerAndRetainedGeneration'] = True

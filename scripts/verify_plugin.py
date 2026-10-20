@@ -78,9 +78,10 @@ def validate(files):
     if version >= (0, 17, 0):
         assert "framework/manage.py" in files and "framework/wheels.json" in files
         pins = files["framework/requirements-lock.txt"].decode("utf-8").splitlines()
-        assert "universal-codex-tools==0.16.0" in pins and "mcp==2.3.0" in pins
+        framework_version, framework_commit = ("0.17.0", "87157f88de4a5320d2712224216b1e6f18a0ec8d") if version >= (0, 17, 1) else ("0.16.0", "579b065ecc37f98af72cb148ba47a65587bd167b")
+        assert "universal-codex-tools=="+framework_version in pins and "mcp==2.3.0" in pins
         wheel_index = json.loads(files["framework/wheels.json"])
-        assert wheel_index["sourceCommit"] == "579b065ecc37f98af72cb148ba47a65587bd167b"
+        assert wheel_index["frameworkVersion"] == framework_version and wheel_index["sourceCommit"] == framework_commit
         for entry in wheel_index["files"]:
             assert hashlib.sha256(files["framework/"+entry["path"]]).hexdigest() == entry["sha256"]
         assert "scripts/New-BrokerRegistration.ps1" not in files and "BROKER-INTEGRATION.md" not in files
