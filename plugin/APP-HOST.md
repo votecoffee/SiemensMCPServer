@@ -1,6 +1,6 @@
 # Standalone app host
 
-Plugin 0.18.0 uses framework 0.17.0, Python MCP SDK 2.3.0 and matching wire types. Its 14 frontend tools discover and invoke the existing 51 Siemens engineering operations. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. The framework's `broker_status` tool reports this app host's status.
+Plugin 0.18.1 uses framework 0.17.0, Python MCP SDK 2.3.0 and matching wire types. Its 14 frontend tools discover and invoke the existing 51 Siemens engineering operations. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. The framework's `broker_status` tool reports this app host's status.
 
 ## Engineering workflow
 
@@ -49,6 +49,21 @@ Recovery is an operator action after independent native reconciliation. After re
 ```
 
 The OS state lock prevents recovery against a running host. Preserve journals and original request/context IDs: reservation recovery does not erase an uncertain write receipt or make replay safe. No model-facing tool acknowledges uncertainty, retries the write or rolls back native state automatically. Keep the reconciliation evidence with the operator's decision. Local [workflow receipt validation](CLASSIC-TEXT-LIST-WORKFLOW.md) can check supplied native evidence without acquiring TIA or acknowledging recovery.
+
+### Reconciled requests and upgrades
+
+Host/plugin 0.18.1 adds stopped-host `reconcile-request` administration. Session recovery and request reconciliation are separate: an old `app_error`, `uncertain` or interrupted `in_progress` receipt can still block an upgrade after its session was recovered. Independently inspect the actual outcome, retain exact request ID/fingerprint and native evidence, and write a private evidence JSON containing at least `requestId` and `fingerprint`. Include the observed outcome and supporting artifact hashes. Then explicitly acknowledge that reviewed outcome:
+
+```powershell
+& $siemensRuntime.python -B $siemensManager reconcile-request --config $siemensConfig `
+  --request-id '<original-request-id>' --expected-fingerprint '<original-request-fingerprint>' `
+  --evidence-json 'C:\private\reviewed-outcome.json' --expected-evidence-sha256 '<reviewed-evidence-file-hash>' `
+  --summary 'Independent outcome review and evidence retained; original request must not replay' --acknowledge-outcome
+```
+
+When upgrading an older host that lacks this command, first stage the verified new package with the installer’s `-PrepareOnly` option, then use its `framework/manage.py` as `$siemensManager` with the existing dedicated Python runtime and config. The host must be stopped and all ownership reconciled first. Keep the normal state directory; do not create a fresh one to bypass receipts.
+
+The command retains a separate immutable copy of the reviewed evidence and an attestation bound to all original request fields. It does not change the original write-journal row, mark a failed request successful, perform native work, retry or roll back. Repeating the original request ID remains blocked. An upgrade accepts only an exact attestation with intact retained evidence; another unresolved request, changed receipt, damaged/missing evidence or a running host still blocks it. This records an operator assertion; hashes do not authenticate native provenance. The installer never generates acknowledgments automatically.
 
 ## Optional APIs and validation scope
 

@@ -8,7 +8,6 @@ import os
 from pathlib import Path
 import queue
 import socket
-import sqlite3
 import subprocess
 import sys
 import threading
@@ -16,6 +15,7 @@ import time
 import venv
 
 from integrity import FRAMEWORK_COMMIT, FRAMEWORK_VERSION, MCP_VERSION, atomic_json, digest, ordinary, verify_payload, verify_wheels
+from reconciliation import reconcile, require_reconciled
 
 SERVICE = 'siemens-engineering'
 INSTRUCTIONS = (
@@ -191,11 +191,7 @@ def configure(args):
         with InstanceLock(state/'broker.lock'):
             if OwnershipJournal(state/'ownership.sqlite3').entries():
                 raise ValueError('Retained ownership needs app outcome reconciliation before a runtime update')
-            journal = state/'writes.sqlite3'
-            if journal.exists():
-                with sqlite3.connect(journal) as db:
-                    if db.execute("SELECT 1 FROM requests WHERE status!='completed' LIMIT 1").fetchone():
-                        raise ValueError('Unreconciled write receipts prevent a runtime update')
+            require_reconciled(state)
             settings = settings.model_copy(update={'max_request_body_bytes': 128*1024*1024})
             atomic_json(state/'settings.json', settings.model_dump(mode='json', by_alias=True))
             catalog = json.loads((payload/'framework/backend-tools.json').read_bytes())
@@ -279,7 +275,7 @@ def ensure_running(config_path, config):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['prepare', 'configure', 'catalog', 'serve', 'proxy', 'status', 'stop', 'contexts'])
+    parser.add_argument('command', choices=['prepare', 'configure', 'catalog', 'serve', 'proxy', 'status', 'stop', 'contexts', 'reconcile-request'])
     parser.add_argument('--payload', type=Path)
     parser.add_argument('--root', type=Path, default=default_root())
     parser.add_argument('--config', type=Path)
@@ -289,6 +285,12 @@ def main():
     parser.add_argument('--settings-file', type=Path)
     parser.add_argument('--artifact-root', type=Path)
     parser.add_argument('--extensions-root', type=Path)
+    parser.add_argument('--request-id')
+    parser.add_argument('--expected-fingerprint')
+    parser.add_argument('--evidence-json', type=Path)
+    parser.add_argument('--expected-evidence-sha256')
+    parser.add_argument('--summary')
+    parser.add_argument('--acknowledge-outcome', action='store_true')
     args = parser.parse_args()
     if args.command == 'catalog':
         atomic_json(args.output, backend_catalog(args.executable.resolve()))
@@ -304,7 +306,12 @@ def main():
     from universal_tools.cli import list_contexts, probe, stop
     from universal_tools.models import load_settings
     state = Path(config['state'])
-    if args.command == 'serve':
+    if args.command == 'reconcile-request':
+        if not args.evidence_json:
+            raise ValueError('Supply --evidence-json for the independently reviewed outcome')
+        print(json.dumps(reconcile(state, args.request_id, args.expected_fingerprint, args.evidence_json,
+            args.expected_evidence_sha256, args.summary, args.acknowledge_outcome), indent=2))
+    elif args.command == 'serve':
         from universal_tools.framework import serve_application
         serve_application(state, Path(config['publication']))
     elif args.command == 'proxy':
