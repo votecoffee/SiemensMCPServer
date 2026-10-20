@@ -236,6 +236,20 @@ def configure(args):
                 'mcpPythonVersion': MCP_VERSION, 'backendTools': len(tools), 'writesEnabled': args.allow_writes}))
 
 
+def wait_for_instance_exit(state, timeout=35):
+    from universal_tools.daemon import InstanceLock
+    from universal_tools.models import BrokerError
+    deadline = time.monotonic()+timeout
+    while True:
+        try:
+            with InstanceLock(Path(state)/'broker.lock'):
+                return
+        except BrokerError:
+            if time.monotonic() >= deadline:
+                raise ValueError('Siemens app host still owns its state; no replacement was started or process forcibly stopped') from None
+            time.sleep(0.1)
+
+
 def ensure_running(config_path, config):
     from universal_tools.cli import probe, process_options
     from universal_tools.daemon import InstanceLock
@@ -245,6 +259,8 @@ def ensure_running(config_path, config):
     with InstanceLock(state/'startup.lock'):
         if probe(settings):
             return
+        # HTTP shutdown precedes journal/adapter teardown. Do not race the old owner.
+        wait_for_instance_exit(state)
         with socket.socket() as handle:
             handle.bind((settings.host, settings.port))
         log = state/'app-host.log'
@@ -298,6 +314,8 @@ def main():
     else:
         result = {'status': lambda: probe(load_settings(state)) or {'running': False},
             'stop': lambda: stop(state), 'contexts': lambda: list_contexts(state)}[args.command]()
+        if args.command == 'stop':
+            wait_for_instance_exit(state)
         print(json.dumps(result, indent=2))
 
 
