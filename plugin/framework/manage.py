@@ -1,7 +1,7 @@
 """App-owned framework installation/lifecycle; no Universal Tools registration route."""
 import argparse
 import hashlib
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from importlib.metadata import version
 import json
 import os
@@ -159,7 +159,7 @@ def prepare(args):
         subprocess.run(command, check=True)
 
 
-def configure(args):
+def configure(args, *, _startup_locked=False):
     dependencies()
     from universal_tools.cli import initialize, probe
     from universal_tools.daemon import InstanceLock
@@ -175,7 +175,7 @@ def configure(args):
               **{name: str(Path(getattr(args, name)).absolute()) if getattr(args, name) else None
                  for name in ('settings_file', 'artifact_root', 'extensions_root')}}
     binding = hashlib.sha256((fingerprint+json.dumps(launch, sort_keys=True)).encode('utf-8')).hexdigest()
-    with InstanceLock(state/'startup.lock'):
+    with nullcontext() if _startup_locked else InstanceLock(state/'startup.lock'):
         if (state/'settings.json').exists():
             settings = load_settings(state)
             if probe(settings):
@@ -273,9 +273,46 @@ def ensure_running(config_path, config):
         raise ValueError('Siemens app host startup timed out; no request was replayed')
 
 
+def reconcile_upgrade(args, config):
+    if not args.acknowledge_outcome or not args.reconciliation_batch or not args.payload:
+        raise ValueError('Supply a reviewed --reconciliation-batch, --payload and --acknowledge-outcome')
+    state = ordinary(config['state'])
+    if ordinary(args.root/'state') != state:
+        raise ValueError('Upgrade must retain the existing state and original replay journal')
+    payload = ordinary(args.payload.resolve())
+    verify_payload(payload)
+    if payload != Path(__file__).resolve().parents[1]:
+        raise ValueError('Run the verified candidate package manager for this payload')
+    batch_path = ordinary(args.reconciliation_batch)
+    if batch_path.stat().st_size > 1024*1024:
+        raise ValueError('Reconciliation batch exceeds its bound')
+    batch = json.loads(batch_path.read_bytes())
+    if not isinstance(batch, list) or not 1 <= len(batch) <= 1000:
+        raise ValueError('Supply 1..1000 exact reviewed requests')
+    from universal_tools.daemon import InstanceLock
+    from universal_tools.models import load_settings
+    from universal_tools.ownership import OwnershipJournal
+    from universal_tools.cli import probe, stop
+    with InstanceLock(state/'startup.lock'):
+        if OwnershipJournal(state/'ownership.sqlite3').entries():
+            raise ValueError('Active/retained ownership prevents an idle-host upgrade')
+        if probe(load_settings(state)):
+            stop(state)
+        wait_for_instance_exit(state)
+        receipts = []
+        for review in batch:
+            receipts.append(reconcile(state, review['requestId'], review['fingerprint'], Path(review['evidence']),
+                review['sha256'], review['summary'], True, _startup_locked=True))
+        # Publish the new active deployment under the same startup lock. Old
+        # launchers then fail their payload fingerprint check, rather than
+        # restarting the retired deployment between reconciliation and install.
+        configure(args, _startup_locked=True)
+        return {'state': 'reconciled-upgrade-ready', 'requests': receipts, 'nativeOperationPerformed': False}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['prepare', 'configure', 'catalog', 'serve', 'proxy', 'status', 'stop', 'contexts', 'reconcile-request'])
+    parser.add_argument('command', choices=['prepare', 'configure', 'catalog', 'serve', 'proxy', 'status', 'stop', 'contexts', 'reconcile-request', 'reconcile-upgrade'])
     parser.add_argument('--payload', type=Path)
     parser.add_argument('--root', type=Path, default=default_root())
     parser.add_argument('--config', type=Path)
@@ -291,6 +328,7 @@ def main():
     parser.add_argument('--expected-evidence-sha256')
     parser.add_argument('--summary')
     parser.add_argument('--acknowledge-outcome', action='store_true')
+    parser.add_argument('--reconciliation-batch', type=Path)
     args = parser.parse_args()
     if args.command == 'catalog':
         atomic_json(args.output, backend_catalog(args.executable.resolve()))
@@ -306,7 +344,9 @@ def main():
     from universal_tools.cli import list_contexts, probe, stop
     from universal_tools.models import load_settings
     state = Path(config['state'])
-    if args.command == 'reconcile-request':
+    if args.command == 'reconcile-upgrade':
+        print(json.dumps(reconcile_upgrade(args, config), indent=2))
+    elif args.command == 'reconcile-request':
         if not args.evidence_json:
             raise ValueError('Supply --evidence-json for the independently reviewed outcome')
         print(json.dumps(reconcile(state, args.request_id, args.expected_fingerprint, args.evidence_json,

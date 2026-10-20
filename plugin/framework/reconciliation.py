@@ -1,6 +1,6 @@
 """Operator attestations permit upgrades without erasing original no-replay receipts."""
 from datetime import UTC, datetime
-from contextlib import closing
+from contextlib import closing, nullcontext
 import hashlib
 import json
 from pathlib import Path
@@ -54,7 +54,7 @@ def require_reconciled(state):
                          +'. Inspect actual app state and retain evidence before explicit reconcile-request administration.')
 
 
-def reconcile(state, request_id, expected_fingerprint, evidence_path, expected_evidence_sha256, summary, acknowledged=False):
+def reconcile(state, request_id, expected_fingerprint, evidence_path, expected_evidence_sha256, summary, acknowledged=False, *, _startup_locked=False):
     if not acknowledged:
         raise ValueError('Reconciliation requires --acknowledge-outcome after independent app-state inspection')
     if not isinstance(request_id, str) or not 8 <= len(request_id) <= 128 or not summary or not summary.strip() or len(summary) > 4000:
@@ -73,7 +73,7 @@ def reconcile(state, request_id, expected_fingerprint, evidence_path, expected_e
         raise ValueError('Evidence must identify this exact request ID and fingerprint')
     from universal_tools.daemon import InstanceLock
     from universal_tools.ownership import OwnershipJournal
-    with InstanceLock(state/'startup.lock'):
+    with nullcontext() if _startup_locked else InstanceLock(state/'startup.lock'):
         with InstanceLock(state/'broker.lock'):
             if OwnershipJournal(state/'ownership.sqlite3').entries():
                 raise ValueError('Retained ownership must be independently reconciled and recovered first')

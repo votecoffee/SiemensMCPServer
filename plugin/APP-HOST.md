@@ -65,6 +65,16 @@ When upgrading an older host that lacks this command, first stage the verified n
 
 The command retains a separate immutable copy of the reviewed evidence and an attestation bound to all original request fields. It does not change the original write-journal row, mark a failed request successful, perform native work, retry or roll back. Repeating the original request ID remains blocked. An upgrade accepts only an exact attestation with intact retained evidence; another unresolved request, changed receipt, damaged/missing evidence or a running host still blocks it. This records an operator assertion; hashes do not authenticate native provenance. The installer never generates acknowledgments automatically.
 
+Existing chat connections may try to restart the idle host during an update. For an evidence-reviewed upgrade, the candidate manager also supports `reconcile-upgrade`: it holds the startup lock across the idle-host stop, exact request attestations and publication of the new deployment. It refuses retained ownership and keeps the same state directory and original replay journal. Use a private batch JSON array with `{requestId,fingerprint,evidence,sha256,summary}` for each reviewed request (`evidence` is the exact JSON file path):
+
+```powershell
+& $siemensRuntime.python -B $siemensManager reconcile-upgrade --config $siemensConfig `
+  --root "$env:LOCALAPPDATA\SiemensMCPServer\AppHost" --payload '<verified-candidate-plugin-source>' `
+  --reconciliation-batch 'C:\private\reviewed-requests.json' --acknowledge-outcome --allow-writes
+```
+
+Then rerun the normal installer against that same verified package to update the plugin selection. `--allow-writes` retains the usual installation ceiling; native safeguards remain independent. Old launchers reject a mismatched active deployment rather than restarting retired code. This command never forces a process to exit or acknowledges evidence automatically.
+
 ## Optional APIs and validation scope
 
 Framework Tasks and Skill extensions are not registered by this app. Native engineering calls are not automatically wrapped as Tasks. The four workflow skills ship as ordinary Codex plugin skills; framework Skill publication is not required to load them.

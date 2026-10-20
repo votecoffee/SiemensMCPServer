@@ -5,6 +5,8 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'plugin/framework'))
 from reconciliation import reconcile, require_reconciled, receipt_path
@@ -12,6 +14,7 @@ from universal_tools.daemon import InstanceLock
 from universal_tools.journal import WriteJournal
 from universal_tools.models import BrokerError
 from universal_tools.ownership import OwnershipJournal
+import manage
 
 
 class ReconciliationTests(unittest.TestCase):
@@ -103,6 +106,34 @@ class ReconciliationTests(unittest.TestCase):
         receipt_path(self.state, self.request).write_text('{truncated')
         with self.assertRaisesRegex(ValueError, 'Unreconciled'):
             require_reconciled(self.state)
+
+    def test_atomic_upgrade_holds_startup_lock_until_new_deployment_is_published(self):
+        candidate = self.root/'candidate'; (candidate/'framework').mkdir(parents=True)
+        manager = candidate/'framework/manage.py'; manager.write_text('synthetic')
+        batch = self.root/'batch.json'
+        batch.write_text(json.dumps([{'requestId': self.request, 'fingerprint': self.fingerprint,
+            'evidence': str(self.evidence), 'sha256': self.hash, 'summary': 'Synthetic outcome inspected'}]))
+        args = SimpleNamespace(root=self.root, payload=candidate, reconciliation_batch=batch, acknowledge_outcome=True)
+        configured = []
+        def publish(value, *, _startup_locked=False):
+            self.assertTrue(_startup_locked)
+            with self.assertRaises(BrokerError), InstanceLock(self.state/'startup.lock'):
+                pass
+            require_reconciled(self.state)
+            configured.append(True)
+        with patch.object(manage, '__file__', str(manager)), patch.object(manage, 'verify_payload'), \
+             patch.object(manage, 'configure', side_effect=publish), patch('universal_tools.cli.probe', return_value=False), \
+             patch('universal_tools.cli.stop') as stop:
+            result = manage.reconcile_upgrade(args, {'state': str(self.state)})
+            self.assertEqual(result['state'], 'reconciled-upgrade-ready')
+            stop.assert_not_called()
+        self.assertEqual(configured, [True])
+        self.assertEqual(self.journal.status(self.request), self.original)
+
+    def test_atomic_upgrade_cannot_create_fresh_state_to_bypass_receipts(self):
+        args = SimpleNamespace(root=self.root/'different-state', payload=self.root, reconciliation_batch=self.evidence, acknowledge_outcome=True)
+        with self.assertRaisesRegex(ValueError, 'retain the existing state'):
+            manage.reconcile_upgrade(args, {'state': str(self.state)})
 
 
 if __name__ == '__main__':
