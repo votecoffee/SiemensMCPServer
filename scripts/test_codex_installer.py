@@ -44,7 +44,7 @@ def main():
             choice = install_root/'integration-choice.json'; choice.write_text(old_choice, encoding='utf-8')
             for _ in range(2):
                 installed = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(installer),
-                    '-Package', str(args.package.resolve()), '-InstallRoot', str(install_root)],
+                    '-Package', str(args.package.resolve()), '-InstallRoot', str(install_root), '-AppHostRoot', str(root/'apphost')],
                     env=standalone_env, capture_output=True, text=True, encoding='utf-8', timeout=60)
                 assert installed.returncode == 0, installed.stdout+installed.stderr
                 installed_report = json.loads(installed.stdout)

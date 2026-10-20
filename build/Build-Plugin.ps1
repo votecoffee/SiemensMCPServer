@@ -1,7 +1,8 @@
 param(
     [ValidatePattern('^V\d+(\.\d+)?$')][string]$TiaPortalVersion = 'V15.1',
     [string]$TiaPortalInstallVersion = '',
-    [string]$TiaPublicApiDir = ''
+    [string]$TiaPublicApiDir = '',
+    [Parameter(Mandatory = $true)][string]$FrameworkWheel
 )
 $ErrorActionPreference = 'Stop'
 # Match extension packaging: hashing must not depend on shell module auto-loading.
@@ -43,6 +44,10 @@ if ($TiaPublicApiDir) { $buildArgs += '-p:TiaPublicApiDir=' + $TiaPublicApiDir }
 & dotnet @buildArgs
 if ($LASTEXITCODE -ne 0) { throw 'MCP publish failed; the incomplete package was retained for diagnostics.' }
 & (Join-Path $repoRoot 'build\Build-Extensions.ps1') -Destination (Join-Path $packageRoot 'server\extensions')
+& py -3.13 -B (Join-Path $repoRoot 'scripts\bundle_framework.py') $FrameworkWheel (Join-Path $packageRoot 'framework')
+if ($LASTEXITCODE -ne 0) { throw 'Framework wheel bundle verification failed.' }
+& py -3.13 -B (Join-Path $packageRoot 'framework\manage.py') catalog --executable (Join-Path $packageRoot 'server\SiemensMCPServer.Mcp.exe') --output (Join-Path $packageRoot 'framework\backend-tools.json')
+if ($LASTEXITCODE -ne 0) { throw 'Backend catalog export failed.' }
 if (Get-ChildItem -LiteralPath (Join-Path $packageRoot 'server') -Filter 'Siemens.Engineering*' -Recurse) {
     throw 'A Siemens engineering assembly was copied into the package. Packaging stopped.'
 }

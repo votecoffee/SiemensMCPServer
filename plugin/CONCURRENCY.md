@@ -2,6 +2,8 @@
 
 Host **0.13.0** accepts overlapping MCP requests on one connection. Pure local analysis runs in separate worker processes while native operations and transactions retain one owning STA thread. This is a host capability and requires an upgraded host/reconnect once. Worker reload alone cannot add it. The 51 MCP tools and their argument schemas are retained.
 
+These concurrency lanes apply to direct native MCP clients. The standalone plugin's [app-owned gateway](APP-HOST.md) currently serializes calls to its single native backend; multiple frontends have separate ownership identities and cannot concurrently edit the same engineering context.
+
 | Lane | Active limit | Waiting limit | Work |
 | --- | ---: | ---: | --- |
 | Native | 1 | 100 | Attach/version changes, native reads/exports, previews, applies, compile/save and reload |

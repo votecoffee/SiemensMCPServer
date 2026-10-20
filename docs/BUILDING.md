@@ -52,7 +52,7 @@ For an API V16 build supplied by Portal V19, the runtime engineering selection i
 ## Package and verify
 
 ```powershell
-powershell.exe -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1
+powershell.exe -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1 -FrameworkWheel 'C:\packages\universal_codex_tools-0.16.0-py3-none-any.whl'
 py -3 -X utf8 scripts/verify_plugin.py 'C:\path\to\plugin.zip'
 ```
 
@@ -164,3 +164,9 @@ py -3 -B -X utf8 scripts/test_codex_installer.py 'C:\packages\siemens.zip'
 The adapter profile builds a separate test executable with a fake `IHmiSession` below the production handlers, queues and feature workers. It uses only Python's standard library, temporary settings and fake project state; Siemens assemblies are prohibited. Checks cover exact multilingual readback, plan ownership/hash/staleness, successful/failed reload, separate compile/save/reopen, process restart and a lost reply without replay. Native transactions and actual Codex chat behavior need their own acceptance.
 
 The installer profile uses disposable Codex homes and fake CLI commands to verify standalone installation, repeats, obsolete choice files, concurrent admission and package rejection controls. It never changes the normal Codex profile.
+
+## App-owned framework build
+
+Plugin 0.17.0 pins `universal-codex-tools==0.16.0`, MCP Python 2.3.0 and matching wire types in `plugin/framework/requirements-lock.txt`. Build or obtain a verified wheel from framework commit `579b065ecc37f98af72cb148ba47a65587bd167b`, then supply it through `-FrameworkWheel`. Packaging checks its RECORD/metadata and collects the exact binary dependency wheels. Runtime installation uses `--no-index` and the bundled wheelhouse. The C# SDK remains 2.2.0.
+
+Use `scripts/test_framework_integrity.py` for deployment/bundle rejection controls and the pinned framework environment for `scripts/test_framework_adapter.py <extracted>/server/SiemensMCPServer.Mcp.exe`. The latter exercises two independent app frontends, complete direct/routed results, review guards, reload, receipts and a lost reply with a durable restart barrier, using a test-only native provider. Actual native acceptance remains separate. See [app lifecycle](../plugin/APP-HOST.md).

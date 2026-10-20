@@ -1,4 +1,4 @@
-# SiemensMCPServer plugin 0.16.0
+# SiemensMCPServer plugin 0.17.0
 
 The project and GitHub repository are now **SiemensMCPServer**. The plugin/MCP ID is `siemens-mcp-server`, the local marketplace is `siemens-mcp-server-local`, and the host is `SiemensMCPServer.Mcp.exe`. Remove the old `siemens-tia-openness` plugin or direct MCP registration through Codex before installing the renamed plugin. The installer refuses to register a second copy while the old server is enabled. Do not remove its cache manually while it is running. This rename needs a host upgrade; feature-worker reload remains available afterward.
 
@@ -10,11 +10,11 @@ A selected historical V15.1 native pilot passed single-line English/German Unico
 
 Host 0.15.0 and desktop 1.3.0 share [GUI-editable safeguards](SAFEGUARDS.md): write ceilings, operation restrictions, confirmations, preview limits, project scope and request limits. Permissions are rechecked for subsequent operations; scheduling/location changes require a host restart. Local settings do not grant client or Siemens permission.
 
-Host/plugin **0.16.0** exposes 51 engineering tools through the standalone Codex plugin. Fresh installations and upgrades always install this plugin.
+Host/plugin **0.17.0** uses the app-owned framework 0.16.0 gateway: 14 stable front-door tools discover/invoke 51 native engineering operations. The native executable retains direct access to those 51 tools. Fresh installations and upgrades always install the standalone Siemens plugin; no Universal Tools plugin or shared registration is used. See [app host operation](APP-HOST.md).
 
 ## Install the built package
 
-Host 0.13.0 added [concurrent requests](CONCURRENCY.md): bounded parallel local analysis, separate control/status, cancellable queues and generation-safe reload. Native calls and transactions remain serialized on the owning STA. These host changes require an upgrade/reconnect once.
+The native host supports [concurrent requests](CONCURRENCY.md): bounded parallel local analysis, separate control/status, cancellable queues and generation-safe reload. Native calls and transactions remain serialized on the owning STA. The standalone framework gateway currently serializes calls to its native backend; direct MCP clients retain the native concurrency lanes.
 
 Version 0.12.0 adds [multilingual project texts](PROJECT-TEXTS.md): comments, descriptions, captions and text values with native categories/paths, missing-translation filters, exact previews and reviewed import/readback. The new native import route needs a 0.12.0 host upgrade/reconnect once; later worker logic can reload. `scripts/Edit-ProjectTexts.ps1` extracts complete retained workbooks or prepares disk-only candidates. Native import acceptance remains pending.
 
@@ -24,7 +24,7 @@ Comfort worker 0.11.0 adds [project HMI reference analysis](HMI-REFERENCE-ANALYS
 
 Comfort/classic V15.1 is the primary development profile. Unified follows with version-specific capability gates. PLC support shares the V15.1-first offline stack. Exact V15.0 compatibility requires separate API build and native validation.
 
-Extract the ZIP to a permanent directory. It includes `server/SiemensMCPServer.Mcp.exe`, its runtime dependencies, workflow skills, MCP descriptions and a Codex compatibility manifest. The Windows Codex profile uses a relative `cmd.exe` launcher and compatibility manifest dispatch, verified against the installed client; no unexpanded plugin-root variable is passed as an executable or working directory. Siemens DLLs are not included. Install TIA Portal, the matching Openness API, and the appropriate WinCC engineering components; use a Windows user in the local `Siemens TIA Openness` group. Use the V19 package for the Unified screen workflow on the installed V19 API.
+Extract the ZIP to a permanent directory. It includes `server/SiemensMCPServer.Mcp.exe`, its runtime dependencies, workflow skills, MCP descriptions and a Codex compatibility manifest. The Windows Codex profile uses Python 3.13 and `framework/launch.py` to connect to the dedicated app-owned host. The installer provisions pinned dependencies offline from the wheel bundle; a chat never installs packages. The C# backend SDK stays at 2.2.0. Siemens DLLs are not included. Install TIA Portal, the matching Openness API, and the appropriate WinCC engineering components; use a Windows user in the local `Siemens TIA Openness` group. Use the V19 package for the Unified screen workflow on the installed V19 API.
 
 For installation with both skills and tools, run the bundled installer with the original ZIP beside its `.sha256` sidecar:
 
@@ -32,7 +32,7 @@ For installation with both skills and tools, run the bundled installer with the 
 powershell.exe -NoProfile -File 'C:\path\to\extracted-plugin\scripts\Install-CodexPlugin.ps1' -Package 'C:\path\to\plugin.zip'
 ```
 
-From this repository, the equivalent installer is `build/Install-CodexPlugin.ps1`. It checks ZIP/payload hashes, safe paths, member limits and plugin identity; keeps a versioned source under `%LOCALAPPDATA%\SiemensMCPServer\CodexMarketplace`; backs up affected settings; then uses `codex plugin marketplace add` and `codex plugin add`. Existing unrelated plugins/settings are preserved. `-PrepareOnly` verifies/stages a package without registering it. A direct Siemens MCP registration blocks plugin installation to prevent duplicate tools. Resolve that existing registration explicitly before switching installation methods. No TIA project is attached or changed.
+From this repository, the equivalent installer is `build/Install-CodexPlugin.ps1`. It checks ZIP/payload hashes, safe paths, member limits and plugin identity; keeps a versioned source under `%LOCALAPPDATA%\SiemensMCPServer\CodexMarketplace`; prepares the dedicated per-user framework runtime; backs up affected settings; then uses `codex plugin marketplace add` and `codex plugin add`. Existing unrelated plugins/settings are preserved. `-PrepareOnly` verifies/stages a package without registering it. A direct Siemens MCP registration blocks plugin installation to prevent duplicate tools. Resolve that existing registration explicitly before switching installation methods. No TIA project is attached or changed.
 
 Verify the installed configuration using `py -3 -X utf8 scripts/test_codex_integration.py` from the extracted plugin or repository. The probe gets the actual registered command/arguments from Codex, starts that cached server, checks both skills and the tool list, and reads API capabilities/process metadata without attachment or model calls. Start a new Codex chat to load the installed tools and skills. This validates configuration and transport; it does not establish native project editing or a model-driven project trial.
 
@@ -187,7 +187,7 @@ dotnet build Mcp/SiemensMCPServer.Mcp.csproj -c Release -p:TiaPortalVersion=V15.
 dotnet test Tests/SiemensMCPServer.Tests.csproj -c Release
 py -3 -X utf8 scripts/test_mcp_protocol.py Mcp/bin/Release/V15.1/net48/SiemensMCPServer.Mcp.exe --native-read-only
 powershell.exe -NoProfile -File scripts/test_native_contracts.ps1 -Version V15.1 -ServerDirectory Mcp/bin/Release/V15.1/net48
-powershell -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1
+powershell.exe -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1 -FrameworkWheel 'C:\packages\universal_codex_tools-0.16.0-py3-none-any.whl'
 ```
 
 The protocol test checks all 51 engineering tools, required schemas, same-host extension reload, classic export conversion, and apply/compile/save write guards. It never attaches, imports, compiles, or saves a project. `--native-read-only` exercises real Siemens process enumeration, API-member checks, and unattached-object rejection. The native contract script checks installed classic/PLC signatures and production export dispatch without creating a TiaPortal instance. Unit tests cover XML/YAML, caption styling, object preview lifecycles, typed bounds, companion files, legacy category/folder conversion, hashes, DTD rejection and unsafe bundle paths. These checks do not simulate Siemens transactions or establish native acceptance.

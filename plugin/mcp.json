@@ -3,9 +3,18 @@
   "mcpServers": {
     "siemens-mcp-server": {
       "type": "stdio",
-      "command": "cmd.exe",
-      "args": ["/d", "/c", "server\\SiemensMCPServer.Mcp.exe", "--allow-writes"],
-      "cwd": "."
+      "command": "py",
+      "args": [
+        "-3.13",
+        "-B",
+        "framework/launch.py"
+      ],
+      "cwd": ".",
+      "env": {
+        "PYTHONNOUSERSITE": "1",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONPATH": ""
+      }
     }
   }
 }

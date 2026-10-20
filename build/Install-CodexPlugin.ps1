@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$Package,
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'SiemensMCPServer\CodexMarketplace'),
+    [string]$AppHostRoot = (Join-Path $env:LOCALAPPDATA 'SiemensMCPServer\AppHost'),
     [switch]$PrepareOnly
 )
 $ErrorActionPreference = 'Stop'
@@ -77,6 +78,23 @@ if (Test-Path -LiteralPath $destination) {
         try { $output.Write($payload[$name], 0, $payload[$name].Length) } finally { $output.Dispose() }
     }
 }
+if ($PrepareOnly) {
+    @{ state = 'prepared'; marketplaceRoot = $root; pluginSource = $destination; packageSha256 = $zipHash; settingsChanged = $false; legacyZipSeparatorsNormalized = $legacySeparators } | ConvertTo-Json
+    exit 0
+}
+$codex = (Get-Command codex -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+$configurationRoot = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }
+$cachePrefix = [IO.Path]::GetFullPath((Join-Path $configurationRoot 'plugins\cache\siemens-mcp-server-local\siemens-mcp-server')).TrimEnd('\') + '\'
+$servers = & $codex mcp list --json | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect existing Codex MCP registration.' }
+$legacyServers = @($servers | Where-Object { $_.name -eq 'siemens-tia-openness' -and $_.enabled })
+if ($legacyServers.Count) { throw 'The old siemens-tia-openness server is still enabled. Remove its plugin or direct MCP registration through Codex before installing SiemensMCPServer to avoid duplicate tools. Existing settings were not changed.' }
+$direct = @($servers | Where-Object { $_.name -eq 'siemens-mcp-server' -and -not $_.transport.env.PLUGIN_ROOT -and
+    -not ($_.transport.cwd -and [IO.Path]::GetFullPath($_.transport.cwd).StartsWith($cachePrefix, [StringComparison]::OrdinalIgnoreCase)) })
+if ($direct.Count) { throw 'A direct Siemens MCP registration already exists. Resolve it before installing the plugin to avoid duplicate tools.' }
+$python = (Get-Command py -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+$framework = & $python -3.13 -B (Join-Path $destination 'framework\manage.py') prepare --payload $destination --root ([IO.Path]::GetFullPath($AppHostRoot)) --allow-writes | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0 -or $framework.state -ne 'framework-ready') { throw 'App-owned framework preparation failed. Existing plugin selection was preserved.' }
 $catalogDirectory = Join-Path $root '.agents\plugins'
 [IO.Directory]::CreateDirectory($catalogDirectory) | Out-Null
 $catalogPath = Join-Path $catalogDirectory 'marketplace.json'
@@ -92,20 +110,6 @@ $catalog = [ordered]@{ name = 'siemens-mcp-server-local'; interface = @{ display
     policy = @{ installation = 'AVAILABLE'; authentication = 'ON_INSTALL' }; category = 'Productivity'
 }) }
 [IO.File]::WriteAllText($catalogPath, ($catalog | ConvertTo-Json -Depth 8), $utf8)
-if ($PrepareOnly) {
-    @{ state = 'prepared'; marketplaceRoot = $root; pluginSource = $destination; packageSha256 = $zipHash; settingsChanged = $false; legacyZipSeparatorsNormalized = $legacySeparators } | ConvertTo-Json
-    exit 0
-}
-$codex = (Get-Command codex -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
-$configurationRoot = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }
-$cachePrefix = [IO.Path]::GetFullPath((Join-Path $configurationRoot 'plugins\cache\siemens-mcp-server-local\siemens-mcp-server')).TrimEnd('\') + '\'
-$servers = & $codex mcp list --json | ConvertFrom-Json
-if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect existing Codex MCP registration.' }
-$legacyServers = @($servers | Where-Object { $_.name -eq 'siemens-tia-openness' -and $_.enabled })
-if ($legacyServers.Count) { throw 'The old siemens-tia-openness server is still enabled. Remove its plugin or direct MCP registration through Codex before installing SiemensMCPServer to avoid duplicate tools. Existing settings were not changed.' }
-$direct = @($servers | Where-Object { $_.name -eq 'siemens-mcp-server' -and -not $_.transport.env.PLUGIN_ROOT -and
-    -not ($_.transport.cwd -and [IO.Path]::GetFullPath($_.transport.cwd).StartsWith($cachePrefix, [StringComparison]::OrdinalIgnoreCase)) })
-if ($direct.Count) { throw 'A direct Siemens MCP registration already exists. Resolve it before installing the plugin to avoid duplicate tools.' }
 $configuration = Join-Path $configurationRoot 'config.toml'
 if (Test-Path -LiteralPath $configuration) {
     [IO.Directory]::CreateDirectory($backupDirectory) | Out-Null
@@ -118,6 +122,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Codex plugin installation failed. Verified sou
 $result = @{ state = 'installed'; version = $plugin.version; api = $build.tiaPortalApi; packageSha256 = $zipHash;
     marketplaceRoot = $root; pluginSource = $destination; configurationBackup = $backupDirectory;
     codex = ($installation | ConvertFrom-Json); nativeProjectChanged = $false; integration = 'Standalone';
+    frameworkVersion = '0.16.0'; mcpPythonVersion = '2.3.0'; frameworkConfig = $framework.config;
     nextStep = 'Start a new Codex chat to load the plugin skills/tools. Native project attachment and edits require an explicit target.' }
 $result | ConvertTo-Json -Depth 12 | Tee-Object -FilePath (Join-Path $root 'installation.json')
 } finally { if ($installOwned) { $installMutex.ReleaseMutex() }; $installMutex.Dispose() }

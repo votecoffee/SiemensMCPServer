@@ -36,8 +36,12 @@ def validate(files):
     compat = json.loads(files[".mcp.json"])["mcpServers"]["siemens-mcp-server"]
     assert modern["type"] == "stdio"
     assert {k: v for k, v in modern.items() if k != "type"} == compat
-    assert modern["command"] == "cmd.exe"
-    assert modern["args"] == ["/d", "/c", "server\\SiemensMCPServer.Mcp.exe", "--allow-writes"]
+    if tuple(map(int, portable["version"].split("."))) >= (0, 17, 0):
+        assert modern["command"] == "py" and modern["args"] == ["-3.13", "-B", "framework/launch.py"]
+        assert modern["env"]["PYTHONDONTWRITEBYTECODE"] == "1"
+    else:
+        assert modern["command"] == "cmd.exe"
+        assert modern["args"] == ["/d", "/c", "server\\SiemensMCPServer.Mcp.exe", "--allow-writes"]
     assert modern["cwd"] == "."
     assert "skills/edit-hmi-text/SKILL.md" in files
     version = tuple(int(part) for part in portable["version"].split(".")[:3])
@@ -64,11 +68,22 @@ def validate(files):
         assert "scripts/Edit-ProjectTexts.ps1" in files
     if version >= (0, 13, 0):
         assert "CONCURRENCY.md" in files
-    if version >= (0, 16, 0):
+    if (0, 16, 0) <= version < (0, 17, 0):
         removed = {"BROKER-INTEGRATION.md", "APP-FRAMEWORK.md", "scripts/New-BrokerRegistration.ps1",
                    "scripts/New-FrameworkPublication.ps1", "scripts/test_app_framework.py"}
         assert not removed.intersection(files)
         assert not any(name.startswith("framework/") or name.startswith("universal_tools/") or name.endswith(".whl") for name in files)
+        installer = files["scripts/Install-CodexPlugin.ps1"].decode("utf-8-sig")
+        assert "$Integration" not in installer and "integration-choice.json" not in installer
+    if version >= (0, 17, 0):
+        assert "framework/manage.py" in files and "framework/wheels.json" in files
+        pins = files["framework/requirements-lock.txt"].decode("utf-8").splitlines()
+        assert "universal-codex-tools==0.16.0" in pins and "mcp==2.3.0" in pins
+        wheel_index = json.loads(files["framework/wheels.json"])
+        assert wheel_index["sourceCommit"] == "579b065ecc37f98af72cb148ba47a65587bd167b"
+        for entry in wheel_index["files"]:
+            assert hashlib.sha256(files["framework/"+entry["path"]]).hexdigest() == entry["sha256"]
+        assert "scripts/New-BrokerRegistration.ps1" not in files and "BROKER-INTEGRATION.md" not in files
         installer = files["scripts/Install-CodexPlugin.ps1"].decode("utf-8-sig")
         assert "$Integration" not in installer and "integration-choice.json" not in installer
     assert not any('fixture' in name.lower() or '/fixtures/' in name.lower() for name in files), 'Test fixtures must not be distributed'

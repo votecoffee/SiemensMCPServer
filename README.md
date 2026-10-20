@@ -61,7 +61,7 @@ Build the package for the installed API:
 ```powershell
 git clone https://github.com/votecoffee/SiemensMCPServer.git
 cd SiemensMCPServer
-powershell.exe -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1
+powershell.exe -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1 -FrameworkWheel 'C:\packages\universal_codex_tools-0.16.0-py3-none-any.whl'
 ```
 
 The build prints the ZIP path and creates its SHA-256 sidecar under `artifacts/`. Pass that exact ZIP to the installer, keeping the sidecar beside it:
@@ -70,7 +70,7 @@ The build prints the ZIP path and creates its SHA-256 sidecar under `artifacts/`
 powershell.exe -NoProfile -File build/Install-CodexPlugin.ps1 -Package 'C:\path\to\plugin.zip'
 ```
 
-The installer installs the standalone Siemens Codex plugin. Use `-PrepareOnly` to verify and stage a package without changing Codex settings. Load the installed tools and skills in a new Codex chat. See the [plugin guide](plugin/README.md).
+The installer installs the standalone Siemens Codex plugin with its app-owned framework gateway (framework 0.16.0 / MCP Python 2.3.0). Python 3.13 is required; exact dependencies are installed offline from the verified bundle into a dedicated per-user runtime. Use `-PrepareOnly` to verify and stage a package without changing Codex settings. Load the installed tools and skills in a new Codex chat. See the [plugin guide](plugin/README.md).
 
 Fresh installations and upgrades always install the standalone plugin. Obsolete integration-choice files do not affect installation. Concurrent installers using one root are rejected before settings changes.
 
@@ -122,7 +122,7 @@ tia_list_processes()
 tia_get_api_capabilities()
 ```
 
-Keep a persistent MCP connection for engineering workflows: attachments, preview plans and worker generations belong to the running host. A transport that starts a fresh host for each call cannot carry an attach/preview/apply sequence. Inspect current native state and retained artifacts before retrying an uncertain write.
+Acquire the `siemens-engineering` service and retain its framework context throughout an engineering workflow. The native executable remains available for direct clients. Keep a persistent native MCP connection for direct engineering workflows: attachments, preview plans and worker generations belong to the running host. A transport that starts a fresh host for each call cannot carry an attach/preview/apply sequence. Inspect current native state and retained artifacts before retrying an uncertain write.
 
 ### Reload feature workers
 
@@ -134,7 +134,7 @@ PLC extensions export readable native SCL/STL/DB/UDT source, search it and read 
 
 Project extensions provide bounded [library metadata browsing](plugin/LIBRARY-INSPECTION.md) and [multilingual project texts](plugin/PROJECT-TEXTS.md). Version 0.12.0 extracts comments, descriptions, captions and text values by category/path and explicit active culture pair, then previews exact translation updates with native workbook evidence. Source-language changes require opt-in; apply uses a fresh snapshot and native import/readback. The companion `build/Edit-ProjectTexts.ps1` extracts complete retained workbooks or prepares disk-only candidates. The bundled [library](plugin/skills/inspect-libraries/SKILL.md) and [project-text](plugin/skills/inspect-project-texts/SKILL.md) skills describe selection and paging.
 
-Host 0.13.0 supports [concurrent requests](plugin/CONCURRENCY.md). Pure local analysis runs in parallel worker processes (two jobs by default, configurable with `--analysis-parallelism=1..8`); native operations and transactions retain one FIFO STA lane. Queued requests can be cancelled before dispatch, and `tia_list_extensions` reports lane limits, active/queued work and worker IDs. Reload drains active generations; conflicting edits retain their fingerprint guards. This host scheduling change requires an upgrade/reconnect once.
+The native host supports [concurrent requests](plugin/CONCURRENCY.md). Direct MCP clients can run pure local analysis in parallel worker processes (two jobs by default, configurable with `--analysis-parallelism=1..8`); native operations and transactions retain one FIFO STA lane. The standalone framework gateway currently serializes calls to its native backend. Queued native requests can be cancelled before dispatch, and `tia_list_extensions` reports lane limits, active/queued work and worker IDs. Reload drains active generations; conflicting edits retain their fingerprint guards.
 
 The project-text import route requires a 0.12.0 host upgrade/reconnect once; later translation logic can reload on the same contract. V15.1 native extraction has been exercised; import/rollback and Unified/PLC category acceptance remain pending. The desktop GUI does not yet expose this project-text workflow. See [API compatibility](plugin/API-COMPATIBILITY.md) and [native validation status](plugin/NATIVE-ACCEPTANCE.md).
 
@@ -158,7 +158,7 @@ Keep machine-specific notes, project exports, acceptance evidence, logs and cust
 
 ## API
 
-The server exposes 51 engineering tools directly through MCP. Their descriptions and JSON schemas are available through MCP `tools/list`.
+The installed plugin exposes 14 stable discovery/invocation tools backed by 51 Siemens engineering operations. The native .NET executable also retains its 51 direct MCP tools. See [gateway usage and lifecycle](plugin/APP-HOST.md). Their descriptions and JSON schemas are available through MCP `tools/list`.
 
 - `tia_*`: API/process discovery, project attachment, status, archive/save/reopen and extension discovery/reload.
 - `hmi_*`: Comfort/classic and capability-checked Unified inspection, previews, edits, transfers and compilation.
