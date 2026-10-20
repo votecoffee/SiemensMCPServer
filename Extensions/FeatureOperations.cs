@@ -39,6 +39,8 @@ namespace SiemensMCPServer.Extensions
                     Op("arrange_screen_items", "Move, align, distribute equal gaps or resize selected classic screen items. Uses exact paths/expected bounds and the native resource fingerprint; returns exact geometry edits. Stored geometry only; does not evaluate runtime dynamizations.", "classicXml", true, LayoutSchema(true), "classicReferences"),
                     Op("build_screen_package", "Build a sidecar-free classic screen/tag import bundle from native XML prototypes and a supplied PLC symbol manifest. Offline only; writes no files and does not establish native acceptance.", "local", false, ComfortPackage.Schema(true)),
                     Op("validate_package_bindings", "Check screen-to-HMI-tag references and symbolic PLC connection/type declarations in supplied XML. Offline only; no native connection partner verification.", "local", false, ComfortPackage.Schema(false)),
+                    Op("validate_native_text_list", "Validate original XML declaration/encoding/BOM bytes, V15.1 native TextLists metadata, identity, keys/cultures and known import constraints. Source/candidate hashes and named check receipts; no native import/compile/save/runtime claim.", "local", false, ClassicTextListValidation.Schema("validate_native_text_list")),
+                    Op("validate_text_list_delta", "Validate the exact reviewed text-list addition/update/removal plan, baseline/candidate hashes and all unselected/default/language content. Optional explicit blank-other-new-translations policy and supplied native export readback comparison. Offline only.", "local", false, ClassicTextListValidation.Schema("validate_text_list_delta")),
                     Op("inspect_xml", "Inspect supplied classic XML without attaching to TIA.", "local", false, xmlSchema),
                     Op("edit_xml", "Edit existing scalar XML fields in the selected native resource.", "classicXml", true, new { type = "object", required = new[] { "edits" }, properties = new { edits = new { type = "array", items = new { type = "object", required = new[] { "xPath", "expectedValue", "newValue" }, properties = new { xPath = new { type = "string" }, expectedValue = new { type = "string" }, newValue = new { type = "string" } } } } } }, "classicReferences"),
                     Op("change_behaviors", "Clone/remove frozen native event/animation prototypes. Clone owner types must match; explicit same-type Owner/Control maps may retarget external native links. Combined removals guard retained references; scalar edits preserve identity metadata.", "classicXml", true, BehaviorSchema(true), "classicReferences"),
@@ -65,6 +67,8 @@ namespace SiemensMCPServer.Extensions
             JsonElement args = input.TryGetProperty("arguments", out var nested) ? nested : input;
             if (module == "comfort")
             {
+                if (operation == "validate_native_text_list") return ExtensionWire.Json(ClassicTextListValidation.Bytes(ExtensionWire.Parse<ClassicByteValidation>(args)));
+                if (operation == "validate_text_list_delta") return ClassicTextListValidation.Delta(ExtensionWire.Parse<ClassicDeltaValidation>(args));
                 if (new[] { "import_controller_declarations", "analyze_hmi_references", "validate_hmi_bindings", "reference_impact" }.Contains(operation))
                     return HmiAnalysisOperations.Execute(operation, args);
                 if (operation == "inspect_behaviors")

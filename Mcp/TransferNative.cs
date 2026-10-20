@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
+using System.Text.Json;
 using Siemens.Engineering;
 using Siemens.Engineering.SW;
 
@@ -32,7 +34,7 @@ namespace SiemensMCPServer.Mcp
             }
             else DirectoryTransferNative.Export(node, method, directory);
         }
-        internal static object? Import(object node, string directory, bool overwrite, bool allowMissingReferences = false)
+        internal static object? Import(object node, string directory, bool overwrite, bool allowMissingReferences = false, string? evidenceRoot = null)
         {
             var method = ImportMethod(node) ?? throw new NotSupportedException("No supported native import signature on this object.");
             object target = SingletonImport(node) != null ? ((IEngineeringObject)node).Parent : node;
@@ -44,6 +46,8 @@ namespace SiemensMCPServer.Mcp
                 var xml = Directory.GetFiles(directory, "*.xml", SearchOption.TopDirectoryOnly);
                 if (xml.Length != 1) throw new ArgumentException("Classic import requires exactly one top-level resource XML and any required sidecars.");
                 TransferFiles.ValidateXmlCompanions(directory);
+                bool textLists = node.GetType().FullName == "Siemens.Engineering.Hmi.TextGraphicList.TextListComposition";
+                if (textLists) ValidateTextList(xml[0]);
                 if (node.GetType().FullName!.StartsWith("Siemens.Engineering.Hmi.Cycle.", StringComparison.Ordinal))
                 {
                     string name = TransferFiles.XmlObjectName(File.ReadAllText(xml[0]));
@@ -53,9 +57,39 @@ namespace SiemensMCPServer.Mcp
                     overwrite = false;
                 }
                 var batchMethod = allowMissingReferences ? node.GetType().GetMethod("Import", new[] { typeof(FileInfo), typeof(ImportOptions), typeof(SWImportOptions) }) : null;
-                result = batchMethod != null ? batchMethod.Invoke(target, new object[] { new FileInfo(xml[0]), overwrite ? ImportOptions.Override : ImportOptions.None, SWImportOptions.IgnoreMissingReferencedObjects })
-                    : method.Invoke(target, new object[] { new FileInfo(xml[0]), overwrite ? ImportOptions.Override : ImportOptions.None });
-                DirectoryTransferNative.Complete(result);
+                NativeXmlStage? stage = null;
+                try
+                {
+                    string nativeFile = xml[0];
+                    if (textLists)
+                    {
+                        stage = NativeXmlStage.Create(Path.GetFileName(xml[0]));
+                        TransferFiles.Copy(directory, stage.DirectoryPath);
+                        stage.Verify(File.ReadAllBytes(xml[0]));
+                        stage.Report.ResourceInventorySha256 = TransferFiles.Hash(TransferFiles.Inventory(stage.DirectoryPath));
+                        foreach (var file in TransferFiles.Inventory(stage.DirectoryPath))
+                            if (Path.Combine(stage.NativeDirectory, file.Path).Length > 140) throw new IOException("A native staging companion exceeds the short-path profile.");
+                        if (evidenceRoot != null)
+                        {
+                            stage.Report.EvidenceDirectory = Path.Combine(evidenceRoot, "native-staging", Guid.NewGuid().ToString("N"));
+                            Directory.CreateDirectory(stage.Report.EvidenceDirectory);
+                        }
+                        nativeFile = stage.Report.NativePath; stage.Report.State = "import-dispatched"; stage.Report.NativeDispatched = true;
+                    }
+                    result = batchMethod != null ? batchMethod.Invoke(target, new object[] { new FileInfo(nativeFile), overwrite ? ImportOptions.Override : ImportOptions.None, SWImportOptions.IgnoreMissingReferencedObjects })
+                        : method.Invoke(target, new object[] { new FileInfo(nativeFile), overwrite ? ImportOptions.Override : ImportOptions.None });
+                    DirectoryTransferNative.Complete(result);
+                    if (stage != null) { stage.Report.NativeCallReturned = true; stage.Report.State = "native-import-returned; transaction outcome belongs to apply receipt"; }
+                }
+                catch (Exception ex) { if (stage != null) { stage.Report.State = stage.Report.NativeDispatched ? "native-outcome-needs-inspection" : "not-dispatched"; stage.Report.Error = ex.GetBaseException().Message; } throw; }
+                finally
+                {
+                    if (stage != null)
+                    {
+                        stage.Dispose();
+                        if (stage.Report.EvidenceDirectory != null) File.WriteAllText(Path.Combine(stage.Report.EvidenceDirectory, "staging.json"), JsonSerializer.Serialize(stage.Report, JsonDefaults.Options), new UTF8Encoding(false));
+                    }
+                }
             }
             else
             {
@@ -76,12 +110,19 @@ namespace SiemensMCPServer.Mcp
                 var files = Directory.GetFiles(directory, "*.xml", SearchOption.TopDirectoryOnly);
                 if (files.Length != 1) throw new ArgumentException("Classic import requires exactly one top-level XML resource plus sidecars.");
                 TransferFiles.ValidateXmlCompanions(directory);
+                if (node.GetType().FullName == "Siemens.Engineering.Hmi.TextGraphicList.TextListComposition") ValidateTextList(files[0]);
                 if (!skipExistingCycles && node.GetType().FullName!.StartsWith("Siemens.Engineering.Hmi.Cycle.", StringComparison.Ordinal))
                 {
                     string name = TransferFiles.XmlObjectName(File.ReadAllText(files[0]));
                     if (EngineeringNative.Children(node, "").Any(c => c.Key == "n:" + Uri.EscapeDataString(name))) throw new InvalidOperationException("Existing classic cycles cannot be overwritten.");
                 }
             }
+        }
+        private static void ValidateTextList(string file)
+        {
+            var version = typeof(Project).Assembly.GetName().Version;
+            bool known = version.Major == 15 && version.Minor == 1;
+            NativeXmlValidation.Analyze(File.ReadAllBytes(file), known ? "V15.1" : "", known).RequirePassed();
         }
     }
 }

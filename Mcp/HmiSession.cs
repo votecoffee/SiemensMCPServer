@@ -11,7 +11,7 @@ using SiemensMCPServer.Extensions;
 namespace SiemensMCPServer.Mcp
 {
     // All methods run on the runtime's single STA thread. No UI objects are required.
-    internal sealed partial class HmiSession : IHmiSession, ITextListBackend, IUnifiedBackend, IEngineeringBackend, IClassicResourceBackend
+    internal sealed partial class HmiSession : IHmiSession, ITextListBackend, ITextListStagingEvidence, IUnifiedBackend, IEngineeringBackend, IClassicResourceBackend
     {
         private TiaPortal? portal;
         private Project? project;
@@ -26,6 +26,10 @@ namespace SiemensMCPServer.Mcp
         private readonly IFeatureEngine features;
         private readonly Func<SafeguardSettings> safeguards;
         private int? processId;
+        private object? textListImportStaging;
+        private NativeStagingReport? textListExportStaging;
+        public object? TextListImportStaging => textListImportStaging;
+        public object? TextListExportStaging => textListExportStaging;
 
         public HmiSession(string artifactRoot, IFeatureEngine features, Func<SafeguardSettings>? safeguards = null) { this.artifactRoot = artifactRoot; this.features = features; this.safeguards = safeguards ?? (() => new SafeguardSettings()); }
 
@@ -120,7 +124,7 @@ namespace SiemensMCPServer.Mcp
         public object Status()
         {
             if (project != null) CheckProject();
-            return new { attached = project != null, processId, projectPath, projectModified = project?.IsModified,
+            return new { attached = project != null, processId, projectPath, projectModified = project?.IsModified, textListWorkflow = workflow?.Status(),
                 plcTargets = project == null ? Array.Empty<object>() : SoftwareCatalog.Discover(project).Where(s => s.Family == "plc")
                     .Select(s => (object)new { plcId = s.Id, label = s.Label, name = s.Software.Name }).ToArray(),
                 hmis = hmis.Select(h => new { hmiId = h.Id, label = h.Label, name = h.Software.Name, family = h.Family,
@@ -143,7 +147,8 @@ namespace SiemensMCPServer.Mcp
         {
             var document = TextListDocuments.Parse(ReadTextList(hmiId, listName));
             return new { hmiId, listName, fingerprint = document.Fingerprint, values = document.Read(), nativeImportScope = document.NativeImportScope,
-                structure = (document as TextListDocument)?.Structure(), activeProjectCultures = project!.LanguageSettings.ActiveLanguages.Select(l => l.Culture.Name).ToArray() };
+                structure = (document as TextListDocument)?.Structure(), nativeExport = document is TextListDocument ? textListExportStaging : null,
+                activeProjectCultures = project!.LanguageSettings.ActiveLanguages.Select(l => l.Culture.Name).ToArray() };
         }
 
         public object Preview(string hmiId, string listName, string expectedFingerprint, TextEdit[] edits)
@@ -170,14 +175,21 @@ namespace SiemensMCPServer.Mcp
             var reference = FindReference(hmiId);
             if (reference.Family == "unified") return UnifiedTextListNative.Export(reference.Software, listName, artifactRoot);
             dynamic list = FindTextList(hmiId, listName);
-            string temp = Path.Combine(artifactRoot, "exports", Guid.NewGuid().ToString("N") + ".xml");
-            Directory.CreateDirectory(Path.GetDirectoryName(temp)!);
+            string evidence = Path.Combine(artifactRoot, "text-list-exports", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(evidence);
+            using var stage = NativeXmlStage.Create("export.xml");
+            textListExportStaging = stage.Report; stage.Report.EvidenceDirectory = evidence;
             try
             {
-                list.Export(new FileInfo(temp), ExportOptions.WithDefaults);
-                return File.ReadAllText(temp, Encoding.UTF8);
+                stage.Report.State = "export-dispatched"; stage.Report.NativeDispatched = true;
+                list.Export(new FileInfo(stage.Report.NativePath), ExportOptions.WithDefaults);
+                stage.Report.NativeCallReturned = true;
+                byte[] bytes = stage.Read(); File.WriteAllBytes(Path.Combine(evidence, "native.xml"), bytes);
+                stage.Report.State = "export-returned";
+                return NativeXmlValidation.Read(bytes);
             }
-            finally { if (File.Exists(temp)) File.Delete(temp); }
+            catch (Exception ex) { stage.Report.State = "export-unverified"; stage.Report.Error = ex.GetBaseException().Message; throw; }
+            finally { stage.Dispose(); File.WriteAllText(Path.Combine(evidence, "staging.json"), System.Text.Json.JsonSerializer.Serialize(stage.Report, JsonDefaults.Options), new UTF8Encoding(false)); }
         }
 
         public void ImportTextList(string hmiId, string listName, string expectedFingerprint, string candidateXml)
@@ -190,11 +202,18 @@ namespace SiemensMCPServer.Mcp
             var target = FindClassicHmi(hmiId);
             var candidate = new TextListDocument(candidateXml);
             if (candidate.Name != listName) throw new InvalidOperationException("Candidate text-list name does not match the target.");
-            string temp = Path.Combine(artifactRoot, "imports", Guid.NewGuid().ToString("N") + ".xml");
-            Directory.CreateDirectory(Path.GetDirectoryName(temp)!);
-            File.WriteAllText(temp, candidateXml, new UTF8Encoding(false));
+            byte[] candidateBytes = new UTF8Encoding(false, true).GetBytes(candidateXml);
+            bool v151 = typeof(Project).Assembly.GetName().Version.Major == 15 && typeof(Project).Assembly.GetName().Version.Minor == 1;
+            var preflight = NativeXmlValidation.Analyze(candidateBytes, v151 ? "V15.1" : "", v151);
+            textListImportStaging = new NativeStagingReport { State = "preflight-failed", Preflight = preflight };
+            preflight.RequirePassed();
+            string evidence = Path.Combine(artifactRoot, "text-list-imports", Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(evidence);
+            using var stage = NativeXmlStage.Create("import.xml");
+            textListImportStaging = stage.Report; stage.Report.EvidenceDirectory = evidence;
             try
             {
+                stage.Write(candidateBytes, v151 ? "V15.1" : "", v151);
                 using (var exclusive = portal!.ExclusiveAccess("Codex HMI text-list edit"))
                 {
                     CheckProject();
@@ -202,7 +221,9 @@ namespace SiemensMCPServer.Mcp
                     using (var transaction = exclusive.Transaction(project!, "Update HMI text list " + listName))
                     {
                         dynamic native = target;
-                        native.TextLists.Import(new FileInfo(temp), ImportOptions.Override);
+                        stage.Verify(candidateBytes); stage.Report.NativeDispatched = true; stage.Report.State = "import-dispatched";
+                        native.TextLists.Import(new FileInfo(stage.Report.NativePath), ImportOptions.Override);
+                        stage.Report.NativeCallReturned = true;
                         var readback = new TextListDocument(ReadTextList(hmiId, listName));
                         if (readback.Fingerprint != candidate.Fingerprint)
                             throw new InvalidOperationException("Native import readback differs from the preview. The transaction was not committed.");
@@ -211,8 +232,10 @@ namespace SiemensMCPServer.Mcp
                         transaction.CommitOnDispose();
                     }
                 }
+                stage.Report.State = "committed-native-readback-matched";
             }
-            finally { if (File.Exists(temp)) File.Delete(temp); }
+            catch (Exception ex) { stage.Report.State = stage.Report.NativeDispatched ? "native-outcome-needs-inspection" : "not-dispatched"; stage.Report.Error = ex.GetBaseException().Message; throw; }
+            finally { stage.Dispose(); File.WriteAllText(Path.Combine(evidence, "staging.json"), System.Text.Json.JsonSerializer.Serialize(stage.Report, JsonDefaults.Options), new UTF8Encoding(false)); }
         }
 
         private void ImportUnifiedTextList(string hmiId, string listName, string expectedFingerprint, string snapshot)
@@ -253,21 +276,21 @@ namespace SiemensMCPServer.Mcp
                         && (s.Id == selection.Scope.Path || s.Id.StartsWith(selection.Scope.Path + "/", StringComparison.Ordinal))))
                         PlcPolicy.RequireOffline(OnlineStateOf(plc));
                 }
-                return CompileSelected(hmiId, selection);
+                return CompileSelected(hmiId, selection, projectPath, processId);
             }
         }
         private static ICompilable CompileService(object target) => (target as IEngineeringServiceProvider)?.GetService<ICompilable>();
-        private static object CompileSoftware(string targetId, Siemens.Engineering.HW.Software target)
+        private object CompileSoftware(string targetId, Siemens.Engineering.HW.Software target)
         {
-            return CompileSelected(targetId, CompileServiceResolver.Resolve(target, targetId, false, CompileService, () => Array.Empty<CompileScope>()));
+            return CompileSelected(targetId, CompileServiceResolver.Resolve(target, targetId, false, CompileService, () => Array.Empty<CompileScope>()), projectPath, processId);
         }
-        private static object CompileSelected(string targetId, CompileSelection<ICompilable> selected)
+        private static object CompileSelected(string targetId, CompileSelection<ICompilable> selected, string? projectPath = null, int? processId = null)
         {
             CompilerResult result = selected.Service.Compile();
             var messages = new List<object>();
             int count = 0;
             AddMessages(result.Messages, messages, ref count);
-            return new { targetId, state = result.State.ToString(), errors = result.ErrorCount, warnings = result.WarningCount,
+            return new { targetId, projectPath, processId, toolVersion = typeof(HmiSession).Assembly.GetName().Version?.ToString(), downloadPerformed = false, state = result.State.ToString(), errors = result.ErrorCount, warnings = result.WarningCount,
                 messages, messagesTruncated = count > messages.Count, totalMessages = count, projectSaved = false,
                 compileScope = new { kind = selected.Scope.Kind, path = selected.Scope.Path, nativeType = selected.Scope.Target.GetType().FullName,
                     ownerFallback = selected.OwnerFallback, includesOwningScope = selected.OwnerFallback } };
@@ -292,7 +315,7 @@ namespace SiemensMCPServer.Mcp
                 CheckProject();
                 project!.Save();
             }
-            return new { projectPath, projectSaved = true };
+            return new { projectPath, processId, projectSaved = true, downloadPerformed = false, toolVersion = typeof(HmiSession).Assembly.GetName().Version?.ToString() };
         }
 
         public object Archive(string expectedProjectPath)
@@ -371,7 +394,9 @@ namespace SiemensMCPServer.Mcp
         private void ResetWorkflows()
         {
             string sessionRoot = Path.Combine(artifactRoot, Guid.NewGuid().ToString("N"));
-            workflow = new TextListWorkflow(this, Path.Combine(sessionRoot, "classic"), features, safeguards);
+            workflow = new TextListWorkflow(this, Path.Combine(sessionRoot, "classic"), features, safeguards, identity: () => new {
+                projectPath, processId, apiVersion = typeof(Project).Assembly.GetName().Version?.ToString(),
+                toolVersion = typeof(HmiSession).Assembly.GetName().Version?.ToString(), projectModifiedAtPreview = project?.IsModified });
             unifiedWorkflow = new UnifiedEditWorkflow(this, Path.Combine(sessionRoot, "unified"), features, safeguards);
             engineeringWorkflow = new EngineeringWorkflow(this, Path.Combine(sessionRoot, "engineering"), safeguards);
             classicXmlWorkflow = new ClassicXmlWorkflow(this, Path.Combine(sessionRoot, "comfort-xml"), features, safeguards);

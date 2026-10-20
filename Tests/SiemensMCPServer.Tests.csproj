@@ -47,6 +47,8 @@
     <Compile Include="../Shared/TextListStructure.cs" Link="TextListStructure.cs" />
     <Compile Include="../Shared/NativeXmlValidation.cs" Link="NativeXmlValidation.cs" />
     <Compile Include="../Mcp/TextListWorkflow.cs" Link="TextListWorkflow.cs" />
+    <Compile Include="../Mcp/ClassicTextListValidation.cs" Link="ClassicTextListValidation.cs" />
+    <Compile Include="../Mcp/NativeXmlStage.cs" Link="NativeXmlStage.cs" />
     <Compile Include="../Mcp/UnifiedObjectState.cs" Link="UnifiedObjectState.cs" />
     <Compile Include="../Mcp/UnifiedEditWorkflow.cs" Link="UnifiedEditWorkflow.cs" />
     <Compile Include="../Mcp/UnifiedTextListDocument.cs" Link="UnifiedTextListDocument.cs" />

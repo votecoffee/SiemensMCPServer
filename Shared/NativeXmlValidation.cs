@@ -44,13 +44,13 @@ namespace SiemensMCPServer
     // A parser given an already-decoded string cannot validate the source declaration spelling.
     internal static class NativeXmlValidation
     {
-        public const int MaximumBytes = 16 * 1024 * 1024;
+        public const int MaximumBytes = 64 * 1024 * 1024;
         private static readonly Regex Declaration = new Regex(@"\A<\?xml\s+[^?]{0,4096}\?>", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
         private static readonly Regex EncodingField = new Regex("\\bencoding\\s*=\\s*(['\"])([^'\"]+)\\1", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
 
         private static string Decode(byte[] bytes, out string encoding, out int bom)
         {
-            if (bytes == null || bytes.Length == 0 || bytes.Length > MaximumBytes) throw new InvalidDataException("Supply XML bytes within the 16 MiB limit.");
+            if (bytes == null || bytes.Length == 0 || bytes.Length > MaximumBytes) throw new InvalidDataException("Supply XML bytes within the 64 MiB transfer limit.");
             Encoding decoder;
             if (bytes.Take(4).SequenceEqual(new byte[] { 0xff, 0xfe, 0, 0 }) || bytes.Take(4).SequenceEqual(new byte[] { 0, 0, 0xfe, 0xff }))
                 throw new NotSupportedException("UTF-32 is outside this native XML profile.");
@@ -134,6 +134,20 @@ namespace SiemensMCPServer
         {
             Analyze(bytes).RequirePassed();
             return Decode(bytes, out _, out _);
+        }
+
+        public static byte[] SnapshotBytes(string text)
+        {
+            var declaration = Declaration.Match(text);
+            var field = declaration.Success ? EncodingField.Match(declaration.Value) : Match.Empty;
+            string spelling = field.Success ? field.Groups[2].Value.ToLowerInvariant() : "utf-8";
+            if (spelling == "utf-8") return new UTF8Encoding(false, true).GetBytes(text);
+            if (spelling == "utf-16" || spelling == "utf-16le" || spelling == "utf-16be")
+            {
+                var encoding = new UnicodeEncoding(spelling == "utf-16be", true, true);
+                return encoding.GetPreamble().Concat(encoding.GetBytes(text)).ToArray();
+            }
+            throw new InvalidDataException("Snapshot declaration uses an unsupported native encoding; use byte-level preflight before creating an artifact.");
         }
 
         public static byte[] RepairDeclaration(byte[] original)

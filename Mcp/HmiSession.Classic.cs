@@ -44,7 +44,7 @@ namespace SiemensMCPServer.Mcp
                 TransferNative.ValidateImport(target, candidateDirectory, true);
                 using (var transaction = exclusive.Transaction(project!, "Edit Comfort resource XML"))
                 {
-                    TransferNative.Import(target, candidateDirectory, true);
+                    TransferNative.Import(target, candidateDirectory, true, evidenceRoot: Path.GetDirectoryName(candidateDirectory));
                     var after = ReadClassicResource(before.HmiId, before.Path);
                     File.WriteAllText(Path.Combine(Path.GetDirectoryName(candidateDirectory)!, "native-readback.json"),
                         System.Text.Json.JsonSerializer.Serialize(new { artifactDirectory = after.Directory, fingerprint = after.Fingerprint, expectedFingerprint = expected,

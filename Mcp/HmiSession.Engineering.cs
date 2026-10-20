@@ -177,7 +177,7 @@ namespace SiemensMCPServer.Mcp
                                 throw new InvalidOperationException("Deletion readback failed.");
                             result = new { deletedPath = current.Path, remainingMembers = composition.Count }; break;
                         case "import":
-                            TransferNative.Import(node, Path.Combine(plan.Directory, "candidate-files"), plan.Overwrite);
+                            TransferNative.Import(node, Path.Combine(plan.Directory, "candidate-files"), plan.Overwrite, evidenceRoot: plan.Directory);
                             var imported = ReadEngineering(current.TargetId, current.Path);
                             if (imported.Errors.Length != 0) throw new InvalidOperationException("Import readback could not be inspected.");
                             ExportEngineering(current.TargetId, current.Path, Path.Combine(plan.Directory, "after-export"), true);
@@ -217,7 +217,7 @@ namespace SiemensMCPServer.Mcp
                     if (EngineeringNative.Children(target, "").Any(c => c.Key == "n:" + Uri.EscapeDataString(name)))
                     { outcomes.Add(new { resource.Path, state = "skipped-existing-cycle" }); continue; }
                 }
-                TransferNative.Import(target, source, plan.Overwrite, allowMissingReferences: FindEngineeringReference(plan.Before.TargetId).Family == "plc");
+                TransferNative.Import(target, source, plan.Overwrite, allowMissingReferences: FindEngineeringReference(plan.Before.TargetId).Family == "plc", evidenceRoot: plan.Directory);
                 outcomes.Add(new { resource.Path, state = "native-import-accepted" });
             }
             return new { resources = outcomes, contentEquality = "not asserted; inspect after-export and compile diagnostics" };
