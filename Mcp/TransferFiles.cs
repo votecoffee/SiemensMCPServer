@@ -17,16 +17,16 @@ namespace SiemensMCPServer.Mcp
     }
     internal static class TransferFiles
     {
-        internal static TransferFile[] Inventory(string directory)
+        internal static TransferFile[] Inventory(string directory, bool validateXml = true)
         {
             directory = System.IO.Path.GetFullPath(directory);
             if (!Directory.Exists(directory)) throw new DirectoryNotFoundException(directory);
             var files = new List<TransferFile>(); long total = 0;
-            Visit(directory, directory, files, ref total, 0);
+            Visit(directory, directory, files, ref total, 0, validateXml);
             if (files.Count == 0) throw new ArgumentException("No files to transfer.");
             return files.OrderBy(f => f.Path, StringComparer.Ordinal).ToArray();
         }
-        private static void Visit(string root, string directory, List<TransferFile> result, ref long total, int depth)
+        private static void Visit(string root, string directory, List<TransferFile> result, ref long total, int depth, bool validateXml)
         {
             if (depth > 32 || (File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0) throw new ArgumentException("Linked directories or excessive nesting are not supported.");
             foreach (string file in Directory.GetFiles(directory).OrderBy(f => f, StringComparer.Ordinal))
@@ -34,10 +34,10 @@ namespace SiemensMCPServer.Mcp
                 if ((File.GetAttributes(file) & FileAttributes.ReparsePoint) != 0) throw new ArgumentException("Linked files are not supported.");
                 long size = new FileInfo(file).Length; total += size;
                 if (size > 64 * 1024 * 1024 || total > 512 * 1024 * 1024 || result.Count >= 10000) throw new ArgumentException("Transfer exceeds file/count/size limits.");
-                if (System.IO.Path.GetExtension(file).Equals(".xml", StringComparison.OrdinalIgnoreCase)) Xml(File.ReadAllText(file));
+                if (validateXml && System.IO.Path.GetExtension(file).Equals(".xml", StringComparison.OrdinalIgnoreCase)) Xml(NativeXmlValidation.Read(File.ReadAllBytes(file)));
                 result.Add(new TransferFile { Path = file.Substring(root.Length).TrimStart('\\', '/').Replace('\\', '/'), Bytes = size, Sha256 = TextListDocument.Hash(File.ReadAllBytes(file)) });
             }
-            foreach (string child in Directory.GetDirectories(directory).OrderBy(f => f, StringComparer.Ordinal)) Visit(root, child, result, ref total, depth + 1);
+            foreach (string child in Directory.GetDirectories(directory).OrderBy(f => f, StringComparer.Ordinal)) Visit(root, child, result, ref total, depth + 1, validateXml);
         }
         internal static void Copy(string source, string destination)
         {
@@ -70,7 +70,7 @@ namespace SiemensMCPServer.Mcp
             var known = new HashSet<string>(files.Select(f => f.Path), StringComparer.OrdinalIgnoreCase);
             foreach (var file in files.Where(f => f.Path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)))
             {
-                var document = Xml(File.ReadAllText(System.IO.Path.Combine(directory, file.Path)));
+                var document = Xml(NativeXmlValidation.Read(File.ReadAllBytes(System.IO.Path.Combine(directory, file.Path))));
                 foreach (var node in document.Descendants().Where(e => string.Equals((string?)e.Attribute("external"), "path", StringComparison.OrdinalIgnoreCase)))
                 {
                     string relative = node.Value.Replace('\\', '/');
@@ -88,7 +88,7 @@ namespace SiemensMCPServer.Mcp
             return TextListDocument.Hash(string.Join("\n", Inventory(directory).Select(f => {
                 string file = System.IO.Path.Combine(directory, f.Path);
                 if (!f.Path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)) return f.Path + ":" + f.Sha256;
-                var doc = Xml(File.ReadAllText(file));
+                var doc = Xml(NativeXmlValidation.Read(File.ReadAllBytes(file)));
                 if (doc.Root?.Name.LocalName == "Document")
                     foreach (var header in doc.Root.Elements().Where(e => e.Name.LocalName == "DocumentInfo").ToArray()) header.Remove();
                 NativeXmlIds.Normalize(doc);

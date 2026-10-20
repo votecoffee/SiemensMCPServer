@@ -13,6 +13,7 @@
     <Compile Include="../Shared/ITextListDocument.cs" Link="Shared/ITextListDocument.cs"/>
     <Compile Include="../Shared/TextListDocument.cs" Link="Shared/TextListDocument.cs"/>
     <Compile Include="../Shared/TextListStructure.cs" Link="Shared/TextListStructure.cs"/>
+    <Compile Include="../Shared/NativeXmlValidation.cs" Link="Shared/NativeXmlValidation.cs"/>
     <Compile Include="../Mcp/JsonDefaults.cs" Link="Core/JsonDefaults.cs"/>
     <Compile Include="../Mcp/ClassicXmlDocument.cs" Link="Features/ClassicXmlDocument.cs"/>
     <Compile Include="../Mcp/ClassicXmlBehaviors.cs" Link="Features/ClassicXmlBehaviors.cs"/>
