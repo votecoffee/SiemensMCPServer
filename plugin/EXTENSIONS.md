@@ -1,5 +1,7 @@
 # Reloadable feature extensions — 0.13.0
 
+Comfort worker 0.15.0 adds local `validate_native_text_list`, `validate_text_list_delta`, `validate_text_list_bindings` and `validate_text_list_workflow` operations on the existing read route. See the [TextLists workflow](CLASSIC-TEXT-LIST-WORKFLOW.md). These local checks can reload on a compatible host, while host-owned managed staging, evidence/status changes and the new TextLists bundle parameters require host 0.18.0 and a new frontend connection. Native acceptance of the new route remains pending.
+
 The MCP host retains its connection to Codex and owns the Siemens attachment, native STA queue, transactions, offline checks, preview stores, candidate hashes and native readback. Host 0.13.0 also has bounded local-analysis and control lanes, with separate pure worker pools. Workers receive JSON snapshots, never Siemens CLR objects. The host copies complete, hash-checked bundles into private generation directories before starting workers, so they do not lock the source of the next update.
 
 Existing Comfort XML scalar/behavior previews, classic/Unified text-list transformations, Unified caption/property previews and PLC source preparation use workers. Native browsing, transfers, compile, save and security policy remain in the host. New native host capabilities or Siemens API versions still require a host upgrade/reconnect.

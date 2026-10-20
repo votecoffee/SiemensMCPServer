@@ -2,11 +2,29 @@
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path, PurePosixPath
 import subprocess
 import sys
 import tempfile
 import zipfile
+
+
+def validate_skill_content(files):
+    skills = {name: data for name, data in files.items() if name.startswith('skills/') and name.endswith('/SKILL.md')}
+    if not skills:
+        raise ValueError('No packaged skill entrypoints')
+    for name, data in skills.items():
+        text = data.decode('utf-8-sig').replace('\r\n', '\n')
+        if not text.startswith('---\n'):
+            raise ValueError('Skill frontmatter missing: '+name)
+        sections = text.split('\n---\n', 1)
+        if len(sections) != 2 or not sections[1].strip():
+            raise ValueError('Skill body is empty or truncated: '+name)
+        for field in ('name', 'description'):
+            if not re.search(r'^'+field+r':\s*[^\s]+', sections[0], flags=re.MULTILINE):
+                raise ValueError('Skill required field missing: '+name+'/'+field)
+    return len(skills)
 
 
 def validate(files):
@@ -44,6 +62,7 @@ def validate(files):
         assert modern["args"] == ["/d", "/c", "server\\SiemensMCPServer.Mcp.exe", "--allow-writes"]
     assert modern["cwd"] == "."
     assert "skills/edit-hmi-text/SKILL.md" in files
+    validate_skill_content(files)
     version = tuple(int(part) for part in portable["version"].split(".")[:3])
     if version >= (0, 8, 0):
         assert "skills/inspect-libraries/SKILL.md" in files

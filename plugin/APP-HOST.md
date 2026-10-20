@@ -1,6 +1,6 @@
 # Standalone app host
 
-Plugin 0.17.3 uses framework 0.17.0, Python MCP SDK 2.3.0 and matching wire types. Its 14 frontend tools discover and invoke the existing 51 Siemens engineering operations. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. The framework's `broker_status` tool reports this app host's status.
+Plugin 0.18.0 uses framework 0.17.0, Python MCP SDK 2.3.0 and matching wire types. Its 14 frontend tools discover and invoke the existing 51 Siemens engineering operations. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. The framework's `broker_status` tool reports this app host's status.
 
 ## Engineering workflow
 
@@ -40,7 +40,15 @@ Stopping waits for the host's OS-owned state lock to be released, after HTTP shu
 
 Never replay an uncertain write or change its request ID to bypass a receipt. Inspect the receipt, retained before/after artifacts and actual native state first. The app host preserves its durable write/ownership journals across restart and blocks unsafe backend replacement. An app error is also retained conservatively; release/reacquire is not a recovery mechanism.
 
-Recovery is an operator action after independent native reconciliation, using the pinned framework's administrative commands against this app's explicit private `state` directory. Consult that installed framework's `--help` for receipt inspection and reconciliation commands. No model-facing tool acknowledges uncertainty, retries the write or rolls back native state automatically. Retain the evidence and matching request/context identity with any administrative decision.
+Use `get_request_status` with the original request ID and context; retain its exact completed/app-error/uncertain result. `tia_get_status` in the owning context also reports the current session's pending text-list previews and last apply attempt, project modified state and artifact paths. Retained `apply.json` and `staging.json` distinguish preflight/not-dispatched, native dispatch, a returned import, and matched or unverified readback. Neither a timeout nor a missing reply proves that a transaction had no effect. Inspect current native state and retained before/candidate/native-after files before preparing any further change.
+
+Recovery is an operator action after independent native reconciliation. After releasing unrelated work and stopping this Siemens app host with the administration command above, the pinned framework supports the following command. Replace the placeholder with the exact retained context ID; this clears its reservation and records operator reconciliation without performing any native operation:
+
+```powershell
+& $siemensRuntime.python -B -m universal_tools --state $siemensRuntime.state recover-context siemens-engineering --context-id '<retained-context-id>' --acknowledge-outcome
+```
+
+The OS state lock prevents recovery against a running host. Preserve journals and original request/context IDs: reservation recovery does not erase an uncertain write receipt or make replay safe. No model-facing tool acknowledges uncertainty, retries the write or rolls back native state automatically. Keep the reconciliation evidence with the operator's decision. Local [workflow receipt validation](CLASSIC-TEXT-LIST-WORKFLOW.md) can check supplied native evidence without acquiring TIA or acknowledging recovery.
 
 ## Optional APIs and validation scope
 

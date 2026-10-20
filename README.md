@@ -43,6 +43,8 @@ Host/Comfort worker 0.14.1 preserves literal CR/LF values in classic text-list X
 
 The server does not provide device download, runtime control, watch or force operations. See [feature coverage](plugin/FEATURE-COVERAGE.md) and [validation status](plugin/NATIVE-ACCEPTANCE.md) for supported routes and their limits.
 
+Host 0.18.0 adds [Comfort V15.1 TextLists preflight and evidence workflows](plugin/CLASSIC-TEXT-LIST-WORKFLOW.md): original-byte XML encoding checks, exact reviewed entry/translation deltas, exported screen-to-list binding checks, immutable folder/ZIP preparation and native apply/readback/compile/save receipt consistency. Required preparation/import checks block invalid candidates; supplied evidence validation performs no native operations. The new managed staging route still requires native acceptance.
+
 ## Install
 
 ### Dependencies

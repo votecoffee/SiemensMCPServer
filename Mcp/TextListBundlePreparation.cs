@@ -67,13 +67,13 @@ namespace SiemensMCPServer.Mcp
                     // Selection uses internal XML identity, never a sanitized filename or suffix heuristic.
                     byte[] candidate = repairDeclaration ? NativeXmlValidation.RepairDeclaration(original) : original;
                     var validation = NativeXmlValidation.Analyze(candidate, targetVersion, textListMetadata: true);
-                    string name = validation.ObjectName;
+                    string name = validation.ObjectName ?? throw new InvalidDataException("Cannot establish the native text-list identity: " + file.Path);
                     if (!names.Add(name)) throw new InvalidDataException("Duplicate internal text-list identity: " + name);
                     if (selectedNames != null && !selected.Contains(name)) continue;
                     found.Add(name); validation.RequirePassed();
                     string native = "objects/" + entries.Count.ToString("D5", System.Globalization.CultureInfo.InvariantCulture) + "/native";
                     string nativeRoot = TransferBundle.SafePath(bundle, native); Directory.CreateDirectory(nativeRoot);
-                    File.WriteAllBytes(Path.Combine(nativeRoot, "resource.xml"), candidate);
+                    File.WriteAllBytes(Path.Combine(nativeRoot, Path.GetFileName(file.Path)), candidate);
                     string originalPath = TransferBundle.SafePath(release, "originals/" + entries.Count.ToString("D5", System.Globalization.CultureInfo.InvariantCulture) + "/resource.xml");
                     Directory.CreateDirectory(Path.GetDirectoryName(originalPath)!); File.WriteAllBytes(originalPath, original);
                     var xml = TransferFiles.Xml(NativeXmlValidation.Read(candidate));
@@ -108,7 +108,7 @@ namespace SiemensMCPServer.Mcp
                 if (sourceHash != TransferFiles.Hash(TransferFiles.Inventory(root, validateXml: false)) || (archiveHash.Length != 0 && archiveHash != HashFile(source))) throw new IOException("Source changed during preparation.");
                 report.Add("bundle.immutable-source", "passed", "Original source inventory/archive hashes unchanged; original XML retained outside the import bundle.");
                 report.RequirePassed();
-                var receipt = new { validation = report, sourceInventorySha256 = sourceHash, sourceArchiveSha256 = archiveHash, bundleInventorySha256 = TransferFiles.Hash(TransferFiles.Inventory(bundle)), archiveSha256 = HashFile(zipPath), resources,
+                var receipt = new { validation = report, sourceInventorySha256 = sourceHash, sourceArchiveSha256 = archiveHash, bundleInventorySha256 = TransferFiles.Hash(TransferFiles.Inventory(bundle)), archiveSha256 = HashFile(zipPath), resources = entries.Count, resourceReports = resources,
                     artifactDirectory = Path.Combine(destination, "bundle"), archivePath = Path.Combine(destination, "bundle.zip"), projectChanged = false, nativeImportPerformed = false, downloadPerformed = false };
                 File.WriteAllText(Path.Combine(release, "validation.json"), JsonSerializer.Serialize(receipt, JsonDefaults.Options));
                 Directory.Move(release, destination); published = true; return receipt;

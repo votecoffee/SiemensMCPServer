@@ -31,7 +31,7 @@ public sealed class TextListBundleTests : IDisposable
         Assert.Equal(original, File.ReadAllBytes(path)); Assert.Equal(original, File.ReadAllBytes(Path.Combine(Destination, "originals/00000/resource.xml")));
         string bundle = receipt.GetProperty("artifactDirectory").GetString()!;
         var resource = Assert.Single(TransferBundle.Read(bundle));
-        Assert.Equal(NativeXmlValidation.RepairDeclaration(original), File.ReadAllBytes(Path.Combine(bundle, resource.SourceDirectory, "resource.xml")));
+        Assert.Equal(NativeXmlValidation.RepairDeclaration(original), File.ReadAllBytes(Path.Combine(bundle, resource.SourceDirectory, "Messages_TL.xml")));
         string extracted = Path.Combine(root, "zip-check"); TransferZip.Extract(Path.Combine(Destination, "bundle.zip"), extracted);
         Assert.Equal(TransferFiles.Hash(TransferFiles.Inventory(bundle)), TransferFiles.Hash(TransferFiles.Inventory(extracted)));
         Assert.DoesNotContain(TransferFiles.Inventory(bundle), f => f.Path.Contains("originals") || f.Path.Contains("backup"));
@@ -42,7 +42,7 @@ public sealed class TextListBundleTests : IDisposable
         TextListBundlePreparation.Prepare(Source, Destination, true, "V15.1", new[] { "Messages_TL" });
         var resource = Assert.Single(TransferBundle.Read(Path.Combine(Destination, "bundle")));
         Assert.Equal("p:TextLists/n:Messages_TL", resource.Path);
-        Assert.Equal(File.ReadAllBytes(path), File.ReadAllBytes(Path.Combine(Destination, "bundle", resource.SourceDirectory, "resource.xml")));
+        Assert.Equal(File.ReadAllBytes(path), File.ReadAllBytes(Path.Combine(Destination, "bundle", resource.SourceDirectory, "Messages_TL.xml")));
     }
     [Theory] [InlineData("alias")] [InlineData("duplicate")] [InlineData("companion")] [InlineData("truncated")] [InlineData("manifest")] [InlineData("target")]
     public void RequiredFailureBlocksPublicationAndRetainsReceipt(string problem)
@@ -88,7 +88,7 @@ public sealed class TextListBundleTests : IDisposable
     [Fact] public void ManifestIsAutomaticallyCheckedWhenPreviewReadsPublishedBundle()
     {
         Add(); TextListBundlePreparation.Prepare(Source, Destination, false, "V15.1"); string bundle = Path.Combine(Destination, "bundle");
-        File.AppendAllText(Path.Combine(bundle, "objects/00000/native/resource.xml"), " ");
+        File.AppendAllText(Path.Combine(bundle, "objects/00000/native/Messages_TL.xml"), " ");
         Assert.Throws<InvalidDataException>(() => TransferBundle.Read(bundle));
     }
     private static void CreateZip(string source, string archive)

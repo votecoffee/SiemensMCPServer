@@ -20,6 +20,8 @@ if ($privatePaths.Count) { throw ('Private or generated paths are tracked; remov
 $artifactRoot = Join-Path $repoRoot 'artifacts'
 $versionSlug = $TiaPortalVersion.Replace('.', '_')
 $pluginVersion = (Get-Content -LiteralPath (Join-Path $repoRoot 'plugin\plugin.json') -Raw | ConvertFrom-Json).version
+$compatVersion = (Get-Content -LiteralPath (Join-Path $repoRoot 'plugin\.codex-plugin\plugin.json') -Raw | ConvertFrom-Json).version
+if ($compatVersion -ne $pluginVersion) { throw 'Portable and Codex plugin versions must match before packaging.' }
 $packageName = 'siemens-mcp-server-' + $pluginVersion + '-' + $versionSlug + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
 $packageRoot = Join-Path $artifactRoot $packageName
 New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null

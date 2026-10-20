@@ -133,7 +133,7 @@ def run(executable, native=False):
             legacy = Path(scratch) / "legacy"
             (legacy / "TextLists").mkdir(parents=True)
             (legacy / "ExportSummary.txt").write_text("OK     TextLists\n", encoding="utf-8")
-            original_xml = b"<Document><Hmi.TextGraphicList.TextList><AttributeList><Name>Messages</Name></AttributeList></Hmi.TextGraphicList.TextList></Document>"
+            original_xml = b"<Document><Engineering version='V15.1'/><Hmi.TextGraphicList.TextList><AttributeList><Name>Messages</Name></AttributeList></Hmi.TextGraphicList.TextList></Document>"
             (legacy / "TextLists" / "Messages.xml").write_bytes(original_xml)
             converted = call("hmi_prepare_classic_export_bundle", sourceDirectory=str(legacy), categories=["TextLists"], folderNames=[])
             assert not converted.get("isError"), converted
@@ -141,6 +141,9 @@ def run(executable, native=False):
             assert converted_data["projectChanged"] is False and converted_data["resources"] == 1, converted
             assert (Path(converted_data["artifactDirectory"]) / "objects" / "00000" / "native" / "Messages.xml").read_bytes() == original_xml
             assert (legacy / "TextLists" / "Messages.xml").read_bytes() == original_xml
+            assert converted_data['validation']['canPublish'] is True
+            assert Path(converted_data['archivePath']).is_file()
+            assert {'repairXmlDeclaration', 'targetVersion', 'selectedTextLists'} <= set(converter_schema['properties'])
             versions = call("tia_list_versions")
             assert not versions.get("isError"), versions
             data = versions["structuredContent"]["result"]
