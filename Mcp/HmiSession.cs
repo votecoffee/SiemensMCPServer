@@ -396,7 +396,12 @@ namespace SiemensMCPServer.Mcp
             string sessionRoot = Path.Combine(artifactRoot, Guid.NewGuid().ToString("N"));
             workflow = new TextListWorkflow(this, Path.Combine(sessionRoot, "classic"), features, safeguards, identity: () => new {
                 projectPath, processId, apiVersion = typeof(Project).Assembly.GetName().Version?.ToString(),
-                toolVersion = typeof(HmiSession).Assembly.GetName().Version?.ToString(), projectModifiedAtPreview = project?.IsModified });
+                toolVersion = typeof(HmiSession).Assembly.GetName().Version?.ToString(), projectModifiedAtPreview = project?.IsModified },
+                nativeValidation: bytes => {
+                    Version api = typeof(Project).Assembly.GetName().Version;
+                    bool v151 = api.Major == 15 && api.Minor == 1;
+                    return NativeXmlValidation.Analyze(bytes, v151 ? "V15.1" : "", v151);
+                });
             unifiedWorkflow = new UnifiedEditWorkflow(this, Path.Combine(sessionRoot, "unified"), features, safeguards);
             engineeringWorkflow = new EngineeringWorkflow(this, Path.Combine(sessionRoot, "engineering"), safeguards);
             classicXmlWorkflow = new ClassicXmlWorkflow(this, Path.Combine(sessionRoot, "comfort-xml"), features, safeguards);

@@ -27,9 +27,10 @@ namespace SiemensMCPServer.Mcp
         private readonly PreviewPolicy policy;
         private readonly IFeatureEngine features;
         private readonly Func<object?> identity;
+        private readonly Func<byte[], HmiValidationReport>? nativeValidation;
         private JsonElement? lastAttempt;
         private readonly Dictionary<string, Plan> pending = new Dictionary<string, Plan>();
-        public TextListWorkflow(ITextListBackend backend, string root, IFeatureEngine? features = null, Func<SafeguardSettings>? settings = null, Func<DateTime>? utcNow = null, Func<object?>? identity = null) { policy = new PreviewPolicy(settings, utcNow); this.backend = backend; this.root = root; this.features = features ?? new LocalFeatureEngine(); this.identity = identity ?? (() => null); }
+        public TextListWorkflow(ITextListBackend backend, string root, IFeatureEngine? features = null, Func<SafeguardSettings>? settings = null, Func<DateTime>? utcNow = null, Func<object?>? identity = null, Func<byte[], HmiValidationReport>? nativeValidation = null) { policy = new PreviewPolicy(settings, utcNow); this.backend = backend; this.root = root; this.features = features ?? new LocalFeatureEngine(); this.identity = identity ?? (() => null); this.nativeValidation = nativeValidation; }
 
         public object Preview(string hmiId, string listName, string expectedFingerprint, TextEdit[] edits)
         {
@@ -82,6 +83,8 @@ namespace SiemensMCPServer.Mcp
         {
             if (before.Name != after.Name || before.ArtifactExtension != after.ArtifactExtension) throw new InvalidOperationException("Extension cannot change text-list identity or format.");
             if (after.Fingerprint == before.Fingerprint) throw new ArgumentException("The preview contains no changes.");
+            var nativePreflight = after.ArtifactExtension == "xml" ? nativeValidation?.Invoke(new UTF8Encoding(false, true).GetBytes(after.Serialize())) : null;
+            nativePreflight?.RequirePassed();
             string id = Guid.NewGuid().ToString("N");
             string directory = Path.Combine(root, id);
             Directory.CreateDirectory(directory);
@@ -97,7 +100,7 @@ namespace SiemensMCPServer.Mcp
                 beforeSnapshotSha256 = TextListDocument.Hash(File.ReadAllBytes(beforeFile)), sourceSnapshotUtf8Sha256 = TextListDocument.Hash(originalXml),
                 nativeExport = (backend as ITextListStagingEvidence)?.TextListExportStaging,
                 snapshotFormat = before.ArtifactExtension, nativeImportScope = before.NativeImportScope, candidateSha256 = plan.CandidateHash, changes = diff,
-                artifactDirectory = directory, expiresUtc = plan.Expires, projectIdentity = plan.Identity, validation };
+                artifactDirectory = directory, expiresUtc = plan.Expires, projectIdentity = plan.Identity, validation, nativePreflight };
             File.WriteAllText(Path.Combine(directory, "preview.json"), JsonSerializer.Serialize(report, JsonDefaults.Options), new UTF8Encoding(false));
             pending.Add(id, plan);
             return report;

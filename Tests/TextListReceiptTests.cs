@@ -52,4 +52,20 @@ public sealed class TextListReceiptTests
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
+
+    [Fact]
+    public void NativeMetadataFailureCannotCreateAPreviewOrImport()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "tia-preflight-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var backend = new Backend { Xml = TextListTests.Fixture() };
+            var workflow = new TextListWorkflow(backend, root, nativeValidation: bytes => NativeXmlValidation.Analyze(bytes, "V15.1", true));
+            Assert.Throws<InvalidDataException>(() => workflow.Preview("hmi", "Messages_TL", new TextListDocument(backend.Xml).Fingerprint,
+                new[] { new TextEdit { Entry = "7", Culture = "en-US", ExpectedText = "Old & ready", NewText = "Reviewed" } }));
+            Assert.False(Directory.Exists(root)); Assert.Equal(0, backend.Imports);
+            Assert.Empty(JsonSerializer.SerializeToElement(workflow.Status(), JsonDefaults.Options).GetProperty("pendingPlans").EnumerateArray());
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
 }
