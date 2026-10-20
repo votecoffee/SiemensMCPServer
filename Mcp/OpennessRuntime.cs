@@ -125,8 +125,16 @@ namespace SiemensMCPServer.Mcp
             launchWritePermission = allowWrites
         }, token);
 
-        public Task<object> PrepareClassicBundle(string sourceDirectory, string[] categories, ClassicFolderName[] folderNames, CancellationToken token)
-            => local.Enqueue(() => ClassicExportBundle.Prepare(sourceDirectory, Path.Combine(artifactRoot, "classic-export-bundles", Guid.NewGuid().ToString("N")), categories, folderNames), token, nameof(PrepareClassicBundle));
+        public Task<object> PrepareClassicBundle(string sourceDirectory, string[] categories, ClassicFolderName[] folderNames, CancellationToken token, bool repairXmlDeclaration = false, string targetVersion = "V15.1", string[]? selectedTextLists = null)
+            => local.Enqueue(() => {
+                string destination = Path.Combine(artifactRoot, "classic-export-bundles", Guid.NewGuid().ToString("N"));
+                if (categories != null && categories.Length == 1 && categories[0] == "TextLists") {
+                    if (folderNames == null || folderNames.Length != 0) throw new ArgumentException("TextLists have no native folder-name overrides.");
+                    return TextListBundlePreparation.Prepare(sourceDirectory, destination, repairXmlDeclaration, targetVersion, selectedTextLists);
+                }
+                if (repairXmlDeclaration || selectedTextLists != null) throw new ArgumentException("Declaration repair and selectedTextLists require categories=['TextLists'].");
+                return ClassicExportBundle.Prepare(sourceDirectory, destination, categories, folderNames);
+            }, token, nameof(PrepareClassicBundle));
 
         public Task<object> SelectVersion(string version, CancellationToken token) => Enqueue(() => {
             string selected = Normalize(version);

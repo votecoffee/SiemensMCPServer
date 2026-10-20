@@ -205,7 +205,7 @@ namespace SiemensMCPServer.Mcp
             byte[] candidateBytes = new UTF8Encoding(false, true).GetBytes(candidateXml);
             bool v151 = typeof(Project).Assembly.GetName().Version.Major == 15 && typeof(Project).Assembly.GetName().Version.Minor == 1;
             var preflight = NativeXmlValidation.Analyze(candidateBytes, v151 ? "V15.1" : "", v151);
-            textListImportStaging = new NativeStagingReport { State = "preflight-failed", Preflight = preflight };
+            textListImportStaging = new NativeStagingReport { State = preflight.CanPublish ? "staging-preparation; not-dispatched" : "preflight-failed", Preflight = preflight };
             preflight.RequirePassed();
             string evidence = Path.Combine(artifactRoot, "text-list-imports", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(evidence);

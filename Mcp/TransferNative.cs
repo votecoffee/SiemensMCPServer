@@ -64,16 +64,16 @@ namespace SiemensMCPServer.Mcp
                     if (textLists)
                     {
                         stage = NativeXmlStage.Create(Path.GetFileName(xml[0]));
-                        TransferFiles.Copy(directory, stage.DirectoryPath);
-                        stage.Verify(File.ReadAllBytes(xml[0]));
-                        stage.Report.ResourceInventorySha256 = TransferFiles.Hash(TransferFiles.Inventory(stage.DirectoryPath));
-                        foreach (var file in TransferFiles.Inventory(stage.DirectoryPath))
-                            if (Path.Combine(stage.NativeDirectory, file.Path).Length > 140) throw new IOException("A native staging companion exceeds the short-path profile.");
                         if (evidenceRoot != null)
                         {
                             stage.Report.EvidenceDirectory = Path.Combine(evidenceRoot, "native-staging", Guid.NewGuid().ToString("N"));
                             Directory.CreateDirectory(stage.Report.EvidenceDirectory);
                         }
+                        TransferFiles.Copy(directory, stage.DirectoryPath);
+                        stage.Verify(File.ReadAllBytes(xml[0]));
+                        stage.Report.ResourceInventorySha256 = TransferFiles.Hash(TransferFiles.Inventory(stage.DirectoryPath));
+                        foreach (var file in TransferFiles.Inventory(stage.DirectoryPath))
+                            if (Path.Combine(stage.NativeDirectory, file.Path).Length > 140) throw new IOException("A native staging companion exceeds the short-path profile.");
                         nativeFile = stage.Report.NativePath; stage.Report.State = "import-dispatched"; stage.Report.NativeDispatched = true;
                     }
                     result = batchMethod != null ? batchMethod.Invoke(target, new object[] { new FileInfo(nativeFile), overwrite ? ImportOptions.Override : ImportOptions.None, SWImportOptions.IgnoreMissingReferencedObjects })

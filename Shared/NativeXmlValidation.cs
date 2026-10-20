@@ -16,6 +16,7 @@ namespace SiemensMCPServer
         public string Location { get; set; } = "";
         public string Message { get; set; } = "";
         public string Classification { get; set; } = "not-compared";
+        public string Applicability { get; set; } = "required-for-selected-profile";
     }
 
     internal sealed class HmiValidationReport
@@ -113,7 +114,7 @@ namespace SiemensMCPServer
                 if (links >= 0 && objects >= 0 && links > objects)
                     report.Add("metadata.link-order", "failed", "LinkList must precede ObjectList; native links can otherwise be lost.", Location(node));
                 if (node.Name == "Text" && node.Parent?.Name == "AttributeList" && node.Parent.Parent?.Name == "MultilingualTextItem"
-                    && node.Nodes().OfType<XText>().Any(t => !string.IsNullOrWhiteSpace(t.Value)) && node.Element("body") == null)
+                    && !string.IsNullOrEmpty(node.Value) && (node.Elements("body").Count() != 1 || !node.Element("body")!.Elements("p").Any()))
                     report.Add("metadata.native-text", "failed", "Nonempty V15.1 screen/list text needs native body/p markup; empty translations remain empty.", Location(node));
             }
             foreach (string rule in new[] { "metadata.link-order", "metadata.native-text" })

@@ -47,7 +47,7 @@ namespace SiemensMCPServer.Mcp
 
         internal static object Bytes(ClassicByteValidation input)
         {
-            if (input.XmlBytesBase64 == null || input.XmlBytesBase64.Length > 23 * 1024 * 1024) throw new ArgumentException("Supply bounded source bytes as base64.");
+            if (input.XmlBytesBase64 == null || input.ExpectedSha256 == null || input.XmlBytesBase64.Length > 23 * 1024 * 1024) throw new ArgumentException("Supply bounded source bytes as base64 and a non-null hash field.");
             var report = NativeXmlValidation.Analyze(Convert.FromBase64String(input.XmlBytesBase64), input.TargetVersion, true);
             if (input.ExpectedSha256.Length != 0)
                 report.Add("source.hash", report.SourceSha256 == input.ExpectedSha256 ? "passed" : "failed", "Compare the exact source bytes with the reviewed hash.");
@@ -75,9 +75,11 @@ namespace SiemensMCPServer.Mcp
                 beforeFingerprint = before.Fingerprint; candidateFingerprint = candidate.Fingerprint;
                 report.ObjectName = before.Name;
                 report.Add("delta.baseline", before.Fingerprint == input.ExpectedBeforeFingerprint ? "passed" : "failed", "Source matches the explicitly reviewed native baseline fingerprint.");
+                if (input.ExpectedCandidateSha256 == null) throw new ArgumentException("Candidate hash cannot be null.");
                 if (input.ExpectedCandidateSha256.Length != 0)
                     report.Add("delta.candidate-bytes", candidateHash == input.ExpectedCandidateSha256 ? "passed" : "failed", "Candidate UTF-8 snapshot hash matches the reviewed value.");
-                if (input.Changes == null || input.Edits == null || input.ActiveCultures == null) throw new ArgumentException("Delta arrays cannot be null.");
+                if (input.Changes == null || input.Edits == null || input.ActiveCultures == null || input.Changes.Any(c => c == null) || input.Edits.Any(e => e == null)) throw new ArgumentException("Delta arrays and operations cannot be null.");
+                if (input.TargetVersion == null) throw new ArgumentException("Target version cannot be null.");
                 if (input.TargetVersion == "V15.1") TextListDocument.RequireNativeStructureSupport(new Version(15, 1), input.Changes);
                 else if (input.TargetVersion.Length != 0) report.Add("delta.native-version", "unsupported", "Native structure policy is checked for V15.1 only.");
                 if (input.BlankOtherNewTranslations)
@@ -85,6 +87,7 @@ namespace SiemensMCPServer.Mcp
                     if (string.IsNullOrWhiteSpace(input.AuthoredCulture)) throw new ArgumentException("Choose an explicit authoredCulture for the blank-other-new-translations policy.");
                     foreach (var change in input.Changes)
                     {
+                        if (change.Translations == null || change.Translations.Any(t => t == null)) throw new ArgumentException("Translation arrays and items cannot be null.");
                         bool violation = change.Action == "addEntry" && change.Translations.Any(t => !string.Equals(t.Culture, input.AuthoredCulture, StringComparison.OrdinalIgnoreCase) && t.Text != "")
                             || change.Action == "addTranslation" && !string.Equals(change.Culture, input.AuthoredCulture, StringComparison.OrdinalIgnoreCase) && change.Text != "";
                         if (violation) report.Add("delta.new-translations", "failed", "New other-language values must be explicitly blank under the selected policy.", "entry=" + change.Entry);
@@ -121,6 +124,6 @@ namespace SiemensMCPServer.Mcp
 
         private static string Key(TextValue value) => value.Entry + "\0" + value.Culture.ToLowerInvariant();
         private static string? Text(Dictionary<string, TextValue> values, string key) => values.TryGetValue(key, out var value) ? value.Text : null;
-        private static void RequireXml(string xml) { if (xml == null || xml.Length == 0 || xml.Length > NativeXmlValidation.MaximumBytes) throw new ArgumentException("Supply XML within the 16 MiB character limit."); }
+        private static void RequireXml(string xml) { if (xml == null || xml.Length == 0 || xml.Length > 16 * 1024 * 1024) throw new ArgumentException("Supply XML within the 16 MiB character limit."); }
     }
 }

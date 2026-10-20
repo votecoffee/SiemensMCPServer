@@ -29,6 +29,15 @@ namespace SiemensMCPServer.Mcp
         private readonly bool preserveResourceIdentity;
         public string Name { get; }
         public string NativeType => resource.Name.LocalName;
+        internal string PreservationFingerprint()
+        {
+            var copy = new XDocument(document);
+            foreach (var header in copy.Root!.Elements("DocumentInfo").ToArray()) header.Remove();
+            NativeXmlIds.Normalize(copy);
+            foreach (var element in copy.Descendants().Where(e => e.HasElements && !e.AncestorsAndSelf().Any(a => a.Name.LocalName == "Text")))
+                element.Nodes().OfType<XText>().Where(t => string.IsNullOrWhiteSpace(t.Value)).Remove();
+            return TextListDocument.Hash(copy.ToString(SaveOptions.DisableFormatting));
+        }
         internal static XElement? ObjectNameField(XElement node)
         {
             var attributes = node.Elements("AttributeList").ToArray();

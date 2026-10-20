@@ -19,6 +19,13 @@ namespace SiemensMCPServer.Mcp
         {
             if (string.IsNullOrEmpty(relative) || System.IO.Path.IsPathRooted(relative) || relative.Contains('\\') || relative.Split('/').Any(p => p == "" || p == "." || p == ".." || p.Contains(':')))
                 throw new ArgumentException("Bundle contains an unsafe relative path.");
+            foreach (string part in relative.Split('/'))
+            {
+                string stem = part.Split('.')[0].ToUpperInvariant();
+                if (part.Any(c => c < 32 || "<>\"|?*".IndexOf(c) >= 0) || part.EndsWith(".", StringComparison.Ordinal) || part.EndsWith(" ", StringComparison.Ordinal)
+                    || new[] { "CON", "PRN", "AUX", "NUL" }.Contains(stem) || System.Text.RegularExpressions.Regex.IsMatch(stem, @"^(COM|LPT)[1-9]$"))
+                    throw new ArgumentException("Bundle path has an ambiguous or reserved Windows member name.");
+            }
             string full = System.IO.Path.GetFullPath(System.IO.Path.Combine(root, relative));
             string prefix = System.IO.Path.GetFullPath(root).TrimEnd('\\', '/') + System.IO.Path.DirectorySeparatorChar;
             if (!full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("Bundle path escapes its root.");
@@ -26,7 +33,8 @@ namespace SiemensMCPServer.Mcp
         }
         internal static TransferResource[] Read(string directory)
         {
-            TransferFiles.Inventory(directory);
+            var inventory = TransferFiles.Inventory(directory);
+            TransferManifest.Verify(directory, inventory);
             using (var document = JsonDocument.Parse(File.ReadAllText(System.IO.Path.Combine(directory, "export-index.json"))))
             {
                 var root = document.RootElement;
