@@ -43,9 +43,10 @@ def main():
             install_root = root/('upgrade-'+str(len(old_choice))); install_root.mkdir()
             choice = install_root/'integration-choice.json'; choice.write_text(old_choice, encoding='utf-8')
             for _ in range(2):
+                # A fresh offline Python runtime needs more time than repeat installation.
                 installed = subprocess.run(['powershell.exe', '-NoProfile', '-File', str(installer),
                     '-Package', str(args.package.resolve()), '-InstallRoot', str(install_root), '-AppHostRoot', str(root/'apphost')],
-                    env=standalone_env, capture_output=True, text=True, encoding='utf-8', timeout=60)
+                    env=standalone_env, capture_output=True, text=True, encoding='utf-8', timeout=180)
                 assert installed.returncode == 0, installed.stdout+installed.stderr
                 installed_report = json.loads(installed.stdout)
                 assert installed_report['state']=='installed' and installed_report['integration']=='Standalone'
