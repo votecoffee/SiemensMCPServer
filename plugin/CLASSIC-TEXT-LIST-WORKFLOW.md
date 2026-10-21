@@ -71,6 +71,33 @@ The manifest declares every file under its root except itself. Member set, lengt
 
 Other category combinations keep the legacy WinForms converter. They do not claim this TextLists-only validation/repair profile. Metadata validation is also required for selected V15.1 native text-list import previews/applies. XML transfers share original-byte encoding preflight. No check modifies user safeguards.
 
+## Generated-package handoff contract
+
+Producers of generated V15.1 TextLists XML can use the same preparation operation without claiming a native Siemens export. Supply one `TextLists/` directory with the original native filenames and required companions. Put `ExportSummary.txt` directly beside that directory, including when both are inside a nested wrapper in a ZIP:
+
+```text
+candidate/
+  ExportSummary.txt
+  transfer-manifest.json
+  TextLists/
+    StatusChoices.xml
+```
+
+Use this canonical UTF-8 summary after the producer's declared offline checks pass for every intended resource:
+
+```text
+Siemens TextLists package summary v1
+PackageKind: generated-candidate
+ValidationScope: offline-package-checks-only
+OK     TextLists
+```
+
+The compatibility parser requires exactly one case-sensitive `OK` or `FAILED` status record for `TextLists` when a summary is supplied. Start the record at the beginning of its line and separate the status/category with whitespace, as shown. `FAILED TextLists`, duplicate records, or a supplied summary containing only prose block publication. The header and scope lines document the producer's claim; the consumer does not parse or authenticate them. `OK` declares success within that stated offline scope and establishes no native export, import, readback, compile or save acceptance. Preparation still independently enforces all required XML, identity, companion, integrity and publication checks. A plain export may omit the summary; removing a failed or ambiguous summary to bypass its result is not a valid handoff.
+
+Include `transfer-manifest.json` using the format above, covering every file under its root except the manifest itself, including the summary and all companions. Compute byte counts and SHA-256 from the final source bytes before preparation. Keep any earlier prose summary unchanged in separate review evidence outside the source import tree; retain its hash and explain the new marker's origin. Do not relabel generated XML as a fresh native export or replace an original summary in place.
+
+Pass this source to `hmi_prepare_classic_export_bundle` with `categories=["TextLists"]`, `folderNames=[]`, `targetVersion="V15.1"` and the intended exact native names in `selectedTextLists`. For downstream services, hand off the returned `bundle/`, its `export-index.json` and verified `transfer-manifest.json`, plus the separate `validation.json` and original source hashes. Only `bundle/` is an import candidate; the report and producer marker remain review evidence. Preview and native acceptance remain separate stages.
+
 ## Native apply, evidence and interruptions
 
 Review a hash-bound preview within the authorized scope, then apply once. Text-list preview/apply retains project/PID/API identity, original snapshot hash, candidate hash and scoped native-after export hash/fingerprint. Import uses a unique private staging directory, resolves its physical file path, checks the file and companions, and records dispatch/return/cleanup states. The short-path budget is this application's conservative profile, not a proven Siemens limit or a diagnosis of every file-not-found incident. Server visibility is checked; only a native operation establishes access by the Siemens process. Shared `McpArtifactRoot`, TEMP, safeguards and root-directory permissions are not changed.
