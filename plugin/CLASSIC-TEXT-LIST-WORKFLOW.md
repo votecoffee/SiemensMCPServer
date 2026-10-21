@@ -17,6 +17,8 @@ In the standalone gateway, search for `text list validation`, `XML encoding` or 
 
 Reports identify the profile, rule-set/tool versions, applicability, location and `passed`, `failed`, `not-run` or `unsupported` checks. A baseline can classify an identical failure as `inherited-still-blocking`; it never exempts a required failure. String hashes are UTF-8 snapshot hashes unless explicitly labeled as original byte hashes. Semantic hashes exclude documented volatile native IDs/export headers. A passing offline report is not native acceptance; missing import/readback/compile/save stages remain not-run or not-established. Runtime remains not-run.
 
+Rule set 1.1.0 distinguishes required checks, optional supplied evidence and non-applicable input conditions. Folder input reports `bundle.archive-integrity` as `not-run` with `applicability="not-applicable-folder-input"`; no source ZIP exists to inspect. The generated payload ZIP must still pass `bundle.published-archive`. Missing optional manifests/evidence are labeled accordingly. A skipped check explicitly marked required blocks publication.
+
 ## Review entry and translation changes
 
 Read the exact native list and its fingerprint. Use existing `hmi_preview_text_edits` for value changes and `hmi_preview_classic_text_list_changes` for ordinary numeric entry additions/removals. Changes carry their existing template, expected-text or entry-fingerprint guards. Preview automatically compares the worker candidate with the exact requested transformation, preserving all unselected content. A preview never authorizes apply.
@@ -49,6 +51,8 @@ Call `hmi_prepare_classic_export_bundle` with:
 ```
 
 Omit `selectedTextLists` to select the entire TextLists category. Input may be a folder, its TextLists directory, or a ZIP containing one unambiguous nested TextLists root. Selection uses internal native names, never sanitized filenames. Multiple roots, duplicate identities, failed/ambiguous supplied category summaries, malformed/truncated XML and missing required companions block publication. Source inventory and archive hashes are checked again before publication. Inputs remain unchanged.
+
+Host 0.18.3 verifies source ZIP headers, paths, file lengths, CRCs and SHA-256 inventory in streams, then reads the selected lists and their required companions directly. It never extracts unrelated screens/graphics or rebuilds the source archive's directory hierarchy. Full-archive integrity and any supplied source manifest still apply, including unselected files. `sourceAccess` records the verification counts and zero source archive members extracted. This avoids path-sensitive filesystem failures while preparing selected categories, without changing shared staging settings or Windows path policy. Native TIA import acceptance is a separate operation.
 
 For the native error `System does not support 'utf8' encoding`, explicitly select `repairXmlDeclaration=true`. Preflight inspects raw declaration bytes before parsing. Repair replaces only that UTF-8 alias with `utf-8`, retaining BOM, quotes, whitespace and all body bytes. Valid native UTF-16 remains byte-identical. Ordinary parser success is not sufficient evidence that TIA will accept a declaration spelling. Other mismatched/unsupported encodings are rejected rather than transcoded.
 

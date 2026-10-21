@@ -45,6 +45,8 @@ The server does not provide device download, runtime control, watch or force ope
 
 Host 0.18.0 adds [Comfort V15.1 TextLists preflight and evidence workflows](plugin/CLASSIC-TEXT-LIST-WORKFLOW.md): original-byte XML encoding checks, exact reviewed entry/translation deltas, exported screen-to-list binding checks, immutable folder/ZIP preparation and native apply/readback/compile/save receipt consistency. Required preparation/import checks block invalid candidates; supplied evidence validation performs no native operations. The new managed staging route still requires native acceptance.
 
+Host 0.18.3 reads selected TextLists directly from verified ZIP streams, preserving whole-archive integrity without extracting unrelated graphic/screen folders. Validation reports distinguish non-applicable input checks, optional evidence and required checks; a required check that did not run blocks publication.
+
 ## Install
 
 ### Dependencies
