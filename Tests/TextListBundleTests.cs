@@ -91,6 +91,75 @@ public sealed class TextListBundleTests : IDisposable
         File.AppendAllText(Path.Combine(bundle, "objects/00000/native/Messages_TL.xml"), " ");
         Assert.Throws<InvalidDataException>(() => TransferBundle.Read(bundle));
     }
+    [Fact] public void SelectedZipReadsOnlySelectedResourcesAndCompanionsWithoutExtractingOtherTrees()
+    {
+        string xml = NativeXmlValidationTests.NativeFixture().Replace("</Document>", "<Asset external='path'>assets/icon.bin</Asset></Document>");
+        string deep = "outer/ProjectGraphics/" + string.Join("/", Enumerable.Repeat(new string('g', 55), 5)) + "/image.bin";
+        var entries = new System.Collections.Generic.Dictionary<string, byte[]> {
+            ["outer/TextLists/Selected.xml"] = NativeXmlValidationTests.Utf8(xml),
+            ["outer/TextLists/Unused.xml"] = NativeXmlValidationTests.Utf8(NativeXmlValidationTests.NativeFixture().Replace("Messages_TL", "Unused")),
+            ["outer/TextLists/assets/icon.bin"] = new byte[] { 0, 255, 7 },
+            [deep] = Encoding.UTF8.GetBytes("unselected-asset"),
+            ["outer/Screens/Unrelated.xml"] = Encoding.UTF8.GetBytes("Not parsed by the TextLists profile"),
+            ["outer/ExportSummary.txt"] = Encoding.UTF8.GetBytes("OK     TextLists\nFAILED Screens\n") };
+        var files = entries.Select(e => new TransferFile { Path = e.Key.Substring("outer/".Length), Bytes = e.Value.Length, Sha256 = TextListDocument.Hash(e.Value) }).ToArray();
+        entries["outer/transfer-manifest.json"] = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { format = TransferManifest.Format, files }, JsonDefaults.Options));
+        string archive = WriteEntries(entries);
+        var result = JsonSerializer.SerializeToElement(TextListBundlePreparation.Prepare(archive, Destination, false, "V15.1", new[] { "Messages_TL" }), JsonDefaults.Options);
+        Assert.Equal("verified-zip-stream", result.GetProperty("sourceAccess").GetProperty("mode").GetString());
+        Assert.Equal(0, result.GetProperty("sourceAccess").GetProperty("sourceArchiveMembersExtracted").GetInt32());
+        Assert.Equal(entries.Count, result.GetProperty("sourceAccess").GetProperty("sourceFilesVerified").GetInt32());
+        string bundle = Path.Combine(Destination, "bundle"); var resource = Assert.Single(TransferBundle.Read(bundle));
+        Assert.Equal("p:TextLists/n:Messages_TL", resource.Path);
+        Assert.Equal(new byte[] { 0, 255, 7 }, File.ReadAllBytes(Path.Combine(bundle, resource.SourceDirectory, "assets/icon.bin")));
+        Assert.DoesNotContain(TransferFiles.Inventory(Destination), f => f.Path.Contains("ProjectGraphics") || f.Path.Contains("Unused") || f.Path.Contains("Unrelated"));
+        Assert.Contains(result.GetProperty("validation").GetProperty("checks").EnumerateArray(), c => c.GetProperty("id").GetString() == "bundle.source-manifest" && c.GetProperty("status").GetString() == "passed");
+    }
+    [Theory] [InlineData(false)] [InlineData(true)]
+    public void UnselectedArchiveCorruptionOrManifestMismatchStillBlocksPublication(bool manifestMismatch)
+    {
+        var entries = new System.Collections.Generic.Dictionary<string, byte[]> {
+            ["TextLists/Messages.xml"] = NativeXmlValidationTests.Utf8(NativeXmlValidationTests.NativeFixture()),
+            ["ProjectGraphics/asset.bin"] = Encoding.ASCII.GetBytes("unique-unselected-CRC-content") };
+        if (manifestMismatch)
+        {
+            var files = entries.Select(e => new TransferFile { Path = e.Key, Bytes = e.Value.Length, Sha256 = TextListDocument.Hash(e.Value) }).ToArray();
+            entries[TransferManifest.FileName] = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { format = TransferManifest.Format, files }, JsonDefaults.Options));
+            entries["ProjectGraphics/asset.bin"] = Encoding.ASCII.GetBytes("changed-but-valid-ZIP-member");
+        }
+        string archive = WriteEntries(entries);
+        if (!manifestMismatch)
+        {
+            byte[] bytes = File.ReadAllBytes(archive), needle = entries["ProjectGraphics/asset.bin"];
+            int offset = Enumerable.Range(0, bytes.Length - needle.Length).First(i => bytes.Skip(i).Take(needle.Length).SequenceEqual(needle));
+            bytes[offset] ^= 1; File.WriteAllBytes(archive, bytes);
+        }
+        string hash = TextListDocument.Hash(File.ReadAllBytes(archive));
+        Assert.Throws<InvalidDataException>(() => TextListBundlePreparation.Prepare(archive, Destination, false, "V15.1", new[] { "Messages_TL" }));
+        Assert.False(Directory.Exists(Destination)); Assert.True(File.Exists(Destination + ".validation-failed.json"));
+        Assert.Equal(hash, TextListDocument.Hash(File.ReadAllBytes(archive)));
+    }
+    [Fact] public void FolderArchiveCheckIsNotApplicableAndRequiredSkippedCheckCannotPublish()
+    {
+        Add(); var result = JsonSerializer.SerializeToElement(TextListBundlePreparation.Prepare(Source, Destination, false, "V15.1"), JsonDefaults.Options);
+        var checks = result.GetProperty("validation").GetProperty("checks").EnumerateArray().ToArray();
+        var input = checks.Single(c => c.GetProperty("id").GetString() == "bundle.archive-integrity");
+        Assert.Equal("not-run", input.GetProperty("status").GetString()); Assert.Equal("not-applicable-folder-input", input.GetProperty("applicability").GetString());
+        Assert.True(result.GetProperty("validation").GetProperty("canPublish").GetBoolean());
+        var published = checks.Single(c => c.GetProperty("id").GetString() == "bundle.published-archive");
+        Assert.Equal("passed", published.GetProperty("status").GetString()); Assert.Equal("required-for-selected-profile", published.GetProperty("applicability").GetString());
+        var report = new HmiValidationReport(); report.Add("required", "not-run", "Required check was skipped", applicability: "required-for-selected-profile");
+        Assert.False(report.CanPublish); Assert.Throws<InvalidDataException>(() => report.RequirePassed());
+        var optional = new HmiValidationReport(); optional.Add("readback", "not-run", "No supplied native evidence");
+        Assert.True(optional.CanPublish); Assert.Equal("optional-evidence-not-supplied", Assert.Single(optional.Checks).Applicability);
+    }
+    private string WriteEntries(System.Collections.Generic.Dictionary<string, byte[]> entries)
+    {
+        Directory.CreateDirectory(root); string archive = Path.Combine(root, "input.zip");
+        using (var zip = new ZipArchive(File.Create(archive), ZipArchiveMode.Create))
+            foreach (var item in entries) { using var output = zip.CreateEntry(item.Key, CompressionLevel.NoCompression).Open(); output.Write(item.Value, 0, item.Value.Length); }
+        return archive;
+    }
     private static void CreateZip(string source, string archive)
     {
         using var zip = new ZipArchive(File.Create(archive), ZipArchiveMode.Create);

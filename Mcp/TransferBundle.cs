@@ -15,7 +15,7 @@ namespace SiemensMCPServer.Mcp
     }
     internal static class TransferBundle
     {
-        internal static string SafePath(string root, string relative)
+        internal static void ValidateRelativePath(string relative)
         {
             if (string.IsNullOrEmpty(relative) || System.IO.Path.IsPathRooted(relative) || relative.Contains('\\') || relative.Split('/').Any(p => p == "" || p == "." || p == ".." || p.Contains(':')))
                 throw new ArgumentException("Bundle contains an unsafe relative path.");
@@ -26,6 +26,10 @@ namespace SiemensMCPServer.Mcp
                     || new[] { "CON", "PRN", "AUX", "NUL" }.Contains(stem) || System.Text.RegularExpressions.Regex.IsMatch(stem, @"^(COM|LPT)[1-9]$"))
                     throw new ArgumentException("Bundle path has an ambiguous or reserved Windows member name.");
             }
+        }
+        internal static string SafePath(string root, string relative)
+        {
+            ValidateRelativePath(relative);
             string full = System.IO.Path.GetFullPath(System.IO.Path.Combine(root, relative));
             string prefix = System.IO.Path.GetFullPath(root).TrimEnd('\\', '/') + System.IO.Path.DirectorySeparatorChar;
             if (!full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("Bundle path escapes its root.");

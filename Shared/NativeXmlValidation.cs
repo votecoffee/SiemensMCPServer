@@ -22,7 +22,7 @@ namespace SiemensMCPServer
     internal sealed class HmiValidationReport
     {
         public string Profile { get; set; } = "";
-        public string RuleSetVersion { get; set; } = "1.0.0";
+        public string RuleSetVersion { get; set; } = "1.1.0";
         public string ToolVersion { get; set; } = typeof(HmiValidationReport).Assembly.GetName().Version?.ToString() ?? "unknown";
         public string TargetVersion { get; set; } = "";
         public string SourceSha256 { get; set; } = "";
@@ -30,14 +30,17 @@ namespace SiemensMCPServer
         public string? ObjectName { get; set; }
         public string[] RequiredCompanions { get; set; } = Array.Empty<string>();
         public List<HmiValidationCheck> Checks { get; set; } = new List<HmiValidationCheck>();
-        public string Status => Checks.Any(c => c.Status == "failed") ? "failed" : Checks.Any(c => c.Status == "unsupported") ? "unsupported" : "passed";
+        private static bool RequiredSkipped(HmiValidationCheck check) => check.Status == "not-run" && check.Applicability == "required-for-selected-profile";
+        public string Status => Checks.Any(c => c.Status == "failed" || RequiredSkipped(c)) ? "failed" : Checks.Any(c => c.Status == "unsupported") ? "unsupported" : "passed";
         public bool CanPublish => Status == "passed";
-        public string Summary => Profile + ": " + Status + "; " + Checks.Count(c => c.Status == "failed") + " failed check(s). Native acceptance remains separate.";
+        public string Summary => Profile + ": " + Status + "; " + Checks.Count(c => c.Status == "failed" || RequiredSkipped(c)) + " failed check(s). Native acceptance remains separate.";
         public object Acceptance => new { nativeImport = "not-run", nativeReadback = "not-run", compile = "not-run", save = "not-run", runtime = "not-run", downloadPerformed = false };
-        public void Add(string id, string status, string message, string location = "") => Checks.Add(new HmiValidationCheck { Id = id, Status = status, Message = message, Location = location });
+        public void Add(string id, string status, string message, string location = "", string? applicability = null) => Checks.Add(new HmiValidationCheck {
+            Id = id, Status = status, Message = message, Location = location,
+            Applicability = applicability ?? (status == "not-run" ? "optional-evidence-not-supplied" : "required-for-selected-profile") });
         public void RequirePassed()
         {
-            if (!CanPublish) throw new InvalidDataException(string.Join("; ", Checks.Where(c => c.Status == "failed" || c.Status == "unsupported").Select(c => c.Id + " at " + c.Location + ": " + c.Message)));
+            if (!CanPublish) throw new InvalidDataException(string.Join("; ", Checks.Where(c => c.Status == "failed" || c.Status == "unsupported" || RequiredSkipped(c)).Select(c => c.Id + " at " + c.Location + ": " + c.Message)));
         }
     }
 
