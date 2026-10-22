@@ -190,3 +190,24 @@ async def test_publication_admin_requires_transport_auth_and_retains_prior_on_re
         assert await guides.list_workflows() == before
         assert (await client.post('/siemens/guidance/publish', headers=auth, json=body)).status_code == 200
         assert (await client.post('/siemens/guidance/publish', headers=auth, json=body)).status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_lost_publication_reply_after_commit_keeps_coherent_content_and_provenance(tmp_path):
+    root = source(tmp_path/'canonical'); guides = Guidance(root, tmp_path/'cache')
+    before = await guides.list_workflows()
+    (root/'REFERENCE.md').write_text('Reviewed new reference.\n')
+    prepared = prepare_bundle(root, tmp_path/'new')
+    committed = asyncio.Event()
+    async def delayed_notification():
+        committed.set()
+        await asyncio.Event().wait()
+    guides.catalog.listeners.add(delayed_notification)
+    publication = asyncio.create_task(guides.publish(prepared['bundle'], prepared['manifest_sha256'], before['catalog_revision']))
+    await asyncio.wait_for(committed.wait(), timeout=5)
+    publication.cancel()
+    with pytest.raises(asyncio.CancelledError): await publication
+    after = await guides.list_workflows()
+    assert after['catalog_revision'] != before['catalog_revision']
+    assert after['bundle_sha256'] == prepared['manifest_sha256']
+    assert after['generation'] == 1

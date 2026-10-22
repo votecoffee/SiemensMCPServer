@@ -224,8 +224,14 @@ class Guidance:
             if expected_revision != self.catalog.revision:
                 raise BrokerError('Guidance publication revision changed')
             packages = await asyncio.to_thread(freeze_bundle, bundle, expected_sha256, self.cache)
-            await self.catalog.publish(packages, expected_revision=expected_revision)
-            self.packages, self.bundle_sha256 = packages, expected_sha256
+            generation = self.catalog.generation
+            try:
+                await self.catalog.publish(packages, expected_revision=expected_revision)
+            finally:
+                # SDK publication commits before best-effort notification delivery.
+                # Cancellation after that point must retain matching provenance too.
+                if self.catalog.generation != generation:
+                    self.packages, self.bundle_sha256 = packages, expected_sha256
             return {**self.identity(), 'published': True, 'persistent': False,
                 'restart_behavior': 'Host restart restores the installed canonical guidance; republish a reviewed override explicitly.'}
 

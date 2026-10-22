@@ -54,6 +54,7 @@ namespace SiemensMCPServer.Mcp
         public object Attach(int processId, string expectedProjectPath)
         {
             if (processId != 4242 || !string.Equals(expectedProjectPath, ProjectPath, StringComparison.Ordinal)) throw new ArgumentException("Exact fixture process/project required.");
+            if (File.Exists(Path.Combine(state, "slow-attach"))) Thread.Sleep(500); // Synthetic long operation for progress delivery.
             attached = true; workflow = NewWorkflow(); Journal("attached"); return Status();
         }
         public object Status() => new { fixture = true, attached, projectPath = attached ? ProjectPath : null,

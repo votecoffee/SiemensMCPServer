@@ -34,9 +34,10 @@ def app(result):
 
 def wire(result):
     value = result.model_dump(mode="json", by_alias=True, exclude_none=True, exclude_unset=True)
-    # .NET omits the optional false flag; SDK 2 routing emits it explicitly.
-    # Normalize only this protocol default, retaining every other received field.
+    # Normalize the optional false flag and the modern complete-result discriminator
+    # (implicit on the legacy frontend), retaining every payload/provenance field.
     value.setdefault("isError", False)
+    value.setdefault("resultType", "complete")
     return value
 
 
@@ -71,10 +72,10 @@ class AppHost:
             except subprocess.TimeoutExpired: self.process.terminate(); self.process.wait(10)
 
 
-async def connect(stack, command, args, env=None):
+async def connect(stack, command, args, env=None, mode="legacy"):
     client = await stack.enter_async_context(Client(StdioServerParameters(command=str(command), args=args, env=env),
-        mode="legacy", cache=None, read_timeout_seconds=90))
-    assert client.session.initialize_result.protocol_version == "2025-11-25"
+        mode=mode, cache=None, read_timeout_seconds=90))
+    assert client.session.protocol_version == ("2025-11-25" if mode == "legacy" else "2026-07-28")
     return client
 
 
@@ -94,11 +95,36 @@ async def exercise(broker, fixture, native, external):
         frontend_env = {**os.environ, 'SIEMENS_MCP_APPHOST':str(broker.config)}
         owner = await connect(stack, sys.executable, proxy_args, frontend_env)
         other = await connect(stack, sys.executable, proxy_args, frontend_env)
-        direct = await connect(stack, fixture, ['--allow-writes', policy_arg, '--artifact-root='+str(native/'direct-artifacts'), '--extensions-root='+str(external)], env)
+        direct = await connect(stack, fixture, ['--allow-writes', policy_arg, '--artifact-root='+str(native/'direct-artifacts'), '--extensions-root='+str(external)], env, mode='auto')
         outer = await list_all_tools(owner.session)
         assert len(outer) == 18
         guides = data(await owner.call_tool('siemens_list_workflows', {}))
         assert len(guides['workflows']) == 4
+        from universal_tools.transport import http_session
+        from universal_tools.skill_catalog import SkillList, SkillGet, SkillParams
+        from mcp.types import Request, PaginatedRequestParams, ReadResourceRequestParams, ReadResourceResult
+        http_resources = 0
+        async with http_session(broker.settings.url+'/mcp', broker.settings.token, protocol_mode='auto', client_id='c'*32) as http:
+            assert http.protocol_version == '2026-07-28'
+            entries, cursor = [], None
+            while True:
+                page = await http.send_request(Request(method='skills/list', params=PaginatedRequestParams(cursor=cursor)), SkillList)
+                entries.extend(page.skills); cursor = page.next_cursor
+                if not cursor: break
+            assert len(entries) == 4
+            for entry in entries:
+                found = await http.send_request(Request(method='skills/get', params=SkillParams(uri=entry['uri'])), SkillGet)
+                assert found.skill == entry
+                guide = next(g for g in guides['workflows'] if g['uri'] == entry['uri'])
+                ordinary = data(await owner.call_tool('siemens_read_workflow', {'workflow_id': guide['workflow_id'],
+                    'expected_revision': guides['catalog_revision'], 'expected_sha256': guide['sha256']}))
+                for resource in entry['resources']:
+                    result = await http.send_request(Request(method='resources/read', params=ReadResourceRequestParams(uri=resource['uri'])), ReadResourceResult)
+                    assert len(result.contents) == 1
+                    raw = result.contents[0].text.encode('utf-8')
+                    assert len(raw) == resource['size'] and 'sha256:'+hashlib.sha256(raw).hexdigest() == resource['digest']
+                    if resource['uri'] == entry['uri']: assert raw.decode() == ordinary['content']
+                    http_resources += 1
         data(await owner.call_tool('refresh_services', {}))
         context = data(await owner.call_tool('acquire_service', {'service_id': 'siemens-engineering'}))['context_id']
 
@@ -120,7 +146,11 @@ async def exercise(broker, fixture, native, external):
         stages = []
         async def progress(completed, total=None, message=None):
             stages.append((completed, total, message))
-        assert app(await call('tia_attach', attach, write=True, progress=progress))['fixture']
+        (native/'slow-attach').touch()
+        try:
+            assert app(await call('tia_attach', attach, write=True, progress=progress))['fixture']
+        finally:
+            (native/'slow-attach').unlink()
         await asyncio.sleep(0.2)
         assert stages and any(':dispatched' in (s[2] or '') for s in stages), stages
         assert [s[0] for s in stages] == sorted(set(s[0] for s in stages)) and all(s[1] is None for s in stages)
@@ -212,12 +242,14 @@ async def exercise(broker, fixture, native, external):
         assert (await call('hmi_apply_text_edits', apply_args(lost), write=True, request_id='lost-reply')).is_error
         assert len(events(native, 'import-effect')) == 3
         return context, {'backend': 'test-only IHmiSession; Siemens assemblies forbidden', 'productionHandlersAndWorkers': True,
-            'directFrameworkCompleteReadResultsEqual': True, 'defaultIsErrorFalseNormalized': True, 'unicodeReadbackCharacters': len(literal),
+            'directFrameworkCompleteReadResultsEqual': True, 'defaultIsErrorFalseNormalized': True,
+            'legacyAndModernCompleteEnvelopeNormalized': True, 'unicodeReadbackCharacters': len(literal),
             'wrongOwnerHashConsumedAndStalePlansRejected': True, 'reloadInvalidatesAndFailedReloadRetainsPlans': True,
             'compileSaveReopenSeparate': True, 'releaseDiscardsSelectionAndPlans': True,
             'lostReplyReceipt': receipt['status'], 'independentImportEffects': 3, 'zeroReplay': True,
             'projectAttached': False, 'nativeWrites': False, 'requestBoundMonotonicStageNotifications': True,
-            'stageUnitsHaveNoInventedTotalOrPercent': True}
+            'stageUnitsHaveNoInventedTotalOrPercent': True, 'httpSkillsResourcesHashVerified': http_resources,
+            'httpSkillsAndStdioGuidesMatch': True, 'nativeBackendModernProtocolAssessed': True}
 
 
 async def barrier_after_restart(broker):

@@ -394,7 +394,7 @@ def main():
         if not args.bundle or not args.expected_revision or not args.expected_sha256:
             raise ValueError('Supply the reviewed --bundle, --expected-sha256 and --expected-revision')
         settings = load_settings(state)
-        with httpx.Client(trust_env=False, timeout=30) as client:
+        with httpx.Client(trust_env=False, timeout=90) as client:
             response = client.post(settings.url+'/siemens/guidance/publish',
                 headers={'Authorization': 'Bearer '+settings.token}, json={'bundle': str(args.bundle.resolve()),
                     'expected_sha256': args.expected_sha256, 'expected_revision': args.expected_revision})
