@@ -216,7 +216,8 @@ def configure(args, *, _startup_locked=False):
             service = {'schema_version': 1, 'id': SERVICE, 'display_name': 'Siemens engineering',
                 'description': 'TIA Portal HMI and offline PLC engineering; explicit target/review required.',
                 'transport': {'type': 'stdio', 'command': str(command), 'args': arguments, 'cwd': str(command.parent)},
-                'session_mode': 'exclusive', 'resource_id': 'siemens-tia-openness', 'protocol_mode': 'legacy',
+                'session_mode': 'exclusive', 'resource_id': 'siemens-tia-openness', 'protocol_mode': 'auto',
+                'watch_catalog': True, 'discovery_cache_ttl_seconds': 5,
                 'timeout_seconds': 300, 'max_argument_bytes': 64*1024*1024,
                 'allow_writes': args.allow_writes, 'allowed_write_tools': writes if args.allow_writes else []}
             publication = {'schema_version': 1, 'id': 'siemens-mcp-server', 'display_name': 'SiemensMCPServer',

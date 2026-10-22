@@ -278,7 +278,7 @@ def main():
                 'env_vars': ['SIEMENS_FIXTURE_STATE']}, 'allow_writes': True,
             'allowed_write_tools': ['tia_attach', 'hmi_read_text_list', 'hmi_preview_text_edits', 'hmi_apply_text_edits', 'tia_reload_extensions', 'hmi_compile', 'tia_save_project', 'tia_reopen_project'],
             'session_mode': 'exclusive', 'resource_id': 'synthetic-siemens-resource', 'timeout_seconds': 60,
-            'protocol_mode': 'legacy'}
+            'protocol_mode': 'auto', 'watch_catalog': True, 'discovery_cache_ttl_seconds': 5}
         publication = broker.root/'application.json'
         value = {'schema_version': 1, 'id': 'siemens-mcp-server-fixture', 'display_name': 'Siemens fixture',
             'instructions': 'Isolated fake-native fixture only; preserve targets, reviewed candidates and receipts.',

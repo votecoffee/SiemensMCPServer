@@ -192,7 +192,7 @@ class Guidance:
                 'skills_publication_and_resource_notifications': {'status': 'enabled-and-tested', 'evidence': 'app-host HTTP profile; explicit CAS publication and reconnect/refetch'},
                 'native_operation_stages': {'status': 'enabled-and-tested', 'evidence': 'request lane stages/structured status; notifications need caller progress support'},
                 'queued_cancellation': {'status': 'enabled-and-tested', 'evidence': 'queued work removed before dispatch; running native calls are never aborted'},
-                'native_tool_watch_and_ttl_cache': {'status': 'blocked', 'reason': 'Selected C# backend retains the assessed legacy protocol and emits no TTL hints; explicit refresh remains required.'},
+                'native_tool_watch_and_ttl_cache': {'status': 'enabled-and-tested', 'evidence': 'Retained exclusive backend negotiates auto/modern; private five-second hints, detached per-connection caches and fresh invocation checks. Legacy fallback requires explicit refresh.'},
                 'native_tasks': {'status': 'blocked', 'reason': 'No durable app-owned TIA job identity, lost-start reconciliation or surviving native-job adapter.'},
                 'approval_continuations': {'status': 'blocked', 'reason': 'No target/preview-bound native approval adapter; ordinary authorization and reviewed hashes remain required.'},
                 'engineering_artifact_resources': {'status': 'blocked', 'reason': 'No owner-bound retained export registry for resource authorization; existing scoped engineering readers remain usable.'},
