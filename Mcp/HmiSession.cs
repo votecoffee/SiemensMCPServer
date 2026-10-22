@@ -296,7 +296,7 @@ namespace SiemensMCPServer.Mcp
             var messages = new List<object>();
             int count = 0;
             AddMessages(result.Messages, messages, ref count);
-            return new { targetId, projectPath, processId, toolVersion = typeof(HmiSession).Assembly.GetName().Version?.ToString(), downloadPerformed = false, state = result.State.ToString(), errors = result.ErrorCount, warnings = result.WarningCount,
+            return new { targetId, projectPath, processId, toolVersion = AppRelease.Identity(typeof(HmiSession).Assembly), downloadPerformed = false, state = result.State.ToString(), errors = result.ErrorCount, warnings = result.WarningCount,
                 messages, messagesTruncated = count > messages.Count, totalMessages = count, projectSaved = false,
                 compileScope = new { kind = selected.Scope.Kind, path = selected.Scope.Path, nativeType = selected.Scope.Target.GetType().FullName,
                     ownerFallback = selected.OwnerFallback, includesOwningScope = selected.OwnerFallback } };
@@ -321,7 +321,7 @@ namespace SiemensMCPServer.Mcp
                 CheckProject();
                 project!.Save();
             }
-            return new { projectPath, processId, projectSaved = true, downloadPerformed = false, toolVersion = typeof(HmiSession).Assembly.GetName().Version?.ToString() };
+            return new { projectPath, processId, projectSaved = true, downloadPerformed = false, toolVersion = AppRelease.Identity(typeof(HmiSession).Assembly) };
         }
 
         public object Archive(string expectedProjectPath)
@@ -402,7 +402,7 @@ namespace SiemensMCPServer.Mcp
             string sessionRoot = Path.Combine(artifactRoot, Guid.NewGuid().ToString("N"));
             workflow = new TextListWorkflow(this, Path.Combine(sessionRoot, "classic"), features, safeguards, identity: () => new {
                 projectPath, processId, apiVersion = typeof(Project).Assembly.GetName().Version?.ToString(),
-                toolVersion = typeof(HmiSession).Assembly.GetName().Version?.ToString(), projectModifiedAtPreview = project?.IsModified },
+                toolVersion = AppRelease.Identity(typeof(HmiSession).Assembly), projectModifiedAtPreview = project?.IsModified },
                 nativeValidation: bytes => {
                     Version api = typeof(Project).Assembly.GetName().Version;
                     bool v151 = api.Major == 15 && api.Minor == 1;

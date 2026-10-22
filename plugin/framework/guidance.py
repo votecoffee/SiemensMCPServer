@@ -16,6 +16,7 @@ from universal_tools.skill_manifest import OPENAI_IMPORT_PROFILE, frontmatter
 from universal_tools.surface import READ, error_result, json_result
 
 from integrity import FRAMEWORK_VERSION, atomic_json, ordinary, relative
+from app_version import release
 
 FORMAT = 'siemens-guidance-bundle-v1'
 READERS = {'siemens_list_workflows', 'siemens_read_workflow', 'siemens_read_reference', 'siemens_doctor'}
@@ -190,7 +191,7 @@ class Guidance:
             ledger = summary()
         except Exception:
             ledger = {'available': False, 'reason': 'Resource ledger is unreadable; no cleanup or identity guessing was attempted.'}
-        return {**(await self.list_workflows()), 'framework_version': FRAMEWORK_VERSION, 'python_sdk_version': '2.3.0',
+        return {**(await self.list_workflows()), 'app_release': release(), 'framework_version': FRAMEWORK_VERSION, 'python_sdk_version': '2.3.0',
             'resource_ownership': owned_resources(),
             'durable_resource_ledger': ledger,
             'profiles': {'standalone_stdio': 'engineering plus ordinary guide tools; no Skills extension advertised',

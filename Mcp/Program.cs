@@ -17,6 +17,10 @@ namespace SiemensMCPServer.Mcp
         {
             try
             {
+                if (args.Length == 1 && args[0] == "--version") {
+                    Console.WriteLine(AppRelease.Identity(typeof(Program).Assembly));
+                    return 0; // no SDK host, native resource owner, worker or TIA API is initialized
+                }
                 string? version = Environment.GetEnvironmentVariable("TIA_PORTAL_VERSION");
                 string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SiemensMCPServer", "Mcp", "Sessions");
                 bool writes = false;
@@ -50,7 +54,7 @@ namespace SiemensMCPServer.Mcp
                 builder.Services.AddSingleton(_ => new OpennessRuntime(version, root, writes, extensionsRoot, analysisParallelism ?? initial.AnalysisParallelism, sessionFactory, safeguards));
                 builder.Services.AddHostedService<StdioEofShutdown>();
                 builder.Services.AddMcpServer(options => {
-                    options.ServerInfo = new ModelContextProtocol.Protocol.Implementation { Name = sessionFactory == null ? "siemens-mcp-server" : "siemens-mcp-server-fixture", Version = typeof(Program).Assembly.GetName().Version!.ToString(3) };
+                    options.ServerInfo = new ModelContextProtocol.Protocol.Implementation { Name = sessionFactory == null ? "siemens-mcp-server" : "siemens-mcp-server-fixture", Version = AppRelease.Identity(typeof(Program).Assembly) };
                     options.ServerInstructions = "Use explicit TIA process, project path, and HMI IDs. Read a text list, preview edits, and inspect the diff before applying authorized changes. Apply never saves; compile and save are separate tools. Classic and capability-checked Unified operations; use tia_get_api_capabilities and the target family. Do not retry an uncertain write; inspect current state first.";
                 }).WithRequestFilters(filters => filters.AddListToolsFilter(next => async (request, token) => {
                     var result = await next(request, token).ConfigureAwait(false);

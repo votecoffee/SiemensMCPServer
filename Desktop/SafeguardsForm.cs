@@ -16,7 +16,7 @@ namespace SiemensMCPServer
         internal SafeguardsForm(SafeguardStore store)
         {
             this.store = store;
-            Text = "SiemensMCPServer - Safeguards";
+            Text = "SiemensMCPServer " + AppRelease.DisplayVersion + " - Safeguards";
             Size = new Size(920, 790); MinimumSize = new Size(700, 580);
             StartPosition = FormStartPosition.CenterParent;
             var header = new Label { Dock = DockStyle.Top, Height = 96, Padding = new Padding(10), Text =

@@ -6,6 +6,7 @@ param(
     [ValidateSet('comfort','unified','plc','project')][string[]]$Modules=@('comfort','unified','plc','project')
 )
 $ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'Version-Common.ps1')
 function Get-ExtensionHash([string]$Path) {
     $algorithm=[Security.Cryptography.SHA256]::Create();$stream=[IO.File]::OpenRead($Path)
     try{return [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-','').ToLowerInvariant()}finally{$stream.Dispose();$algorithm.Dispose()}
@@ -14,11 +15,16 @@ $repoRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if(-not $WorkerDirectory) {
     $WorkerDirectory=Join-Path $repoRoot ('artifacts\extension-build-'+[Guid]::NewGuid().ToString('N'))
     $buildArguments=@('publish',(Join-Path $repoRoot 'Extensions\SiemensMCPServer.ExtensionWorker.csproj'),'-c',$Configuration,'-p:RestoreLockedMode=true','--nologo','-v','minimal','-o',$WorkerDirectory)
-    if($WorkerVersion){$buildArguments+=('-p:Version='+$WorkerVersion)}
+    if($WorkerVersion){
+        $canonical = ConvertTo-AppPackageVersion $WorkerVersion
+        $assembly = ConvertTo-AppAssemblyVersion $WorkerVersion
+        $buildArguments+=@(('-p:Version='+$canonical), ('-p:InformationalVersion='+$WorkerVersion), ('-p:AssemblyVersion='+$assembly), ('-p:FileVersion='+$assembly))
+    }
     & dotnet @buildArguments
     if($LASTEXITCODE -ne 0){throw 'Extension worker build failed'}
 }
-$version=[Reflection.AssemblyName]::GetAssemblyName((Join-Path $WorkerDirectory 'SiemensMCPServer.ExtensionWorker.exe')).Version.ToString(3)
+$displayVersion=[Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $WorkerDirectory 'SiemensMCPServer.ExtensionWorker.exe')).ProductVersion.Split('+')[0]
+$version=ConvertTo-AppPackageVersion $displayVersion
 $Destination=[IO.Path]::GetFullPath($Destination)
 $registry=[ordered]@{}
 $registryPath=Join-Path $Destination 'active.json'
@@ -34,7 +40,7 @@ foreach($module in $Modules) {
     $files=@(Get-ChildItem -LiteralPath $directory -Recurse -File | Sort-Object FullName | ForEach-Object {
         [ordered]@{path=$_.FullName.Substring($directory.Length+1).Replace('\','/');bytes=$_.Length;sha256=(Get-ExtensionHash $_.FullName)}
     })
-    $manifest=[ordered]@{format='tia-extension-v1';protocol=1;module=$module;version=$version;entryPoint='SiemensMCPServer.ExtensionWorker.exe';files=$files}
+    $manifest=[ordered]@{format='tia-extension-v1';protocol=1;module=$module;version=$version;displayVersion=$displayVersion;entryPoint='SiemensMCPServer.ExtensionWorker.exe';files=$files}
     [IO.File]::WriteAllText((Join-Path $directory 'extension.json'),($manifest | ConvertTo-Json -Depth 6),[Text.UTF8Encoding]::new($false))
     $registry[$module]=$relative
 }

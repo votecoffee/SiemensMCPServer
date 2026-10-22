@@ -9,6 +9,9 @@ import sys
 import tempfile
 import zipfile
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'plugin/framework'))
+from app_version import equivalent
+
 
 def validate_skill_content(files):
     skills = {name: data for name, data in files.items() if name.startswith('skills/') and name.endswith('/SKILL.md')}
@@ -49,7 +52,7 @@ def validate(files):
     assert portable["name"] == "siemens-mcp-server"
     assert portable["repository"] == "https://github.com/votecoffee/SiemensMCPServer"
     compatibility = json.loads(files[".codex-plugin/plugin.json"])
-    assert compatibility["name"] == portable["name"] and compatibility["version"] == portable["version"]
+    assert compatibility["name"] == portable["name"] and equivalent(compatibility["version"], portable["version"])
     modern = json.loads(files["mcp.json"])["mcpServers"]["siemens-mcp-server"]
     compat = json.loads(files[".mcp.json"])["mcpServers"]["siemens-mcp-server"]
     assert modern["type"] == "stdio"
@@ -173,7 +176,7 @@ def main():
         protocol = json.loads(result.stdout)
         package_version = json.loads(files['plugin.json'])['version']
         if tuple(int(part) for part in package_version.split('.')[:3]) >= (0, 12, 0):
-            assert protocol['hostVersion'] == package_version, 'Advertised host version differs from the package version'
+            assert equivalent(protocol['hostVersion'], package_version), 'Advertised host version differs from the package version'
     report = {"package": package.name, "sha256": package_hash, "manifestFileCount": file_count,
               "manifest": "passed", "noSiemensRedistribution": "passed", "negativeControls": controls,
               "freshExtractionProtocol": protocol, "nativeImportCompileSave": "pending"}

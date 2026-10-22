@@ -8,6 +8,11 @@ import shutil
 import subprocess
 import threading
 import uuid
+import sys
+
+_root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_root/'plugin/framework' if (_root/'plugin/framework').exists() else _root/'framework'))
+from app_version import equivalent
 
 
 def main():
@@ -113,7 +118,8 @@ def main():
     try:
         initialized = send("initialize", {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "codex-registration-probe", "version": "1.0.0"}})
         assert process.poll() is None, 'Launcher exited while the MCP frontend was still running'
-        assert initialized["serverInfo"]["version"] == (framework_version if gateway else manifest["version"])
+        expected_frontend = manifest['version'] if (plugin_root/'app-version.json').exists() else (framework_version if gateway else manifest['version'])
+        assert equivalent(initialized["serverInfo"]["version"], expected_frontend)
         send("notifications/initialized", {}, notification=True)
         tools = {t["name"]: t for t in send("tools/list", {})["tools"]}
         if gateway:
@@ -130,7 +136,7 @@ def main():
                 assert unwrapped(raw('siemens_doctor', {}))['features']['native_tasks']['status'] == 'blocked'
             unwrapped(raw("refresh_services", {}))
             service = unwrapped(raw("describe_service", {"service_id": "siemens-engineering"}))
-            assert service["initialization"]["serverInfo"]["version"] == manifest["version"]
+            assert equivalent(service["initialization"]["serverInfo"]["version"], manifest["version"])
             context = unwrapped(raw("acquire_service", {"service_id": "siemens-engineering"}))["context_id"]
         else:
             assert len(tools) == 51 and {"tia_reload_extensions", "hmi_apply_text_edits", "plc_list_targets"} <= set(tools)

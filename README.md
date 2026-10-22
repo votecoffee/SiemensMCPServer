@@ -15,6 +15,8 @@ Two Windows applications are included:
 
 The repository and .NET solution use `SiemensMCPServer`; the plugin and MCP registration use the package ID `siemens-mcp-server`.
 
+Current app/source checkpoint: **26.1022.173616** (America/New_York). The plugin/package identity is `26.1022.173616`; bounded .NET assembly/file identity is `26.1022.1736.16`. See [timestamp release rules](docs/VERSIONING.md).
+
 ## Table of Contents
 
 - [Background](#background)

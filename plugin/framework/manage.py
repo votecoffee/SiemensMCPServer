@@ -17,6 +17,7 @@ import venv
 
 from integrity import FRAMEWORK_COMMIT, FRAMEWORK_VERSION, MCP_VERSION, atomic_json, digest, ordinary, verify_payload, verify_wheels
 from reconciliation import reconcile, require_reconciled, pending_rows, valid_attestation
+from app_version import display_for_payload, equivalent, release, stamp_surface
 
 SERVICE = 'siemens-engineering'
 INSTRUCTIONS = (
@@ -242,6 +243,8 @@ def configure(args, *, _startup_locked=False):
                 'python': sys.executable, 'state': str(state), 'publication': str(publication_path),
                 'publicationSha256': digest(publication_path), 'backendTools': len(tools), 'writesEnabled': args.allow_writes,
                 'maxFrontends': maximum, 'serviceStartup': 'explicit-only'}
+            config['appDisplayVersion'] = display_for_payload(payload)
+            config['appPackageVersion'] = json.loads((payload/'plugin.json').read_bytes())['version']
             active = root/'active.json'
             if active.exists():
                 atomic_json(root/'active.previous.json', json.loads(active.read_bytes()))
@@ -310,7 +313,7 @@ async def activate_reconciled(config, request_ids):
             raise ValueError('Framework backend publication remains deferred/rejected; original state was retained')
         description = await host.client().invoke('describe_service', {'service_id': SERVICE})
         expected_version = json.loads((Path(config['payloadRoot'])/'plugin.json').read_bytes())['version']
-        if description.is_error or description.structured_content['initialization']['serverInfo']['version'] != expected_version:
+        if description.is_error or not equivalent(description.structured_content['initialization']['serverInfo']['version'], expected_version):
             raise ValueError('Framework backend initialization does not match the installed plugin version')
         return {'backendVersion': expected_version, 'frameworkPublication': 'applied', 'nativeProjectOperationPerformed': False}
 
@@ -357,7 +360,7 @@ def reconcile_upgrade(args, config):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['prepare', 'configure', 'catalog', 'start', 'serve', 'proxy', 'status', 'stop', 'contexts', 'reconcile-request', 'reconcile-upgrade', 'reconcile-resource', 'prepare-guidance', 'publish-guidance'])
+    parser.add_argument('command', choices=['version', 'prepare', 'configure', 'catalog', 'start', 'serve', 'proxy', 'status', 'stop', 'contexts', 'reconcile-request', 'reconcile-upgrade', 'reconcile-resource', 'prepare-guidance', 'publish-guidance'])
     parser.add_argument('--payload', type=Path)
     parser.add_argument('--root', type=Path, default=default_root())
     parser.add_argument('--config', type=Path)
@@ -381,6 +384,9 @@ def main():
     parser.add_argument('--max-frontends', type=int, default=4)
     parser.add_argument('--resource-id')
     args = parser.parse_args()
+    if args.command == 'version':
+        print(json.dumps(release(), indent=2))
+        return
     if args.command == 'catalog':
         atomic_json(args.output, backend_catalog(args.executable.resolve()))
         return
@@ -450,6 +456,7 @@ def main():
             from guidance import register_readers
             remote = RemoteBackend(load_settings(state))
             server = create_surface(remote, name='SiemensMCPServer', instructions=INSTRUCTIONS)
+            stamp_surface(server, release()['display_version'])
             register_readers(server, remote=remote)
             server.run(transport='stdio')
     else:

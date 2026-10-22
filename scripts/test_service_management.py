@@ -73,6 +73,19 @@ class ManagementTests(unittest.TestCase):
         self.assertIn('stale', self.cache.snapshot().message)
         self.assertFalse(self.cache.snapshot().restart_allowed)
 
+    def test_canonical_timestamp_install_receipt_reports_padded_identity(self):
+        stamp = {'schema_version': 1, 'timezone': 'America/New_York',
+            'display_version': '26.0103.000507', 'package_version': '26.103.507',
+            'assembly_version': '26.103.5.7', 'file_version': '26.103.5.7'}
+        (self.payload/'app-version.json').write_text(json.dumps(stamp))
+        (self.payload/'plugin.json').write_text('{"version":"26.103.507"}')
+        (self.root/'installed-components.json').write_text(json.dumps({'pluginId': PLUGIN_ID, 'pluginVersion': '26.103.507'}))
+        cache = StatusCache(self.config, json.loads(self.config.read_text())); cache.refresh()
+        component = cache.snapshot().versions['plugin']
+        self.assertEqual(component.installed, '26.0103.000507')
+        self.assertEqual(component.running, '26.0103.000507')
+        self.assertFalse(component.update_pending)
+
     def test_retained_context_and_uncertain_receipt_are_reported_without_changes(self):
         ownership = OwnershipJournal(self.state/'ownership.sqlite3')
         with ownership.connect() as db:

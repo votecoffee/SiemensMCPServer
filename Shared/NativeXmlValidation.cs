@@ -23,7 +23,7 @@ namespace SiemensMCPServer
     {
         public string Profile { get; set; } = "";
         public string RuleSetVersion { get; set; } = "1.1.0";
-        public string ToolVersion { get; set; } = typeof(HmiValidationReport).Assembly.GetName().Version?.ToString() ?? "unknown";
+        public string ToolVersion { get; set; } = AppRelease.Identity(typeof(HmiValidationReport).Assembly);
         public string TargetVersion { get; set; } = "";
         public string SourceSha256 { get; set; } = "";
         public string SourceEncoding { get; set; } = "";

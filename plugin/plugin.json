@@ -1,9 +1,15 @@
 {
   "name": "siemens-mcp-server",
-  "version": "0.22.0",
+  "version": "26.1022.173616",
   "description": "Local MCP server for Siemens HMI and offline PLC engineering through TIA Portal Openness.",
-  "author": { "name": "votecoffee" },
+  "author": {
+    "name": "votecoffee"
+  },
   "repository": "https://github.com/votecoffee/SiemensMCPServer",
   "license": "MIT",
-  "extensions": { "com.openai": { "requires_local_executor": true } }
+  "extensions": {
+    "com.openai": {
+      "requires_local_executor": true
+    }
+  }
 }

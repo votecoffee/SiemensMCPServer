@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory = $true)][string]$FrameworkWheel
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Version-Common.ps1')
 # Match extension packaging: hashing must not depend on shell module auto-loading.
 function Get-PluginHash([string]$Path) {
     $algorithm = [Security.Cryptography.SHA256]::Create()
@@ -21,7 +22,9 @@ $artifactRoot = Join-Path $repoRoot 'artifacts'
 $versionSlug = $TiaPortalVersion.Replace('.', '_')
 $pluginVersion = (Get-Content -LiteralPath (Join-Path $repoRoot 'plugin\plugin.json') -Raw | ConvertFrom-Json).version
 $compatVersion = (Get-Content -LiteralPath (Join-Path $repoRoot 'plugin\.codex-plugin\plugin.json') -Raw | ConvertFrom-Json).version
-if ($compatVersion -ne $pluginVersion) { throw 'Portable and Codex plugin versions must match before packaging.' }
+if (-not (Test-AppVersionEqual $compatVersion $pluginVersion)) { throw 'Portable and Codex plugin versions must match before packaging.' }
+$release = Get-Content -LiteralPath (Join-Path $repoRoot 'plugin/app-version.json') -Raw | ConvertFrom-Json
+if (-not (Test-AppVersionEqual $release.package_version $pluginVersion)) { throw 'App release stamp differs from plugin version.' }
 $packageName = 'siemens-mcp-server-' + $pluginVersion + '-' + $versionSlug + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
 $packageRoot = Join-Path $artifactRoot $packageName
 New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
@@ -34,6 +37,7 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $
 $helperDirectory = Join-Path $packageRoot 'scripts'
 New-Item -ItemType Directory -Path $helperDirectory -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Install-CodexPlugin.ps1') -Destination $helperDirectory
+Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Version-Common.ps1') -Destination $helperDirectory
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Install-Extension.ps1') -Destination $helperDirectory
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Write-ComfortPackage.ps1') -Destination $helperDirectory
 Copy-Item -LiteralPath (Join-Path $repoRoot 'build\Analyze-HmiReferences.ps1') -Destination $helperDirectory
@@ -45,6 +49,9 @@ if ($TiaPortalInstallVersion) { $buildArgs += '-p:TiaPortalInstallVersion=' + $T
 if ($TiaPublicApiDir) { $buildArgs += '-p:TiaPublicApiDir=' + $TiaPublicApiDir }
 & dotnet @buildArgs
 if ($LASTEXITCODE -ne 0) { throw 'MCP publish failed; the incomplete package was retained for diagnostics.' }
+$nativeExecutable = Join-Path $packageRoot 'server/SiemensMCPServer.Mcp.exe'
+$nativeInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo($nativeExecutable)
+if ($nativeInfo.ProductVersion -cne $release.display_version -or $nativeInfo.FileVersion -cne $release.file_version -or [Reflection.AssemblyName]::GetAssemblyName($nativeExecutable).Version.ToString() -cne $release.assembly_version) { throw 'Native binary does not match the fixed release stamp.' }
 & (Join-Path $repoRoot 'build\Build-Extensions.ps1') -Destination (Join-Path $packageRoot 'server\extensions')
 & py -3.13 -B (Join-Path $repoRoot 'scripts\bundle_framework.py') $FrameworkWheel (Join-Path $packageRoot 'framework')
 if ($LASTEXITCODE -ne 0) { throw 'Framework wheel bundle verification failed.' }
@@ -73,7 +80,8 @@ foreach ($entry in $target.PSObject.Properties) {
 }
 ConvertTo-Json -InputObject $dependencyNotices -Depth 4 | Set-Content -LiteralPath (Join-Path $packageRoot 'licenses\dependencies.json') -Encoding UTF8
 $metadata = [ordered]@{
-    pluginVersion = $pluginVersion; tiaPortalApi = $TiaPortalVersion; tiaPortalInstallVersion = $TiaPortalInstallVersion;
+    pluginVersion = $pluginVersion; displayVersion = $release.display_version; assemblyVersion = $release.assembly_version; fileVersion = $release.file_version;
+    tiaPortalApi = $TiaPortalVersion; tiaPortalInstallVersion = $TiaPortalInstallVersion;
     sourceCommit = (& git -C $repoRoot rev-parse HEAD); sourceHasLocalChanges = [bool](& git -C $repoRoot status --porcelain);
     nativeWriteAcceptance = 'Selected Comfort V15.1 workflows tested; see NATIVE-ACCEPTANCE.md. Other profiles/workflows pending.'; builtUtc = [DateTime]::UtcNow.ToString('o')
 }

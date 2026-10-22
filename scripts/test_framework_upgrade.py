@@ -10,6 +10,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'plugin/framework'))
 import manage
+from app_version import equivalent
 from reconciliation import reconcile
 from universal_tools.cli import initialize
 from universal_tools.framework import ApplicationHost
@@ -53,7 +54,7 @@ async def exercise(old, new, root):
     result = await manage.activate_reconciled(config, [request])
     expected = json.loads((new.parent.parent/'plugin.json').read_bytes())['version']
     async with ApplicationHost(state, publication) as host:
-        assert await version(host) == expected
+        assert equivalent(await version(host), expected)
     assert journal.status(request) == original
     try:
         journal.claim(request, fingerprint, original['tool_id'])

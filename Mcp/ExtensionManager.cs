@@ -60,7 +60,7 @@ namespace SiemensMCPServer.Mcp
             if (json.Length > 1024 * 1024) throw new ArgumentException("Extension manifest is too large.");
             var manifest = JsonSerializer.Deserialize<ExtensionManifest>(json, JsonDefaults.Options) ?? throw new ArgumentException("Missing extension manifest.");
             if (manifest.Format != "tia-extension-v1" || manifest.Protocol != ExtensionWire.Protocol || manifest.Module != module
-                || !Version.TryParse(manifest.Version, out var version) || version.ToString(3) != manifest.Version
+                || !Version.TryParse(manifest.Version, out var version) || !AppRelease.Equivalent(version.ToString(3), manifest.Version)
                 || (manifest.EntryPoint != "SiemensMCPServer.ExtensionWorker.exe" && manifest.EntryPoint != "SiemensTiaOpenness.ExtensionWorker.exe")) throw new ArgumentException("Incompatible extension manifest.");
             if (manifest.Files == null || manifest.Files.Length == 0 || manifest.Files.Length > 256) throw new ArgumentException("Invalid extension file inventory.");
             var actual = inventory.Where(f => f.Path != "extension.json").ToDictionary(f => f.Path, StringComparer.OrdinalIgnoreCase);
@@ -122,7 +122,7 @@ namespace SiemensMCPServer.Mcp
                     catch (ObjectDisposedException) { } catch (IOException) { }
                 });
                 Hello = ExtensionWire.Parse<ExtensionHello>(Call("$hello", new { }));
-                if (Hello.Protocol != ExtensionWire.Protocol || Hello.Module != bundle.Manifest.Module || Hello.Version != bundle.Manifest.Version
+                if (Hello.Protocol != ExtensionWire.Protocol || Hello.Module != bundle.Manifest.Module || !AppRelease.Equivalent(Hello.Version, bundle.Manifest.Version)
                     || Hello.Operations == null || Hello.Operations.Length == 0 || Hello.Operations.Length > 100
                     || Hello.Operations.Any(o => o == null || !o.IsCompatible(Hello.Module))
                     || Hello.Operations.GroupBy(o => o.Name, StringComparer.Ordinal).Any(g => g.Count() > 1))

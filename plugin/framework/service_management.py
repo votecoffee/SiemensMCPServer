@@ -17,6 +17,7 @@ from universal_tools.management import ComponentVersion, ManagedService, Managed
 from universal_tools.models import load_settings
 
 from reconciliation import valid_attestation
+from app_version import display_for_payload, display_identity, release, stamp_surface
 
 APP_ID = 'siemens-mcp-server'
 PLUGIN_ID = 'siemens-mcp-server@siemens-mcp-server-local'
@@ -63,7 +64,7 @@ class StatusCache:
         self.lock = threading.Lock()
         self.active = 0
         self.checked = 0.0
-        self.running_app = bounded_json(Path(config['payloadRoot'])/'plugin.json')['version']
+        self.running_app = display_for_payload(config['payloadRoot'])
         self.running_framework = version('universal-codex-tools')
         self.running_sdk = version('mcp')
         self.current = ManagedStatus(state='starting', message='Engineering host starting',
@@ -84,7 +85,7 @@ class StatusCache:
     def refresh(self):
         try:
             active = bounded_json(self.config_path)
-            installed_app = bounded_json(Path(active['payloadRoot'])/'plugin.json')['version']
+            installed_app = display_for_payload(active['payloadRoot'])
             receipt_path = self.config_path.parent/'installed-components.json'
             receipt = bounded_json(receipt_path) if receipt_path.exists() else {}
             if receipt and receipt.get('pluginId') != PLUGIN_ID:
@@ -103,7 +104,7 @@ class StatusCache:
                          'Native selection, previews and unsaved state are not inspected.'),
                 versions={
                     'app': ComponentVersion(installed=installed_app, running=self.running_app),
-                    'plugin': ComponentVersion(installed=receipt.get('pluginVersion', 'unknown'), running=self.running_app),
+                    'plugin': ComponentVersion(installed=display_identity(receipt.get('pluginDisplayVersion', receipt.get('pluginVersion', 'unknown'))), running=self.running_app),
                     'framework': ComponentVersion(installed=version('universal-codex-tools'), running=self.running_framework),
                     'sdk': ComponentVersion(installed=version('mcp'), running=self.running_sdk),
                 },
@@ -199,6 +200,7 @@ def serve_managed(config_path, config):
     host.backend = ObservedBackend(host, cache)
     guidance = Guidance(Path(config['payloadRoot']), state/'guidance')
     server = host.create_server(port=settings.port, skills=guidance.catalog)
+    stamp_surface(server, release()['display_version'])
     register_readers(server, guidance=guidance)
     base = server.streamable_http_app(**server.http_options)
 

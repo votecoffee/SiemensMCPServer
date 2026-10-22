@@ -5,6 +5,7 @@ param(
     [switch]$PrepareOnly
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Version-Common.ps1')
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 function Get-BytesHash([byte[]]$Bytes) {
     $algorithm = [Security.Cryptography.SHA256]::Create()
@@ -55,13 +56,16 @@ foreach ($file in $manifest) {
 }
 $plugin = $utf8.GetString($payload['plugin.json']) | ConvertFrom-Json
 $build = $utf8.GetString($payload['build-info.json']).TrimStart([char]0xFEFF) | ConvertFrom-Json
-if ($plugin.name -cne 'siemens-mcp-server' -or $plugin.version -notmatch '^\d+\.\d+\.\d+$' -or $build.tiaPortalApi -notmatch '^V\d+(\.\d+)?$' -or $build.pluginVersion -cne $plugin.version) { throw 'Unexpected plugin identity/build metadata.' }
+if ($plugin.name -cne 'siemens-mcp-server' -or $plugin.version -notmatch '^\d+\.\d+\.\d+$' -or $build.tiaPortalApi -notmatch '^V\d+(\.\d+)?$' -or -not (Test-AppVersionEqual $build.pluginVersion $plugin.version)) { throw 'Unexpected plugin identity/build metadata.' }
+$displayVersion = if ($build.displayVersion) { $build.displayVersion } else { $plugin.version }
+$packageVersion = ConvertTo-AppPackageVersion $plugin.version
+if (-not (Test-AppVersionEqual $displayVersion $packageVersion)) { throw 'Display/package versions disagree.' }
 $installMutex = [Threading.Mutex]::new($false, ('Local\SiemensMCPServer-Install-' + (Get-BytesHash ([Text.Encoding]::UTF8.GetBytes($root.ToLowerInvariant())))))
 $installOwned = $false
 try {
 try { $installOwned = $installMutex.WaitOne(0) } catch [Threading.AbandonedMutexException] { $installOwned = $true }
 if (-not $installOwned) { throw 'Another installation is using this InstallRoot. Existing selection and settings were preserved.' }
-$slug = $plugin.version + '-' + $build.tiaPortalApi.Replace('.', '_') + '-' + $zipHash.Substring(0, 12)
+$slug = $packageVersion + '-' + $build.tiaPortalApi.Replace('.', '_') + '-' + $zipHash.Substring(0, 12)
 $destination = Join-Path $root ('plugins\' + $slug)
 if (Test-Path -LiteralPath $destination) {
     $existing = @(Get-ChildItem -LiteralPath $destination -File -Recurse -Force)
@@ -120,13 +124,13 @@ if ($LASTEXITCODE -ne 0) { throw ('Codex marketplace registration failed: ' + ($
 $installation = & $codex plugin add 'siemens-mcp-server@siemens-mcp-server-local' --json
 if ($LASTEXITCODE -ne 0) { throw 'Codex plugin installation failed. Verified source and configuration backup were retained.' }
 $codexInstalled = $installation | ConvertFrom-Json
-if ($codexInstalled.pluginId -cne 'siemens-mcp-server@siemens-mcp-server-local' -or $codexInstalled.version -cne $plugin.version) { throw 'Installed Codex identity/version differs from the verified Siemens plugin.' }
-$componentReceipt = [ordered]@{ pluginId = $codexInstalled.pluginId; pluginVersion = $codexInstalled.version; frameworkVersion = '0.20.0'; mcpPythonVersion = '2.3.0' }
+if ($codexInstalled.pluginId -cne 'siemens-mcp-server@siemens-mcp-server-local' -or -not (Test-AppVersionEqual $codexInstalled.version $packageVersion)) { throw 'Installed Codex identity/version differs from the verified Siemens plugin.' }
+$componentReceipt = [ordered]@{ pluginId = $codexInstalled.pluginId; pluginVersion = $packageVersion; pluginDisplayVersion = $displayVersion; frameworkVersion = '0.20.0'; mcpPythonVersion = '2.3.0' }
 $componentPath = Join-Path ([IO.Path]::GetFullPath($AppHostRoot)) 'installed-components.json'
 $componentStage = $componentPath + '.' + [Guid]::NewGuid().ToString('N') + '.tmp'
 [IO.File]::WriteAllText($componentStage, ($componentReceipt | ConvertTo-Json), $utf8)
 if (Test-Path -LiteralPath $componentPath) { [IO.File]::Replace($componentStage, $componentPath, [System.Management.Automation.Language.NullString]::Value) } else { [IO.File]::Move($componentStage, $componentPath) }
-$result = @{ state = 'installed'; version = $plugin.version; api = $build.tiaPortalApi; packageSha256 = $zipHash;
+$result = @{ state = 'installed'; version = $packageVersion; displayVersion = $displayVersion; api = $build.tiaPortalApi; packageSha256 = $zipHash;
     marketplaceRoot = $root; pluginSource = $destination; configurationBackup = $backupDirectory;
     codex = ($installation | ConvertFrom-Json); nativeProjectChanged = $false; integration = 'Standalone';
     frameworkVersion = '0.20.0'; mcpPythonVersion = '2.3.0'; frameworkConfig = $framework.config;

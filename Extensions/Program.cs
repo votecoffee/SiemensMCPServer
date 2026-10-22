@@ -45,7 +45,7 @@ namespace SiemensMCPServer.Extensions
                     try
                     {
                         if (request.Operation == "$hello") response.Result = ExtensionWire.Json(new ExtensionHello {
-                            Protocol = ExtensionWire.Protocol, Module = module, Version = Assembly.GetExecutingAssembly().GetName().Version!.ToString(3), Operations = FeatureOperations.Describe(module).Concat(recipes.Operations).ToArray()
+                            Protocol = ExtensionWire.Protocol, Module = module, Version = AppRelease.Canonical(AppRelease.Identity(Assembly.GetExecutingAssembly())), Operations = FeatureOperations.Describe(module).Concat(recipes.Operations).ToArray()
                         });
                         else response.Result = recipes.TryExecute(request.Operation, request.Input, out var preset) ? preset : FeatureOperations.Execute(module, request.Operation, request.Input);
                     }

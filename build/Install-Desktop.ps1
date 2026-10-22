@@ -25,7 +25,8 @@ if (-not (Test-Path -LiteralPath (Join-Path $TiaPublicApiDir $baseAssembly) -Pat
 }
 if (-not $NoShortcut -and [string]::IsNullOrWhiteSpace($ProgramsDirectory)) { throw 'The current user Start menu folder could not be located. Use -NoShortcut or specify -ProgramsDirectory.' }
 if (-not $NoShortcut) { $ProgramsDirectory = [IO.Path]::GetFullPath($ProgramsDirectory) }
-$slug = $TiaPortalVersion.Replace('.', '_') + '-' + [Guid]::NewGuid().ToString('N')
+$release = Get-Content -LiteralPath (Join-Path $repo 'plugin/app-version.json') -Raw | ConvertFrom-Json
+$slug = $release.package_version + '-' + $TiaPortalVersion.Replace('.', '_') + '-' + [Guid]::NewGuid().ToString('N')
 $relativeDirectory = 'apps/' + $slug
 $destination = Join-Path $root $relativeDirectory
 [IO.Directory]::CreateDirectory($destination) | Out-Null
@@ -37,6 +38,8 @@ if ($LASTEXITCODE -ne 0) { throw "Desktop build failed. Previous installation an
 $executable = Join-Path $destination 'SiemensMCPServer.exe'
 if (-not (Test-Path -LiteralPath $executable -PathType Leaf) -or -not (Test-Path -LiteralPath ($executable + '.config') -PathType Leaf)) { throw 'Desktop publish is incomplete. Previous installation remains selected.' }
 if (Get-ChildItem -LiteralPath $destination -Filter 'Siemens.Engineering*' -File -Recurse) { throw 'Desktop publish unexpectedly contains Siemens engineering assemblies. Installation stopped.' }
+$installedInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo($executable)
+if ($installedInfo.ProductVersion -cne $release.display_version -or $installedInfo.FileVersion -cne $release.file_version -or [Reflection.AssemblyName]::GetAssemblyName($executable).Version.ToString() -cne $release.assembly_version) { throw 'Desktop binary does not match the fixed release stamp. Previous selection was preserved.' }
 Copy-Item -LiteralPath (Join-Path $repo 'LICENSE') -Destination (Join-Path $destination 'LICENSE')
 $shortcutPath = $null
 if (-not $NoShortcut) {
@@ -58,7 +61,10 @@ if (-not $NoShortcut) {
 }
 $receipt = [ordered]@{ format = 'siemens-desktop-install-v1'; installedUtc = [DateTime]::UtcNow.ToString('O'); api = $TiaPortalVersion;
     engineeringVersion = $TiaPortalInstallVersion; directory = $relativeDirectory; executableSha256 = Get-DesktopFileHash $executable;
-    version = [Diagnostics.FileVersionInfo]::GetVersionInfo($executable).FileVersion; startMenuShortcut = $shortcutPath; codexSettingsChanged = $false; nativeProjectChanged = $false }
+    version = $release.display_version; packageVersion = $release.package_version;
+    assemblyVersion = [Reflection.AssemblyName]::GetAssemblyName($executable).Version.ToString();
+    fileVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($executable).FileVersion;
+    startMenuShortcut = $shortcutPath; codexSettingsChanged = $false; nativeProjectChanged = $false }
 $utf8 = [Text.UTF8Encoding]::new($false)
 [IO.File]::WriteAllText((Join-Path $destination 'installation.json'), ($receipt | ConvertTo-Json -Depth 5), $utf8)
 $activePath = Join-Path $root 'active.json'; $temporaryPath = Join-Path $root ('active-' + [Guid]::NewGuid().ToString('N') + '.tmp')

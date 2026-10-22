@@ -1,0 +1,4 @@
+<Project>
+  <!-- Generated identities change only through the explicit release stamper. -->
+  <Import Project="$(MSBuildThisFileDirectory)build/AppVersion.props" />
+</Project>

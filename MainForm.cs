@@ -48,7 +48,7 @@ namespace SiemensMCPServer
         internal MainForm(bool discoverProcesses, SafeguardStore safeguards)
         {
             _safeguards = safeguards;
-            Text = "SiemensMCPServer - TIA Portal " + TiaPortalAssemblyResolver.SelectedEngineeringVersion + " - HMI / PLC Import and Export";
+            Text = "SiemensMCPServer " + AppRelease.DisplayVersion + " - TIA Portal " + TiaPortalAssemblyResolver.SelectedEngineeringVersion + " - HMI / PLC Import and Export";
             Width = 1220;
             Height = 760;
             MinimumSize = new Size(1050, 620);
