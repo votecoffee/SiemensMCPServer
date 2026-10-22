@@ -4,12 +4,48 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json;
 using SiemensMCPServer.Extensions;
 using SiemensMCPServer.Mcp;
 using Xunit;
 
 public sealed class RequestLaneTests
 {
+    [Fact] public async Task ObservedStagesStayWithTheirRequestAndTerminalHistoryIsBounded()
+    {
+        using var lane = new RequestLane("stage-test", 1, 100);
+        var first = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var second = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        Task<object> a, b;
+        using (RequestLane.Observe(first.Enqueue)) a = lane.Enqueue(() => 1, default, "first");
+        using (RequestLane.Observe(second.Enqueue)) b = lane.Enqueue(() => 2, default, "second");
+        await Task.WhenAll(a, b);
+        Assert.Equal(new[] { "stage-test:first:queued", "stage-test:first:dispatched", "stage-test:first:returned" }, first);
+        Assert.Equal(new[] { "stage-test:second:queued", "stage-test:second:dispatched", "stage-test:second:returned" }, second);
+        for (int i = 0; i < 60; i++) await lane.Enqueue(() => 0, default, "bounded");
+        var json = JsonSerializer.SerializeToElement(lane.Snapshot());
+        Assert.Equal(50, json.GetProperty("recentRequests").GetArrayLength());
+        Assert.False(json.GetProperty("historyDurable").GetBoolean());
+        using (RequestLane.Observe(_ => throw new InvalidOperationException("telemetry failure")))
+            Assert.Equal(3, await lane.Enqueue(() => 3, default, "still completes"));
+    }
+
+    [Fact] public async Task RunningCancellationIsReportedWithoutAbortingOrClaimingRollback()
+    {
+        using var lane = new RequestLane("notice", 1, 2);
+        using var entered = new ManualResetEventSlim(); using var release = new ManualResetEventSlim(); using var cancel = new CancellationTokenSource();
+        try {
+            var task = lane.Enqueue(() => { entered.Set(); Wait(release); return "actual result"; }, cancel.Token, "native");
+            Wait(entered); cancel.Cancel();
+            var current = JsonSerializer.SerializeToElement(lane.Snapshot()).GetProperty("activeRequests")[0];
+            Assert.True(current.GetProperty("cancellationRequested").GetBoolean());
+            Assert.Contains("not aborted", current.GetProperty("cancellationEffect").GetString());
+            Assert.False(task.IsCompleted); release.Set(); Assert.Equal("actual result", await task);
+            var completed = JsonSerializer.SerializeToElement(lane.Snapshot()).GetProperty("recentRequests")[0];
+            Assert.True(completed.GetProperty("cancellationRequested").GetBoolean());
+            Assert.False(completed.GetProperty("effectUncertain").GetBoolean());
+        } finally { release.Set(); }
+    }
     static void Wait(ManualResetEventSlim gate) { if (!gate.Wait(TimeSpan.FromSeconds(10))) throw new TimeoutException("Test gate did not open."); }
     static int Count(RequestLane lane, string property) => ExtensionWire.Json(lane.Snapshot()).GetProperty(property).GetInt32();
 

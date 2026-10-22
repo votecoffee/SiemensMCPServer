@@ -11,6 +11,14 @@ namespace SiemensMCPServer.Mcp
     // aborts an operation that has crossed the dispatch boundary.
     internal sealed class RequestLane : IDisposable
     {
+        private static readonly AsyncLocal<Action<string>?> observer = new AsyncLocal<Action<string>?>();
+        public static IDisposable Observe(Action<string> action) => new Observation(action);
+        private sealed class Observation : IDisposable
+        {
+            private readonly Action<string>? previous;
+            public Observation(Action<string> action) { previous = observer.Value; observer.Value = action; }
+            public void Dispose() { observer.Value = previous; }
+        }
         private sealed class Item
         {
             public string Id = Guid.NewGuid().ToString("N"), Operation = "", State = "queued";
@@ -18,6 +26,7 @@ namespace SiemensMCPServer.Mcp
             public DateTime? Started;
             public Func<object> Run = null!;
             public CancellationToken Token;
+            public Action<string>? Observe;
             public CancellationTokenRegistration Registration;
             public LinkedListNode<Item>? Node;
             public readonly TaskCompletionSource<object> Completion = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -25,6 +34,7 @@ namespace SiemensMCPServer.Mcp
         private readonly object sync = new object();
         private readonly LinkedList<Item> pending = new LinkedList<Item>();
         private readonly Dictionary<string, Item> running = new Dictionary<string, Item>();
+        private readonly Queue<object> recent = new Queue<object>();
         private readonly Thread[] threads;
         private readonly string name;
         private readonly int capacity;
@@ -51,12 +61,12 @@ namespace SiemensMCPServer.Mcp
         public Task<object> Enqueue(Func<object> operation, CancellationToken token, string operationName)
         {
             if (operation == null || string.IsNullOrEmpty(operationName) || operationName.Length > 256) throw new ArgumentException("A bounded operation name and callback are required.");
-            var item = new Item { Run = operation, Token = token, Operation = operationName };
+            var item = new Item { Run = operation, Token = token, Operation = operationName, Observe = observer.Value };
             lock (sync) {
                 if (stopping) throw new ObjectDisposedException(name);
-                if (token.IsCancellationRequested) { cancelled++; item.State = "cancelled"; item.Completion.SetCanceled(); return item.Completion.Task; }
+                if (token.IsCancellationRequested) { cancelled++; item.State = "cancelled"; Stage(item, "cancelled-before-dispatch"); Finish(item); item.Completion.SetCanceled(); return item.Completion.Task; }
                 if (pending.Count >= capacity) { rejected++; throw new InvalidOperationException(name + " request queue is full; retry after queued work completes."); }
-                item.Node = pending.AddLast(item); Monitor.PulseAll(sync);
+                item.Node = pending.AddLast(item); Stage(item, "queued"); Monitor.PulseAll(sync);
             }
             // Register outside the lock: Register may synchronously invoke the callback.
             var registration = token.Register(() => CancelQueued(item));
@@ -72,7 +82,7 @@ namespace SiemensMCPServer.Mcp
             CancellationTokenRegistration registration;
             lock (sync) {
                 if (item.State != "queued") return;
-                pending.Remove(item.Node!); item.Node = null; item.State = "cancelled"; cancelled++;
+                pending.Remove(item.Node!); item.Node = null; item.State = "cancelled"; cancelled++; Stage(item, "cancelled-before-dispatch"); Finish(item);
                 registration = item.Registration; item.Registration = default;
             }
             item.Completion.TrySetCanceled(); registration.Dispose();
@@ -88,20 +98,20 @@ namespace SiemensMCPServer.Mcp
                         item = pending.First!.Value; pending.RemoveFirst(); item.Node = null;
                         registration = item.Registration; item.Registration = default;
                         skip = item.Token.IsCancellationRequested;
-                        if (skip) { item.State = "cancelled"; cancelled++; }
-                        else { item.State = "running"; item.Started = DateTime.UtcNow; running.Add(item.Id, item); }
+                        if (skip) { item.State = "cancelled"; cancelled++; Stage(item, "cancelled-before-dispatch"); Finish(item); }
+                        else { item.State = "running"; item.Started = DateTime.UtcNow; running.Add(item.Id, item); Stage(item, "dispatched"); }
                     }
                     registration.Dispose();
                     if (skip) { item.Completion.TrySetCanceled(); continue; }
                     try {
                         object result = item.Run();
-                        lock (sync) { running.Remove(item.Id); item.State = "completed"; completed++; }
+                        lock (sync) { running.Remove(item.Id); item.State = "completed"; completed++; Stage(item, "returned"); Finish(item); }
                         item.Completion.TrySetResult(result);
                     } catch (OperationCanceledException) {
-                        lock (sync) { running.Remove(item.Id); item.State = "cancelled"; cancelled++; }
+                        lock (sync) { running.Remove(item.Id); item.State = "cancelled-after-dispatch"; cancelled++; Stage(item, "cancelled-after-dispatch-outcome-unknown"); Finish(item); }
                         item.Completion.TrySetCanceled();
                     } catch (Exception ex) {
-                        lock (sync) { running.Remove(item.Id); item.State = "failed"; failed++; }
+                        lock (sync) { running.Remove(item.Id); item.State = "failed"; failed++; Stage(item, "failed-inspect-native-evidence"); Finish(item); }
                         item.Completion.TrySetException(ex);
                     }
                 }
@@ -114,11 +124,27 @@ namespace SiemensMCPServer.Mcp
         {
             lock (sync) {
                 object Row(Item item) => new { requestId = item.Id, operation = item.Operation, state = item.State,
-                    queuedUtc = item.Queued, startedUtc = item.Started, elapsedMilliseconds = (long)(DateTime.UtcNow - (item.Started ?? item.Queued)).TotalMilliseconds };
+                    queuedUtc = item.Queued, startedUtc = item.Started, cancellationRequested = item.Token.IsCancellationRequested,
+                    cancellationEffect = item.Started.HasValue ? "Native execution is not aborted; inspect actual result/evidence." : "Queued work can be removed before dispatch.",
+                    elapsedMilliseconds = (long)(DateTime.UtcNow - (item.Started ?? item.Queued)).TotalMilliseconds };
                 return new { name, parallelism = threads.Length, queueCapacity = capacity, accepting = !stopping,
                     queued = pending.Count, active = running.Count, completed, failed, cancelled, rejected, cleanupFailed = cleanupFailure != null,
-                    activeRequests = running.Values.Select(Row).ToArray(), queuedRequests = pending.Take(20).Select(Row).ToArray(), queuedRequestsTruncated = pending.Count > 20 };
+                    activeRequests = running.Values.Select(Row).ToArray(), queuedRequests = pending.Take(20).Select(Row).ToArray(), queuedRequestsTruncated = pending.Count > 20,
+                    recentRequests = recent.ToArray(), historyLimit = 50, historyDurable = false };
             }
+        }
+        private void Stage(Item item, string stage)
+        {
+            try { item.Observe?.Invoke(name + ":" + item.Operation + ":" + stage); } catch { /* Telemetry cannot affect engineering work. */ }
+        }
+        private void Finish(Item item)
+        {
+            recent.Enqueue(new { requestId = item.Id, operation = item.Operation, state = item.State,
+                queuedUtc = item.Queued, startedUtc = item.Started, finishedUtc = DateTime.UtcNow,
+                cancellationRequested = item.Token.IsCancellationRequested,
+                effectUncertain = item.Started.HasValue && item.State != "completed" });
+            while (recent.Count > 50) recent.Dequeue();
+            item.Observe = null;
         }
         public void BeginStop()
         {
@@ -126,7 +152,7 @@ namespace SiemensMCPServer.Mcp
             lock (sync) {
                 if (stopping) return;
                 stopping = true; abandoned = pending.ToArray(); pending.Clear();
-                foreach (var item in abandoned) { item.Node = null; item.State = "cancelled"; cancelled++; }
+                foreach (var item in abandoned) { item.Node = null; item.State = "cancelled"; cancelled++; Stage(item, "cancelled-before-dispatch"); Finish(item); }
                 Monitor.PulseAll(sync);
             }
             foreach (var item in abandoned) { item.Completion.TrySetCanceled(); item.Registration.Dispose(); }
