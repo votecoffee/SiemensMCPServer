@@ -1,4 +1,4 @@
-"""App-owned framework installation/lifecycle; no Universal Tools registration route."""
+"""App-owned installation/lifecycle over the shared framework; standalone Siemens plugin."""
 import argparse
 import asyncio
 import hashlib
@@ -20,7 +20,7 @@ from reconciliation import reconcile, require_reconciled, pending_rows, valid_at
 
 SERVICE = 'siemens-engineering'
 INSTRUCTIONS = (
-    'This is the standalone SiemensMCPServer app, with no Universal Tools registration. '
+    'This is the standalone SiemensMCPServer app with its own Codex plugin and native skills. '
     'Read current workflow guidance through siemens_list_workflows and hash-pinned guide/reference readers; '
     'siemens_doctor reports profile boundaries without native attachment. Guidance never grants write approval. '
     'Search and describe engineering tools, then acquire_service(service_id="siemens-engineering"). '

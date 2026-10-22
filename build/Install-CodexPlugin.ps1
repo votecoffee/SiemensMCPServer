@@ -130,6 +130,6 @@ $result = @{ state = 'installed'; version = $plugin.version; api = $build.tiaPor
     marketplaceRoot = $root; pluginSource = $destination; configurationBackup = $backupDirectory;
     codex = ($installation | ConvertFrom-Json); nativeProjectChanged = $false; integration = 'Standalone';
     frameworkVersion = '0.18.0'; mcpPythonVersion = '2.3.0'; frameworkConfig = $framework.config;
-    nextStep = 'Start a new Codex chat to load the plugin skills/tools. Native project attachment and edits require an explicit target.' }
+    nextStep = 'Start the app service explicitly with manage.py start --config <frameworkConfig>, then open a new Codex chat to load the Siemens plugin skills/tools. Native project attachment and edits require an explicit target.' }
 $result | ConvertTo-Json -Depth 12 | Tee-Object -FilePath (Join-Path $root 'installation.json')
 } finally { if ($installOwned) { $installMutex.ReleaseMutex() }; $installMutex.Dispose() }

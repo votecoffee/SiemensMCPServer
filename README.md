@@ -82,6 +82,8 @@ powershell.exe -NoProfile -File build/Install-CodexPlugin.ps1 -Package 'C:\path\
 
 The installer installs the standalone Siemens Codex plugin with its app-owned framework gateway (framework 0.18.0 / MCP Python 2.3.0). Python 3.13 is required; exact dependencies are installed offline from the verified bundle into a dedicated per-user runtime. Use `-PrepareOnly` to verify and stage a package without changing Codex settings. Load the installed tools and skills in a new Codex chat. See the [plugin guide](plugin/README.md).
 
+Each application keeps its own Codex plugin and native skills. The shared app framework is a package dependency; the optional independent Windows manager provides administration without a Codex MCP connection. There is no universal Codex plugin. The retained Python names `universal-codex-tools` and `universal_tools` identify the shared dependency, not a plugin installation route.
+
 Fresh installations and upgrades always install the standalone plugin. Obsolete integration-choice files do not affect installation. Concurrent installers using one root are rejected before settings changes.
 
 Version 0.18.2 also retains [evidence-backed request reconciliation](plugin/APP-HOST.md#reconciled-requests-and-upgrades) for upgrades after independently reviewed interrupted work. Original error/uncertainty receipts and replay protection remain intact; the installer does not acknowledge outcomes automatically.
