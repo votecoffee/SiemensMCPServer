@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import re
+import struct
 from pathlib import Path, PurePosixPath
 import subprocess
 import sys
@@ -63,6 +64,10 @@ def validate(files):
         assert modern['args'] == [] and modern['cwd'] == '${PLUGIN_ROOT}'
         assert build['tiaPortalApi'] == 'none'
         assert all('server/SiemensMCPServer.Offline.'+suffix in files for suffix in ('exe', 'dll', 'deps.json', 'runtimeconfig.json'))
+        image = files['server/SiemensMCPServer.Offline.exe']
+        pe_offset = struct.unpack_from('<I', image, 0x3c)[0]
+        assert image[pe_offset:pe_offset+4] == b'PE\0\0'
+        assert struct.unpack_from('<H', image, pe_offset+24+68)[0] == 2, 'Offline apphost must avoid a pre-Main console helper'
         assert not any(name.startswith('framework/') or name.endswith(('.py', '.whl')) or '/SiemensMCPServer.Mcp.' in name or '/SiemensMCPServer.ExtensionWorker.' in name for name in files)
         assert validate_skill_content(files) == 4
         for name, data in files.items():

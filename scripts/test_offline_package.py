@@ -83,6 +83,16 @@ class OfflinePackageTests(unittest.TestCase):
         self.assertIn('runtime environment differs', result.stderr)
         self.assert_no_runtime()
 
+    def test_self_consistent_package_cannot_use_console_subsystem(self):
+        image = bytearray(self.files['server/SiemensMCPServer.Offline.exe'])
+        pe = int.from_bytes(image[0x3c:0x40], 'little')
+        image[pe+24+68:pe+24+70] = (3).to_bytes(2, 'little')
+        self.files['server/SiemensMCPServer.Offline.exe'] = bytes(image)
+        result = self.prepare(self.changed(lambda launch: None))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Windows subsystem', result.stderr)
+        self.assert_no_runtime()
+
 
 if __name__ == '__main__':
     PACKAGE = Path(sys.argv.pop(1)).resolve()

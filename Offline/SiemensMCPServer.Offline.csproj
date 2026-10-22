@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Exe</OutputType><TargetFramework>net8.0-windows</TargetFramework><PlatformTarget>x64</PlatformTarget>
+    <!-- Windows can create a console helper before Main installs its Job.
+         A Windows-subsystem apphost still supports inherited MCP stdio. -->
+    <OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework><PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier><SelfContained>false</SelfContained>
     <Nullable>annotations</Nullable><ImplicitUsings>disable</ImplicitUsings><RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <AssemblyName>SiemensMCPServer.Offline</AssemblyName>

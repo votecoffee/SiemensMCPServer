@@ -8,6 +8,7 @@ import queue
 import subprocess
 import sys
 import threading
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,6 +68,57 @@ class LifetimeTests(unittest.TestCase):
         stdout, stderr = process.communicate(timeout=10)
         self.assertEqual(process.returncode, 0, stderr.decode(errors='replace'))
         self.assertEqual(stdout.strip(), b'child-blocked')
+
+    def test_windows_subsystem_preserves_stdio_without_a_console_helper(self):
+        # Regression for Windows creating conhost.exe before a console app can
+        # assign itself to its one-process Job. Inspect actual creation identities;
+        # older processes with a reused parent PID do not establish descendants.
+        image = EXE.read_bytes()
+        pe_offset = int.from_bytes(image[0x3c:0x40], 'little')
+        self.assertEqual(image[pe_offset:pe_offset+4], b'PE\0\0')
+        self.assertEqual(int.from_bytes(image[pe_offset+24+68:pe_offset+24+70], 'little'), 2)
+        process = self.start()
+        root = ready(process)['identity']['owner']
+        self.assertEqual(self.observed_children(root), [])
+        stdout, stderr = process.communicate('stdio Español 😀'.encode(), timeout=10)
+        self.assertEqual(process.returncode, 0, stderr.decode(errors='replace'))
+        self.assertEqual(stdout, 'stdio Español 😀'.encode())
+
+    @staticmethod
+    def observed_children(root, duration=.3):
+        class Entry(ctypes.Structure):
+            _fields_ = [('size',wintypes.DWORD),('usage',wintypes.DWORD),('pid',wintypes.DWORD),
+                        ('heap',ctypes.c_size_t),('module',wintypes.DWORD),('threads',wintypes.DWORD),
+                        ('parent',wintypes.DWORD),('priority',ctypes.c_long),('flags',wintypes.DWORD),('name',wintypes.WCHAR*260)]
+        kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+        kernel.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD,wintypes.DWORD]; kernel.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+        kernel.Process32FirstW.argtypes = [wintypes.HANDLE,ctypes.POINTER(Entry)]
+        kernel.Process32NextW.argtypes = [wintypes.HANDLE,ctypes.POINTER(Entry)]
+        kernel.OpenProcess.argtypes = [wintypes.DWORD,wintypes.BOOL,wintypes.DWORD]; kernel.OpenProcess.restype = wintypes.HANDLE
+        kernel.GetProcessTimes.argtypes = [wintypes.HANDLE]+[ctypes.POINTER(wintypes.FILETIME)]*4
+        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+        seen = {}; deadline = time.monotonic()+duration
+        while time.monotonic() < deadline:
+            snapshot = kernel.CreateToolhelp32Snapshot(2,0)
+            if snapshot == ctypes.c_void_p(-1).value: raise ctypes.WinError(ctypes.get_last_error())
+            try:
+                entry = Entry(); entry.size = ctypes.sizeof(entry)
+                present = kernel.Process32FirstW(snapshot,ctypes.byref(entry))
+                while present:
+                    if entry.parent == root['pid']:
+                        handle = kernel.OpenProcess(0x1000,False,entry.pid)
+                        if handle:
+                            try:
+                                times = [wintypes.FILETIME() for _ in range(4)]
+                                if kernel.GetProcessTimes(handle,*(ctypes.byref(value) for value in times)):
+                                    creation = times[0].dwLowDateTime | (times[0].dwHighDateTime << 32)
+                                    if creation >= int(root['creationFileTime']):
+                                        seen[(entry.pid,creation)] = {'pid':entry.pid,'creationFileTime':str(creation),'name':entry.name}
+                            finally: kernel.CloseHandle(handle)
+                    present = kernel.Process32NextW(snapshot,ctypes.byref(entry))
+            finally: kernel.CloseHandle(snapshot)
+            time.sleep(.03)
+        return list(seen.values())
 
     def test_capacity_refusal_and_crash_releases_slot(self):
         active = [self.start() for _ in range(4)]

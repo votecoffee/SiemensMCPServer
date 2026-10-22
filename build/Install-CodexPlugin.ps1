@@ -74,6 +74,10 @@ if ($isOffline) {
         foreach ($key in $environment.Keys) { if ($null -eq $server.env.$key -or $server.env.$key -cne $environment[$key]) { throw 'Offline runtime environment differs from the fixed profile.' } }
     }
     if (-not $payload.ContainsKey('server/SiemensMCPServer.Offline.exe') -or -not $payload.ContainsKey('server/SiemensMCPServer.Offline.dll')) { throw 'Offline apphost/assembly is missing.' }
+    $apphost = $payload['server/SiemensMCPServer.Offline.exe']
+    if ($apphost.Length -lt 64) { throw 'Invalid offline apphost.' }
+    $pe = [BitConverter]::ToInt32($apphost, 0x3c)
+    if ($pe -lt 0 -or $pe + 94 -gt $apphost.Length -or [BitConverter]::ToUInt32($apphost, $pe) -ne 0x4550 -or [BitConverter]::ToUInt16($apphost, $pe + 24 + 68) -ne 2) { throw 'Offline apphost must use the Windows subsystem; console helpers are outside the one-process profile.' }
     if ($payload.Keys | Where-Object { $_ -match '(^framework/|\.whl$|\.py$|/SiemensMCPServer\.(Mcp|ExtensionWorker)\.)' }) { throw 'Offline package contains a forbidden launch route.' }
 }
 $displayVersion = if ($build.displayVersion) { $build.displayVersion } else { $plugin.version }

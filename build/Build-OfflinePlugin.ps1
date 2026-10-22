@@ -46,6 +46,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Offline publish failed; incomplete package ret
 $assembly = Join-Path $packageRoot 'server/SiemensMCPServer.Offline.dll'
 $info = [Diagnostics.FileVersionInfo]::GetVersionInfo($assembly)
 if ($info.ProductVersion -cne $release.display_version -or $info.FileVersion -cne $release.file_version -or [Reflection.AssemblyName]::GetAssemblyName($assembly).Version.ToString() -cne $release.assembly_version) { throw 'Offline assembly differs from the fixed stamp.' }
+$apphost = [IO.File]::ReadAllBytes((Join-Path $packageRoot 'server/SiemensMCPServer.Offline.exe'))
+$pe = [BitConverter]::ToInt32($apphost, 0x3c)
+if ($pe -lt 0 -or $pe + 94 -gt $apphost.Length -or [BitConverter]::ToUInt32($apphost, $pe) -ne 0x4550 -or [BitConverter]::ToUInt16($apphost, $pe + 24 + 68) -ne 2) { throw 'Offline apphost must use the Windows subsystem to avoid pre-Main console helpers.' }
 if (Get-ChildItem -LiteralPath $packageRoot -Recurse -File | Where-Object { $_.Name -match '^Siemens\.Engineering|^SiemensMCPServer\.(Mcp|ExtensionWorker)\.|\.whl$|\.py$' }) { throw 'Offline package contains a forbidden runtime route.' }
 $metadata = [ordered]@{
     profile = 'direct-offline'; pluginVersion = $version; displayVersion = $release.display_version;
