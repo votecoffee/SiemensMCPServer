@@ -56,7 +56,26 @@ foreach ($file in $manifest) {
 }
 $plugin = $utf8.GetString($payload['plugin.json']) | ConvertFrom-Json
 $build = $utf8.GetString($payload['build-info.json']).TrimStart([char]0xFEFF) | ConvertFrom-Json
-if ($plugin.name -cne 'siemens-mcp-server' -or $plugin.version -notmatch '^\d+\.\d+\.\d+$' -or $build.tiaPortalApi -notmatch '^V\d+(\.\d+)?$' -or -not (Test-AppVersionEqual $build.pluginVersion $plugin.version)) { throw 'Unexpected plugin identity/build metadata.' }
+$isOffline = $build.profile -ceq 'direct-offline'
+if ($build.profile -and -not $isOffline) { throw 'Unknown package profile.' }
+$validApi = if ($isOffline) { $build.tiaPortalApi -ceq 'none' } else { $build.tiaPortalApi -match '^V\d+(\.\d+)?$' }
+if ($plugin.name -cne 'siemens-mcp-server' -or $plugin.version -notmatch '^\d+\.\d+\.\d+$' -or -not $validApi -or -not (Test-AppVersionEqual $build.pluginVersion $plugin.version)) { throw 'Unexpected plugin identity/build metadata.' }
+if ($isOffline) {
+    foreach ($manifestName in @('.mcp.json', 'mcp.json')) {
+        $launch = ($utf8.GetString($payload[$manifestName]) | ConvertFrom-Json).mcpServers
+        if (@($launch.PSObject.Properties).Count -ne 1) { throw 'Offline package must have one direct server.' }
+        $server = $launch.'siemens-mcp-server'
+        if ($server.command -cne '${PLUGIN_ROOT}/server/SiemensMCPServer.Offline.exe' -or @($server.args).Count -ne 0 -or $server.cwd -cne '${PLUGIN_ROOT}') { throw 'Offline package launcher differs from the fixed direct profile.' }
+        $expectedFields = @('command', 'args', 'cwd', 'env')
+        if ($manifestName -eq 'mcp.json') { $expectedFields += 'type'; if ($server.type -cne 'stdio') { throw 'Offline transport must be direct stdio.' } }
+        if (@($server.PSObject.Properties).Count -ne $expectedFields.Count -or @($server.PSObject.Properties | Where-Object { $_.Name -cnotin $expectedFields }).Count) { throw 'Unexpected offline launch field.' }
+        $environment = @{ DOTNET_EnableDiagnostics = '0'; DOTNET_DbgEnableMiniDump = '0'; COMPlus_EnableDiagnostics = '0'; COMPlus_DbgEnableMiniDump = '0'; DOTNET_STARTUP_HOOKS = ''; DOTNET_ADDITIONAL_DEPS = ''; DOTNET_SHARED_STORE = ''; CORECLR_ENABLE_PROFILING = '0'; COR_ENABLE_PROFILING = '0' }
+        if (@($server.env.PSObject.Properties).Count -ne $environment.Count) { throw 'Offline runtime environment differs from the fixed profile.' }
+        foreach ($key in $environment.Keys) { if ($null -eq $server.env.$key -or $server.env.$key -cne $environment[$key]) { throw 'Offline runtime environment differs from the fixed profile.' } }
+    }
+    if (-not $payload.ContainsKey('server/SiemensMCPServer.Offline.exe') -or -not $payload.ContainsKey('server/SiemensMCPServer.Offline.dll')) { throw 'Offline apphost/assembly is missing.' }
+    if ($payload.Keys | Where-Object { $_ -match '(^framework/|\.whl$|\.py$|/SiemensMCPServer\.(Mcp|ExtensionWorker)\.)' }) { throw 'Offline package contains a forbidden launch route.' }
+}
 $displayVersion = if ($build.displayVersion) { $build.displayVersion } else { $plugin.version }
 $packageVersion = ConvertTo-AppPackageVersion $plugin.version
 if (-not (Test-AppVersionEqual $displayVersion $packageVersion)) { throw 'Display/package versions disagree.' }
@@ -96,9 +115,12 @@ if ($legacyServers.Count) { throw 'The old siemens-tia-openness server is still 
 $direct = @($servers | Where-Object { $_.name -eq 'siemens-mcp-server' -and -not $_.transport.env.PLUGIN_ROOT -and
     -not ($_.transport.cwd -and [IO.Path]::GetFullPath($_.transport.cwd).StartsWith($cachePrefix, [StringComparison]::OrdinalIgnoreCase)) })
 if ($direct.Count) { throw 'A direct Siemens MCP registration already exists. Resolve it before installing the plugin to avoid duplicate tools.' }
-$python = (Get-Command py -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
-$framework = & $python -3.13 -B (Join-Path $destination 'framework\manage.py') prepare --payload $destination --root ([IO.Path]::GetFullPath($AppHostRoot)) --allow-writes | ConvertFrom-Json
-if ($LASTEXITCODE -ne 0 -or $framework.state -ne 'framework-ready') { throw 'App-owned framework preparation failed. Existing plugin selection was preserved.' }
+$framework = $null
+if (-not $isOffline) {
+    $python = (Get-Command py -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+    $framework = & $python -3.13 -B (Join-Path $destination 'framework\manage.py') prepare --payload $destination --root ([IO.Path]::GetFullPath($AppHostRoot)) --allow-writes | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0 -or $framework.state -ne 'framework-ready') { throw 'App-owned framework preparation failed. Existing plugin selection was preserved.' }
+}
 $catalogDirectory = Join-Path $root '.agents\plugins'
 [IO.Directory]::CreateDirectory($catalogDirectory) | Out-Null
 $catalogPath = Join-Path $catalogDirectory 'marketplace.json'
@@ -125,15 +147,16 @@ $installation = & $codex plugin add 'siemens-mcp-server@siemens-mcp-server-local
 if ($LASTEXITCODE -ne 0) { throw 'Codex plugin installation failed. Verified source and configuration backup were retained.' }
 $codexInstalled = $installation | ConvertFrom-Json
 if ($codexInstalled.pluginId -cne 'siemens-mcp-server@siemens-mcp-server-local' -or -not (Test-AppVersionEqual $codexInstalled.version $packageVersion)) { throw 'Installed Codex identity/version differs from the verified Siemens plugin.' }
-$componentReceipt = [ordered]@{ pluginId = $codexInstalled.pluginId; pluginVersion = $packageVersion; pluginDisplayVersion = $displayVersion; frameworkVersion = '0.20.0'; mcpPythonVersion = '2.3.0' }
-$componentPath = Join-Path ([IO.Path]::GetFullPath($AppHostRoot)) 'installed-components.json'
+$componentReceipt = [ordered]@{ pluginId = $codexInstalled.pluginId; pluginVersion = $packageVersion; pluginDisplayVersion = $displayVersion; profile = $(if ($isOffline) { 'direct-offline' } else { 'engineering' }); frameworkVersion = $(if ($isOffline) { $null } else { '0.20.0' }); mcpPythonVersion = $(if ($isOffline) { $null } else { '2.3.0' }) }
+$componentRoot = if ($isOffline) { $root } else { [IO.Path]::GetFullPath($AppHostRoot) }
+$componentPath = Join-Path $componentRoot 'installed-components.json'
 $componentStage = $componentPath + '.' + [Guid]::NewGuid().ToString('N') + '.tmp'
 [IO.File]::WriteAllText($componentStage, ($componentReceipt | ConvertTo-Json), $utf8)
 if (Test-Path -LiteralPath $componentPath) { [IO.File]::Replace($componentStage, $componentPath, [System.Management.Automation.Language.NullString]::Value) } else { [IO.File]::Move($componentStage, $componentPath) }
 $result = @{ state = 'installed'; version = $packageVersion; displayVersion = $displayVersion; api = $build.tiaPortalApi; packageSha256 = $zipHash;
     marketplaceRoot = $root; pluginSource = $destination; configurationBackup = $backupDirectory;
     codex = ($installation | ConvertFrom-Json); nativeProjectChanged = $false; integration = 'Standalone';
-    frameworkVersion = '0.20.0'; mcpPythonVersion = '2.3.0'; frameworkConfig = $framework.config;
-    nextStep = 'Start the app service explicitly with manage.py start --config <frameworkConfig>, then open a new Codex chat to load the Siemens plugin skills/tools. Native project attachment and edits require an explicit target.' }
+    profile = $componentReceipt.profile; frameworkVersion = $componentReceipt.frameworkVersion; mcpPythonVersion = $componentReceipt.mcpPythonVersion; frameworkConfig = $framework.config;
+    nextStep = $(if ($isOffline) { 'Open a new Codex chat and check the direct offline catalog. This profile has no framework service or native engineering route.' } else { 'Start the app service explicitly with manage.py start --config <frameworkConfig>, then open a new Codex chat to load the Siemens plugin skills/tools. Native project attachment and edits require an explicit target.' }) }
 $result | ConvertTo-Json -Depth 12 | Tee-Object -FilePath (Join-Path $root 'installation.json')
 } finally { if ($installOwned) { $installMutex.ReleaseMutex() }; $installMutex.Dispose() }

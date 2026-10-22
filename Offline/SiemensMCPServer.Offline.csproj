@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net8.0-windows</TargetFramework><PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier><SelfContained>false</SelfContained>
+    <Nullable>annotations</Nullable><ImplicitUsings>disable</ImplicitUsings><RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <AssemblyName>SiemensMCPServer.Offline</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+    <PackageReference Include="YamlDotNet" Version="18.1.0" />
+    <Compile Include="../Extensions/*.cs" Exclude="../Extensions/Program.cs" Link="Extensions/%(Filename)%(Extension)" />
+    <Compile Include="../Mcp/StdioEofShutdown.cs" Link="Lifetime/StdioEofShutdown.cs" />
+
+    <Compile Include="../Shared/AppRelease.cs" Link="Shared/AppRelease.cs"/>
+    <Compile Include="../Shared/ReleaseStamp.cs" Link="Shared/ReleaseStamp.cs"/>
+    <Compile Include="../Analysis/*.cs" Link="Analysis/%(Filename)%(Extension)"/>
+
+    <Compile Include="../Shared/ITextListDocument.cs" Link="Shared/ITextListDocument.cs"/>
+    <Compile Include="../Shared/TextListDocument.cs" Link="Shared/TextListDocument.cs"/>
+    <Compile Include="../Shared/TextListStructure.cs" Link="Shared/TextListStructure.cs"/>
+    <Compile Include="../Shared/NativeXmlValidation.cs" Link="Shared/NativeXmlValidation.cs"/>
+    <Compile Include="../Mcp/JsonDefaults.cs" Link="Core/JsonDefaults.cs"/>
+    <Compile Include="../Mcp/ClassicTextListValidation.cs" Link="Features/ClassicTextListValidation.cs"/>
+    <Compile Include="../Mcp/ClassicTextListEvidence.cs" Link="Features/ClassicTextListEvidence.cs"/>
+    <Compile Include="../Mcp/ClassicXmlDocument.cs" Link="Features/ClassicXmlDocument.cs"/>
+    <Compile Include="../Mcp/ClassicXmlBehaviors.cs" Link="Features/ClassicXmlBehaviors.cs"/>
+    <Compile Include="../Mcp/ClassicBehaviorOperations.cs" Link="Features/ClassicBehaviorOperations.cs"/>
+    <Compile Include="../Mcp/ClassicXmlLayout.cs" Link="Features/ClassicXmlLayout.cs"/>
+    <Compile Include="../Mcp/ClassicScreenText.cs" Link="Features/ClassicScreenText.cs"/>
+    <Compile Include="../Mcp/ClassicScreenItems.cs" Link="Features/ClassicScreenItems.cs"/>
+    <Compile Include="../Mcp/ClassicReferences.cs" Link="Features/ClassicReferences.cs"/>
+    <Compile Include="../Mcp/NativeXmlIds.cs" Link="Core/NativeXmlIds.cs"/>
+    <Compile Include="../Mcp/TransferFiles.cs" Link="Core/TransferFiles.cs"/>
+    <Compile Include="../Mcp/UnifiedTextListDocument.cs" Link="Features/UnifiedTextListDocument.cs"/>
+    <Compile Include="../Mcp/UnifiedObjectState.cs" Link="Features/UnifiedObjectState.cs"/>
+    <Compile Include="../Mcp/PlcSourceFiles.cs" Link="Features/PlcSourceFiles.cs"/>
+    <Compile Include="../Mcp/PlcInspection.cs" Link="Features/PlcInspection.cs"/>
+    <Compile Include="../Mcp/LibraryInspection.cs" Link="Features/LibraryInspection.cs"/>
+    <Compile Include="../Mcp/LibraryCatalogReader.cs" Link="Features/LibraryCatalogReader.cs"/>
+    <Compile Include="../Mcp/ProjectTextInspection.cs" Link="Features/ProjectTextInspection.cs"/>
+    <Compile Include="../Mcp/ProjectTextWorkbook.cs" Link="Features/ProjectTextWorkbook.cs"/>
+    <Compile Include="../Mcp/ProjectTextTranslations.cs" Link="Features/ProjectTextTranslations.cs"/>
+    <Compile Include="../Mcp/ProjectTranslationFiles.cs" Link="Features/ProjectTranslationFiles.cs"/>
+
+    <Compile Include="../Mcp/PlcPolicy.cs" Link="Core/PlcPolicy.cs"/>
+
+  </ItemGroup>
+</Project>

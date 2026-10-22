@@ -7,6 +7,8 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Offline/OfflineOperations.cs" Link="Offline/OfflineOperations.cs" />
+    <Compile Include="../Offline/BoundedInputStream.cs" Link="Offline/BoundedInputStream.cs" />
     <Compile Include="../Shared/SafeguardSettings.cs" Link="SafeguardSettings.cs" />
     <Compile Include="../Shared/AppRelease.cs" Link="AppRelease.cs" />
     <Compile Include="../Shared/ReleaseStamp.cs" Link="ReleaseStamp.cs" />

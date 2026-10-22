@@ -57,6 +57,19 @@ def validate(files):
     compat = json.loads(files[".mcp.json"])["mcpServers"]["siemens-mcp-server"]
     assert modern["type"] == "stdio"
     assert {k: v for k, v in modern.items() if k != "type"} == compat
+    build = json.loads(files['build-info.json'])
+    if build.get('profile') == 'direct-offline':
+        assert modern['command'] == '${PLUGIN_ROOT}/server/SiemensMCPServer.Offline.exe'
+        assert modern['args'] == [] and modern['cwd'] == '${PLUGIN_ROOT}'
+        assert build['tiaPortalApi'] == 'none'
+        assert all('server/SiemensMCPServer.Offline.'+suffix in files for suffix in ('exe', 'dll', 'deps.json', 'runtimeconfig.json'))
+        assert not any(name.startswith('framework/') or name.endswith(('.py', '.whl')) or '/SiemensMCPServer.Mcp.' in name or '/SiemensMCPServer.ExtensionWorker.' in name for name in files)
+        assert validate_skill_content(files) == 4
+        for name, data in files.items():
+            if name.startswith('skills/') and name.endswith('/SKILL.md'):
+                assert b'siemens_offline_catalog' in data and b'siemens_offline_describe' in data and b'siemens_offline_analyze' in data
+        assert not any('fixture' in name.lower() for name in files)
+        return len(manifest)
     if tuple(map(int, portable["version"].split("."))) >= (0, 17, 0):
         assert modern["command"] == "py" and modern["args"] == ["-3.13", "-B", "framework/launch.py"]
         assert modern["env"]["PYTHONDONTWRITEBYTECODE"] == "1"
@@ -135,6 +148,7 @@ def main():
     parser.add_argument("package", type=Path)
     parser.add_argument("--report", type=Path)
     parser.add_argument("--native-read-only", action="store_true")
+    parser.add_argument("--static-only", action="store_true", help="Verify bytes/negative controls without starting any MCP process")
     args = parser.parse_args()
     package = args.package.resolve()
     package_hash = hashlib.sha256(package.read_bytes()).hexdigest()
@@ -147,9 +161,13 @@ def main():
         assert len(names) == len(set(names)), "Duplicate ZIP members"
         files = {info.orig_filename: archive.read(info) for info in archive.infolist() if not info.is_dir()}
     file_count = validate(files)
+    offline = json.loads(files['build-info.json']).get('profile') == 'direct-offline'
+    if offline and not args.static_only:
+        parser.error('Direct offline runtime acceptance needs its explicit disposable canary; use --static-only for source/package review')
+    executable_name = 'server/SiemensMCPServer.Offline.exe' if offline else 'server/SiemensMCPServer.Mcp.exe'
     controls = {}
     for name, mutated in (
-        ("tampered_payload", {**files, "server/SiemensMCPServer.Mcp.exe": files["server/SiemensMCPServer.Mcp.exe"] + b"tamper"}),
+        ("tampered_payload", {**files, executable_name: files[executable_name] + b"tamper"}),
         ("extra_file", {**files, "extra.txt": b"extra"}),
         ("path_traversal", {**files, "../outside.txt": b"escape"}),
     ):
@@ -159,24 +177,26 @@ def main():
             controls[name] = "rejected"
         else:
             raise AssertionError("Negative control was accepted: " + name)
-    with tempfile.TemporaryDirectory(prefix="tia-plugin-extract-") as scratch:
-        root = Path(scratch).resolve()
-        for name, data in files.items():
-            target = (root / name).resolve()
-            assert target.is_relative_to(root)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(data)
-        command = [sys.executable, "-X", "utf8", str(Path(__file__).with_name("test_mcp_protocol.py")),
-                   str(root / "server/SiemensMCPServer.Mcp.exe")]
-        if args.native_read_only:
-            command.append("--native-read-only")
-        result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", timeout=60)
-        if result.returncode:
-            raise RuntimeError(result.stdout + result.stderr)
-        protocol = json.loads(result.stdout)
-        package_version = json.loads(files['plugin.json'])['version']
-        if tuple(int(part) for part in package_version.split('.')[:3]) >= (0, 12, 0):
-            assert equivalent(protocol['hostVersion'], package_version), 'Advertised host version differs from the package version'
+    protocol = {'state': 'not-run', 'reason': 'static-only'}
+    if not args.static_only:
+        with tempfile.TemporaryDirectory(prefix="tia-plugin-extract-") as scratch:
+            root = Path(scratch).resolve()
+            for name, data in files.items():
+                target = (root / name).resolve()
+                assert target.is_relative_to(root)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(data)
+            command = [sys.executable, "-X", "utf8", str(Path(__file__).with_name("test_mcp_protocol.py")),
+                       str(root / "server/SiemensMCPServer.Mcp.exe")]
+            if args.native_read_only:
+                command.append("--native-read-only")
+            result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", timeout=60)
+            if result.returncode:
+                raise RuntimeError(result.stdout + result.stderr)
+            protocol = json.loads(result.stdout)
+            package_version = json.loads(files['plugin.json'])['version']
+            if tuple(int(part) for part in package_version.split('.')[:3]) >= (0, 12, 0):
+                assert equivalent(protocol['hostVersion'], package_version), 'Advertised host version differs from the package version'
     report = {"package": package.name, "sha256": package_hash, "manifestFileCount": file_count,
               "manifest": "passed", "noSiemensRedistribution": "passed", "negativeControls": controls,
               "freshExtractionProtocol": protocol, "nativeImportCompileSave": "pending"}

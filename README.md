@@ -70,6 +70,14 @@ Siemens engineering DLLs come from the installed TIA Portal environment and are 
 
 ### Build and install the plugin
 
+For analysis of exported content without TIA, use the separate [direct offline profile](plugin-offline/README.md):
+
+```powershell
+powershell.exe -NoProfile -File build/Build-OfflinePlugin.ps1
+```
+
+That package contains three direct tools and four scoped Siemens skills, requires Windows x64/.NET 8, and has no framework service, Python runtime, native attachment or controller route. It analyzes supplied XML/L5X/PLCopen content, HMI references/bindings/impact and classic/Unified text-list translations. Its installer skips framework preparation. Static/package checks and a disposable MCP/Codex loading check are separate acceptance steps. The engineering package described below remains a separate profile.
+
 Build the package for the installed API:
 
 ```powershell

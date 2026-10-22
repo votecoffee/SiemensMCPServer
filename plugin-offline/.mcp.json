@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "siemens-mcp-server": {
+      "command": "${PLUGIN_ROOT}/server/SiemensMCPServer.Offline.exe",
+      "args": [],
+      "cwd": "${PLUGIN_ROOT}",
+      "env": {
+        "DOTNET_EnableDiagnostics": "0", "DOTNET_DbgEnableMiniDump": "0",
+        "COMPlus_EnableDiagnostics": "0", "COMPlus_DbgEnableMiniDump": "0",
+        "DOTNET_STARTUP_HOOKS": "", "DOTNET_ADDITIONAL_DEPS": "", "DOTNET_SHARED_STORE": "",
+        "CORECLR_ENABLE_PROFILING": "0", "COR_ENABLE_PROFILING": "0"
+      }
+    }
+  }
+}
