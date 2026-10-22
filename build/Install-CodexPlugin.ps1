@@ -125,7 +125,7 @@ $componentReceipt = [ordered]@{ pluginId = $codexInstalled.pluginId; pluginVersi
 $componentPath = Join-Path ([IO.Path]::GetFullPath($AppHostRoot)) 'installed-components.json'
 $componentStage = $componentPath + '.' + [Guid]::NewGuid().ToString('N') + '.tmp'
 [IO.File]::WriteAllText($componentStage, ($componentReceipt | ConvertTo-Json), $utf8)
-if (Test-Path -LiteralPath $componentPath) { [IO.File]::Replace($componentStage, $componentPath, $null) } else { [IO.File]::Move($componentStage, $componentPath) }
+if (Test-Path -LiteralPath $componentPath) { [IO.File]::Replace($componentStage, $componentPath, [System.Management.Automation.Language.NullString]::Value) } else { [IO.File]::Move($componentStage, $componentPath) }
 $result = @{ state = 'installed'; version = $plugin.version; api = $build.tiaPortalApi; packageSha256 = $zipHash;
     marketplaceRoot = $root; pluginSource = $destination; configurationBackup = $backupDirectory;
     codex = ($installation | ConvertFrom-Json); nativeProjectChanged = $false; integration = 'Standalone';

@@ -1,6 +1,6 @@
 # Standalone app host
 
-Plugin 0.20.0 uses framework 0.18.0, Python MCP SDK 2.3.0 and matching wire types. Its fourteen engineering frontend tools discover/invoke the existing 51 Siemens operations; four additional read-only tools provide current guidance and doctor reporting. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. See [current guidance and host features](CURRENT-GUIDANCE.md) for the selected stdio and HTTP extension profiles.
+Plugin 0.20.1 uses framework 0.18.0, Python MCP SDK 2.3.0 and matching wire types. Its fourteen engineering frontend tools discover/invoke the existing 51 Siemens operations; four additional read-only tools provide current guidance and doctor reporting. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. See [current guidance and host features](CURRENT-GUIDANCE.md) for the selected stdio and HTTP extension profiles.
 
 ## Tray management
 
