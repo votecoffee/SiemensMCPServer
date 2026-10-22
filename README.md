@@ -49,6 +49,8 @@ Host 0.18.3 reads selected TextLists directly from verified ZIP streams, preserv
 
 Host/plugin 0.19.0 uses framework 0.18.0 and reports service state, active requests and component versions to the optional Windows MCP Service Manager. Reporting does not attach engineering projects. Tray restart stays disabled until an app-owned supervisor can safely fence all chats and native work. See [tray management](plugin/APP-HOST.md#tray-management).
 
+Host/plugin 0.20.0 keeps four stable packaged skill bootstraps and serves current, hash-pinned guides/references through ordinary tools. The app-owned HTTP profile also publishes the same content through Skills-over-MCP. Native tools report real queue/dispatch/return stages and retain bounded cancellation/status telemetry. See [guidance publication and feature boundaries](plugin/CURRENT-GUIDANCE.md) for live-update behavior, doctor reporting and remaining Tasks/cache/artifact limitations.
+
 ## Install
 
 ### Dependencies
@@ -169,6 +171,7 @@ Keep machine-specific notes, project exports, acceptance evidence, logs and cust
 The installed plugin exposes 14 stable discovery/invocation tools backed by 51 Siemens engineering operations. The native .NET executable also retains its 51 direct MCP tools. See [gateway usage and lifecycle](plugin/APP-HOST.md). Their descriptions and JSON schemas are available through MCP `tools/list`.
 
 - `tia_*`: API/process discovery, project attachment, status, archive/save/reopen and extension discovery/reload.
+- `siemens_*`: current workflow/reference discovery and pinned reads, plus a read-only capability/doctor report; no engineering context is required.
 - `hmi_*`: Comfort/classic and capability-checked Unified inspection, previews, edits, transfers and compilation.
 - `plc_*`: offline PLC inspection, previews, transfers, source generation and compilation.
 

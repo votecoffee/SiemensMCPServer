@@ -117,7 +117,17 @@ def main():
         send("notifications/initialized", {}, notification=True)
         tools = {t["name"]: t for t in send("tools/list", {})["tools"]}
         if gateway:
-            assert len(tools) == 14
+            guidance_enabled = tuple(map(int, manifest['version'].split('.'))) >= (0, 20, 0)
+            assert len(tools) == (18 if guidance_enabled else 14)
+            if guidance_enabled:
+                guides = unwrapped(raw('siemens_list_workflows', {}))
+                assert len(guides['workflows']) == 4 and not guides['engineering_context_required']
+                for workflow in guides['workflows']:
+                    guide = unwrapped(raw('siemens_read_workflow', {'workflow_id': workflow['workflow_id'],
+                        'expected_revision': guides['catalog_revision'], 'expected_sha256': workflow['sha256']}))
+                    import hashlib
+                    assert hashlib.sha256(guide['content'].encode()).hexdigest() == workflow['sha256']
+                assert unwrapped(raw('siemens_doctor', {}))['features']['native_tasks']['status'] == 'blocked'
             unwrapped(raw("refresh_services", {}))
             service = unwrapped(raw("describe_service", {"service_id": "siemens-engineering"}))
             assert service["initialization"]["serverInfo"]["version"] == manifest["version"]

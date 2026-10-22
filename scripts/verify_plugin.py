@@ -64,6 +64,11 @@ def validate(files):
     assert "skills/edit-hmi-text/SKILL.md" in files
     validate_skill_content(files)
     version = tuple(int(part) for part in portable["version"].split(".")[:3])
+    if version >= (0, 20, 0):
+        assert 'CURRENT-GUIDANCE.md' in files and 'framework/guidance.py' in files
+        for skill in ('edit-hmi-text', 'edit-siemens-plc', 'inspect-libraries', 'inspect-project-texts'):
+            assert 'guidance/'+skill+'/SKILL.md' in files
+            assert b'siemens_list_workflows' in files['skills/'+skill+'/SKILL.md']
     if version >= (0, 8, 0):
         assert "skills/inspect-libraries/SKILL.md" in files
         assert "LIBRARY-INSPECTION.md" in files

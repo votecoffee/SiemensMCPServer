@@ -140,13 +140,16 @@ def serve_managed(config_path, config):
     import uvicorn
     from starlette.applications import Starlette
     from universal_tools.daemon import ProtectedApp
+    from guidance import Guidance, GuidanceAdmin, register_readers
 
     state = Path(config['state'])
     settings = load_settings(state)
     host = ApplicationHost(state, Path(config['publication']), max_request_body_bytes=settings.max_request_body_bytes)
     cache = StatusCache(config_path, config)
     host.backend = ObservedBackend(host, cache)
-    server = host.create_server(port=settings.port)
+    guidance = Guidance(Path(config['payloadRoot']), state/'guidance')
+    server = host.create_server(port=settings.port, skills=guidance.catalog)
+    register_readers(server, guidance=guidance)
     base = server.streamable_http_app(**server.http_options)
 
     async def refresh():
@@ -181,5 +184,5 @@ def serve_managed(config_path, config):
     options = uvicorn.Config(app, host=settings.host, port=settings.port, log_level='warning',
                              access_log=False, timeout_graceful_shutdown=15)
     process = uvicorn.Server(options)
-    options.app = ProtectedApp(app, settings, process, secrets.token_hex(16))
+    options.app = ProtectedApp(GuidanceAdmin(app, guidance, settings.port), settings, process, secrets.token_hex(16))
     process.run()

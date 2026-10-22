@@ -1,6 +1,6 @@
 # Standalone app host
 
-Plugin 0.19.0 uses framework 0.18.0, Python MCP SDK 2.3.0 and matching wire types. Its 14 frontend tools discover and invoke the existing 51 Siemens engineering operations. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. The framework's `broker_status` tool reports this app host's status.
+Plugin 0.20.0 uses framework 0.18.0, Python MCP SDK 2.3.0 and matching wire types. Its fourteen engineering frontend tools discover/invoke the existing 51 Siemens operations; four additional read-only tools provide current guidance and doctor reporting. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. See [current guidance and host features](CURRENT-GUIDANCE.md) for the selected stdio and HTTP extension profiles.
 
 ## Tray management
 
@@ -93,14 +93,14 @@ Version 0.18.2 also invokes the framework's supported `ApplicationHost.acknowled
 
 ## Optional APIs and validation scope
 
-Framework Tasks and Skill extensions are not registered by this app. Native engineering calls are not automatically wrapped as Tasks. The four workflow skills ship as ordinary Codex plugin skills; framework Skill publication is not required to load them.
+Framework Tasks are not registered by this app. Native engineering calls are not automatically wrapped as Tasks. Four stable packaged skill bootstraps retrieve detailed current guides through ordinary tools. The authenticated app-host HTTP profile separately publishes those same detailed guides through the Skills extension; the stdio proxy does not advertise that extension. Native Codex skill loading remains independent.
 
 Framework 0.17 adds optional notification, federation, UI, authentication and shared-store profiles. This app keeps the authenticated loopback, single-owner process model:
 
 | Framework feature | Siemens integration |
 | --- | --- |
 | Tasks and push notifications | Deferred until an app-owned durable job adapter can reconcile the actual engineering operation. Existing synchronous calls retain native receipts and uncertainty barriers. |
-| Skills discovery and live catalogs | Four packaged Codex skills remain the entrypoints; no downstream skill sources are configured. Native skill updates still require plugin installation and a new chat. |
+| Skills discovery and live catalogs | Four packaged bootstraps and app-owned guide readers; explicit atomic catalog publication on the HTTP profile. No downstream skill federation or arbitrary code loading. Native bootstrap metadata changes still require installation/new chat. |
 | Resources, prompts and completion relay | No relay sources are configured. The current backend exposes engineering tools; no implicit target acquisition or downstream forwarding is added. |
 | MCP Apps | The desktop GUI remains available. No web UI extension or iframe rendering is claimed. |
 | OAuth, service grants and DPoP | No remote endpoint is configured. The dedicated local host retains its loopback authentication and per-frontend ownership. |

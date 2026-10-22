@@ -56,7 +56,7 @@ class AppHost:
         self.process = subprocess.Popen([sys.executable, '-B', str(self.manager), 'serve', '--config', str(self.config)],
             stdin=subprocess.DEVNULL, stdout=self.log, stderr=self.log,
             env={**os.environ, 'SIEMENS_MCP_MANAGEMENT_REGISTRY': str(self.root/'management-registry')}, **process_options())
-        deadline = time.monotonic()+30
+        deadline = time.monotonic()+90
         while not probe(self.settings):
             assert self.process.poll() is None and time.monotonic() < deadline, 'Isolated broker startup failed'
             time.sleep(0.1)
@@ -96,11 +96,13 @@ async def exercise(broker, fixture, native, external):
         other = await connect(stack, sys.executable, proxy_args, frontend_env)
         direct = await connect(stack, fixture, ['--allow-writes', policy_arg, '--artifact-root='+str(native/'direct-artifacts'), '--extensions-root='+str(external)], env)
         outer = await list_all_tools(owner.session)
-        assert len(outer) == 14
+        assert len(outer) == 18
+        guides = data(await owner.call_tool('siemens_list_workflows', {}))
+        assert len(guides['workflows']) == 4
         data(await owner.call_tool('refresh_services', {}))
         context = data(await owner.call_tool('acquire_service', {'service_id': 'siemens-engineering'}))['context_id']
 
-        async def call(tool, arguments=None, *, write=None, session=owner, request_id=None):
+        async def call(tool, arguments=None, *, write=None, session=owner, request_id=None, progress=None):
             nonlocal counter
             counter += 1
             description = data(await session.call_tool('describe_tool', {'tool_id': 'siemens-engineering/'+tool}))
@@ -110,12 +112,18 @@ async def exercise(broker, fixture, native, external):
                 'arguments': arguments or {}, 'context_id': context}
             if write:
                 payload['request_id'] = request_id or 'adapter-'+str(counter)
-            return await session.call_tool('call_write_tool' if write else 'call_read_tool', payload)
+            return await session.call_tool('call_write_tool' if write else 'call_read_tool', payload, progress_callback=progress)
 
         target = {'hmiId': 'fixture-hmi', 'listName': 'Messages_TL'}
         attach = {'processId': 4242, 'expectedProjectPath': project}
         app(await direct.call_tool('tia_attach', attach))
-        assert app(await call('tia_attach', attach, write=True))['fixture']
+        stages = []
+        async def progress(completed, total=None, message=None):
+            stages.append((completed, total, message))
+        assert app(await call('tia_attach', attach, write=True, progress=progress))['fixture']
+        await asyncio.sleep(0.2)
+        assert stages and any(':dispatched' in (s[2] or '') for s in stages), stages
+        assert [s[0] for s in stages] == sorted(set(s[0] for s in stages)) and all(s[1] is None for s in stages)
         before = await call('hmi_read_text_list', target)
         direct_before = await direct.call_tool('hmi_read_text_list', target)
         assert wire(before) == wire(direct_before), {'broker': wire(before), 'direct': wire(direct_before)}
@@ -208,7 +216,8 @@ async def exercise(broker, fixture, native, external):
             'wrongOwnerHashConsumedAndStalePlansRejected': True, 'reloadInvalidatesAndFailedReloadRetainsPlans': True,
             'compileSaveReopenSeparate': True, 'releaseDiscardsSelectionAndPlans': True,
             'lostReplyReceipt': receipt['status'], 'independentImportEffects': 3, 'zeroReplay': True,
-            'projectAttached': False, 'nativeWrites': False}
+            'projectAttached': False, 'nativeWrites': False, 'requestBoundMonotonicStageNotifications': True,
+            'stageUnitsHaveNoInventedTotalOrPercent': True}
 
 
 async def barrier_after_restart(broker):

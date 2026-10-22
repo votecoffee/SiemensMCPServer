@@ -21,6 +21,8 @@ from reconciliation import reconcile, require_reconciled, pending_rows, valid_at
 SERVICE = 'siemens-engineering'
 INSTRUCTIONS = (
     'This is the standalone SiemensMCPServer app, with no Universal Tools registration. '
+    'Read current workflow guidance through siemens_list_workflows and hash-pinned guide/reference readers; '
+    'siemens_doctor reports profile boundaries without native attachment. Guidance never grants write approval. '
     'Search and describe engineering tools, then acquire_service(service_id="siemens-engineering"). '
     'Retain the returned context_id for the entire workflow. Describe each exact tool_id and '
     'use its invocation.channel and catalog_revision. Write calls also require a unique request_id. '
@@ -271,7 +273,7 @@ def ensure_running(config_path, config):
         with log.open('ab') as stream:
             child = subprocess.Popen([sys.executable, '-B', str(Path(__file__).resolve()), 'serve',
                 '--config', str(config_path)], stdin=subprocess.DEVNULL, stdout=stream, stderr=stream, **process_options())
-        end = time.monotonic()+35
+        end = time.monotonic()+90
         while time.monotonic() < end:
             if probe(settings):
                 return
@@ -345,7 +347,7 @@ def reconcile_upgrade(args, config):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['prepare', 'configure', 'catalog', 'serve', 'proxy', 'status', 'stop', 'contexts', 'reconcile-request', 'reconcile-upgrade'])
+    parser.add_argument('command', choices=['prepare', 'configure', 'catalog', 'serve', 'proxy', 'status', 'stop', 'contexts', 'reconcile-request', 'reconcile-upgrade', 'prepare-guidance', 'publish-guidance'])
     parser.add_argument('--payload', type=Path)
     parser.add_argument('--root', type=Path, default=default_root())
     parser.add_argument('--config', type=Path)
@@ -362,6 +364,10 @@ def main():
     parser.add_argument('--summary')
     parser.add_argument('--acknowledge-outcome', action='store_true')
     parser.add_argument('--reconciliation-batch', type=Path)
+    parser.add_argument('--source', type=Path)
+    parser.add_argument('--bundle', type=Path)
+    parser.add_argument('--expected-revision')
+    parser.add_argument('--expected-sha256')
     args = parser.parse_args()
     if args.command == 'catalog':
         atomic_json(args.output, backend_catalog(args.executable.resolve()))
@@ -377,7 +383,23 @@ def main():
     from universal_tools.cli import list_contexts, probe, stop
     from universal_tools.models import load_settings
     state = Path(config['state'])
-    if args.command == 'reconcile-upgrade':
+    if args.command == 'prepare-guidance':
+        from guidance import prepare_bundle
+        if not args.source or not args.output:
+            raise ValueError('Supply --source canonical plugin root and a new --output bundle directory')
+        print(json.dumps(prepare_bundle(args.source, args.output), indent=2))
+    elif args.command == 'publish-guidance':
+        import httpx
+        if not args.bundle or not args.expected_revision or not args.expected_sha256:
+            raise ValueError('Supply the reviewed --bundle, --expected-sha256 and --expected-revision')
+        settings = load_settings(state)
+        with httpx.Client(trust_env=False, timeout=30) as client:
+            response = client.post(settings.url+'/siemens/guidance/publish',
+                headers={'Authorization': 'Bearer '+settings.token}, json={'bundle': str(args.bundle.resolve()),
+                    'expected_sha256': args.expected_sha256, 'expected_revision': args.expected_revision})
+            response.raise_for_status()
+            print(json.dumps(response.json(), indent=2))
+    elif args.command == 'reconcile-upgrade':
         print(json.dumps(reconcile_upgrade(args, config), indent=2))
     elif args.command == 'reconcile-request':
         if not args.evidence_json:
@@ -393,8 +415,12 @@ def main():
         serve_managed(config_path, config)
     elif args.command == 'proxy':
         from universal_tools.surface import RemoteBackend, create_surface
+        from guidance import register_readers
         ensure_running(config_path, config)
-        create_surface(RemoteBackend(load_settings(state)), name='SiemensMCPServer', instructions=INSTRUCTIONS).run(transport='stdio')
+        remote = RemoteBackend(load_settings(state))
+        server = create_surface(remote, name='SiemensMCPServer', instructions=INSTRUCTIONS)
+        register_readers(server, remote=remote)
+        server.run(transport='stdio')
     else:
         result = {'status': lambda: probe(load_settings(state)) or {'running': False},
             'stop': lambda: stop(state), 'contexts': lambda: list_contexts(state)}[args.command]()
