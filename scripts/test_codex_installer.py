@@ -34,7 +34,9 @@ def main():
             files = {info.filename: archive.read(info.filename) for info in archive.infolist() if not info.is_dir()}
         # Old route-choice files have no authority over the standalone installer.
         standalone_cli = root/'standalone-cli'; standalone_cli.mkdir()
-        (standalone_cli/'codex.cmd').write_text('@echo off\nif "%1"=="mcp" (\necho []\nexit /b 0\n)\nif "%2"=="marketplace" (\necho registered\nexit /b 0\n)\necho {"installed":true}\nexit /b 0\n', encoding='ascii')
+        package_version = json.loads(files['plugin.json'])['version']
+        mock_install = json.dumps({'pluginId': 'siemens-mcp-server@siemens-mcp-server-local', 'version': package_version})
+        (standalone_cli/'codex.cmd').write_text('@echo off\nif "%1"=="mcp" (\necho []\nexit /b 0\n)\nif "%2"=="marketplace" (\necho registered\nexit /b 0\n)\necho '+mock_install+'\nexit /b 0\n', encoding='ascii')
         standalone_home = root/'standalone-home'; standalone_home.mkdir()
         original_config = '# Preserve unrelated Codex settings\n'
         (standalone_home/'config.toml').write_text(original_config, encoding='utf-8')

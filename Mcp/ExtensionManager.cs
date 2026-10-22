@@ -93,6 +93,7 @@ namespace SiemensMCPServer.Mcp
         private long nextId;
         private bool faulted;
         private bool stopped;
+        private string? resourceId;
         private readonly StringBuilder errors = new StringBuilder();
         public ExtensionHello Hello { get; private set; } = null!;
         public int ProcessId { get; private set; }
@@ -108,8 +109,12 @@ namespace SiemensMCPServer.Mcp
             } };
             try
             {
+                resourceId = ResourceOwnership.Current.Begin("Siemens pure feature worker: " + bundle.Manifest.Module);
                 process.Start();
                 ProcessId = process.Id;
+                // The host Job already contains this child at creation. Do not
+                // send any work until its exact process identity is durable.
+                ResourceOwnership.Current.BindStartedWorker(resourceId, process);
                 input = new StreamWriter(process.StandardInput.BaseStream, new UTF8Encoding(false, true)) { AutoFlush = true };
                 // Drain stderr continuously with bounded retained diagnostics.
                 stderrTask = Task.Run(() => {
@@ -159,6 +164,7 @@ namespace SiemensMCPServer.Mcp
         private void Stop(bool force)
         {
             if (stopped) return;
+            string? cleanup = resourceId == null ? null : ResourceOwnership.Current.BeginCleanup(resourceId);
             stopped = true;
             faulted = true;
             // A timed-out pure worker may be blocked on stdin. Kill it before flushing/closing pipes.
@@ -166,7 +172,10 @@ namespace SiemensMCPServer.Mcp
             try { input?.Close(); } catch (InvalidOperationException) { } catch (IOException) { }
             try { if (!process.WaitForExit(2000)) { process.Kill(); process.WaitForExit(2000); } } catch (InvalidOperationException) { } catch (System.ComponentModel.Win32Exception) { }
             try { stderrTask?.Wait(1000); } catch (AggregateException) { }
-            process.Dispose();
+            bool exited = false;
+            try { exited = process.HasExited; } catch (InvalidOperationException) { }
+            try { if (resourceId != null && cleanup != null) ResourceOwnership.Current.CompleteCleanup(resourceId, cleanup, exited); }
+            finally { process.Dispose(); } // journal failure retains its receipt; do not leak our original OS handle
         }
     }
     // Native calls use the primary worker on the STA. Pure local calls use a

@@ -1,6 +1,6 @@
 # Process lifetimes and ownership
 
-Source version 0.21.0 adds explicit service startup, bounded connected frontends, Windows process-tree containment and a server-side shutdown fence. These changes have in-process policy/ASGI tests. EOF, parent exit, crash cleanup and installed behavior still require isolated runtime acceptance. The pinned framework remains 0.18.0; its process ownership information is **not a durable resource recovery ledger**. Integration with the common ledger must wait for its published package/API and app-owned acceptance.
+Source version 0.21.0 added explicit service startup, bounded connected frontends, Windows process-tree containment and a server-side shutdown fence. Version 0.22.0 pins reviewed framework 0.20.0 and adds the [durable resource ledger integration](RESOURCE-OWNERSHIP.md). In-process policy/ASGI and harmless byte-echo/parent-loss fixtures have distinct scope. Packaged MCP EOF, native cleanup and installed behavior still require separate acceptance.
 
 ## Explicit startup and connection limits
 
@@ -14,7 +14,7 @@ Native requests still use one STA lane and exclusive engineering ownership. Exis
 
 On Windows, the launcher, owning Python service and native MCP backend each establish a non-inheritable, kill-on-close Job boundary before launching private descendants. The OS retains each Job handle for that process lifetime. Normal shutdown first uses the existing adapter/worker disposal. Process exit, including abnormal exit, closes the handle and terminates remaining contained descendants. Failure to establish containment rejects startup before children are created.
 
-The launcher waits for its frontend and retains a handle to its immediate parent for exit observation. A closed stdin pipe allows a short cleanup grace period before exiting its own process tree. It never reads stdin alongside the protocol reader. The native host observes the public transport completion task and requests Generic Host shutdown on EOF. These paths still need isolated process-level validation; in-process tests do not establish their timing or cleanup behavior.
+The bootstrap waits for an installed-runtime supervisor. That supervisor stays for the child's full lifetime, retains a handle to its immediate parent, establishes its Windows Job before child creation and records ownership before forwarding stdin. EOF closes the child's stdin and permits a bounded drain. A timeout retains recovery evidence; supervisor exit closes its own tree. Each pipe has one reader; bytes are neither parsed nor retried. The native host observes the public transport completion task and requests Generic Host shutdown on EOF. Harmless process fixtures exercise Python byte forwarding and parent-loss cleanup; full MCP/native drain behavior remains unassessed.
 
 The separately started service is not created by a chat proxy. Closing the last frontend is therefore not authority to terminate the shared owner or another chat's work. The service remains subject to explicit shutdown and its retained ownership/write journals.
 
@@ -24,7 +24,7 @@ TIA Portal is attached through an existing Siemens process. This session does no
 
 Doctor reporting inspects only members of the current Windows Job, up to 256 identities. It verifies membership and records PID plus process creation FILETIME while retaining query/synchronization handles. Unavailable, truncated and unverified-member counts are explicit. External/attached applications have no cleanup authority. Tray reporting uses the same bounded inventory without contacting an engineering application.
 
-This inventory is process-local. It does not persist ownership after a server/manager crash, recover shared leases, or authorize cleanup of a process found by PID alone. The durable common ledger is a separate pending integration. Existing durable engineering context and write journals remain intact; they do not substitute for a process/software resource ledger.
+This Job inventory is process-local. The separate 0.22 ledger retains actual supervisor generations, exact host/PID/creation/image identities, private workers, indirect frontend launchers and report-only TIA attachments. It authorizes no PID-only discovery or automatic cleanup. Existing durable engineering context and write journals remain independent; retiring a process claim never acknowledges an engineering result.
 
 ## Graceful shutdown
 
@@ -36,4 +36,4 @@ Shutdown never clears a lease, consumes a plan, reconciles a failed receipt or r
 
 `scripts/test_lifetime_policy.py` runs entirely in process: temporary OS file locks, policy parsing, stubbed backend admission and ASGI request dispatch. It starts no MCP server, worker, HTTP listener or native app. Focused `SafeguardTests` cover the shared GUI property's bounds and property-grid visibility. Static compilation does not start the MCP executable.
 
-Before deployment, separately authorize and run isolated tests for normal EOF, parent loss, launcher/backend/owner crashes, startup failure, nested Job membership, full private-descendant cleanup, preserved user-owned attachments, connection-limit races and shutdown admission races. Then verify the packaged and installed route. Until those checks and the common ledger integration pass, do not treat the source changes as accepted crash/restart management or installed behavior.
+Before deployment, separately authorize and run packaged MCP tests for EOF, launcher/backend/owner crashes, partial startup, full private-descendant cleanup, preserved user-owned TIA attachments, connection-limit races and shutdown admission races. Then verify the installed route. Harmless fixtures are not acceptance of native TIA shutdown or Codex reconnection. Tray restart remains disabled.

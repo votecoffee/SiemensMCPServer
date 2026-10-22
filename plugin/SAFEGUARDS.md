@@ -36,6 +36,8 @@ Permissions, project scope, confirmations and preview limits are read again for 
 
 Source version 0.21.0 adds **Maximum connected MCP chats**, read for each frontend admission. Lowering the ceiling keeps existing connections alive and rejects new ones until capacity is available. This bounds lightweight connections; native transactions remain serialized. Service startup is explicit. These [process-lifetime changes](LIFETIME-MANAGEMENT.md) still require isolated runtime acceptance before deployment.
 
+Source version 0.22.0 also adds **Maximum owned software resources** (default 32, 1–256 across supervisor generations) and **Maximum processes per owned tree** (default 64, 1–256 including the supervisor). New supervisors/trees and native-host startup apply these ceilings. Limits do not erase uncertain claims or authorize native cleanup. See [resource ownership](RESOURCE-OWNERSHIP.md) for ledger/recovery and pending native acceptance.
+
 Increasing the preview lifetime never extends an existing plan's captured deadline. Shortening it also limits older plans immediately. Reducing the pending-plan limit blocks new previews without deleting retained evidence or automatically applying old plans.
 
 Both executables accept `--settings-file=C:\path\to\safeguards.json` for an isolated policy; pass the **same absolute file** to the GUI and server. The root launcher accepts `Run.cmd -Safeguards -SettingsFile "C:\path\to\safeguards.json"`. A different Windows user or settings path has a separate policy. The host reports the current settings file/policy and launch permission through `tia_list_versions`; `tia_list_extensions` reports the active scheduler limits.

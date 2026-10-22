@@ -20,8 +20,8 @@ from reconciliation import valid_attestation
 
 APP_ID = 'siemens-mcp-server'
 PLUGIN_ID = 'siemens-mcp-server@siemens-mcp-server-local'
-RESTART_REASON = ('Tray restart unavailable: no surviving app supervisor can fence all contexts, '
-                  'selections, previews, unsaved projects and queued native work.')
+RESTART_REASON = ('Tray restart unavailable: retained supervisor, MCP/native cleanup and replacement '
+                  'acceptance are pending. Contexts, previews, unsaved state and uncertain outcomes must remain fenced.')
 
 
 def bounded_json(path):
@@ -90,6 +90,8 @@ class StatusCache:
             if receipt and receipt.get('pluginId') != PLUGIN_ID:
                 raise ValueError('Installed plugin identity changed')
             contexts, unresolved = local_state(self.config['state'])
+            from resource_management import summary
+            resources = summary()
             from lifetime import owned_resources, frontend_limit
             owned = owned_resources()
             owned_count = len(owned['owned_processes']) if owned.get('inventory_available') else 'unknown'
@@ -97,6 +99,7 @@ class StatusCache:
                 state='degraded' if unresolved else 'busy' if contexts else 'running',
                 message=(f'Engineering host; {contexts} retained context(s); {unresolved} unreconciled request(s). '
                          f'Owned process tree: {owned_count}; connected-chat ceiling: {frontend_limit(self.config)}. '
+                         f'Retained resource claims: {resources["unretired_count"]}; barriers: {resources["recovery_barrier_count"]}. '
                          'Native selection, previews and unsaved state are not inspected.'),
                 versions={
                     'app': ComponentVersion(installed=installed_app, running=self.running_app),

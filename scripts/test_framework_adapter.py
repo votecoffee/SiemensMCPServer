@@ -55,7 +55,7 @@ class AppHost:
         self.process = None
 
     def start(self):
-        self.process = subprocess.Popen([sys.executable, '-B', str(self.manager), 'serve', '--config', str(self.config)],
+        self.process = subprocess.Popen([sys.executable, '-B', str(self.manager.with_name('service_supervisor.py')), '--config', str(self.config)],
             stdin=subprocess.DEVNULL, stdout=self.log, stderr=self.log,
             env={**os.environ, 'SIEMENS_MCP_MANAGEMENT_REGISTRY': str(self.root/'management-registry')}, **process_options())
         deadline = time.monotonic()+90
@@ -80,6 +80,25 @@ class AppHost:
             self.process.kill()
             self.process.wait(10)
 
+    def retire_disposable_resources(self):
+        # App-only process attestation for this fake-provider fixture. Preserve
+        # every original engineering receipt and all resource barriers.
+        assert self.root.parent.name.startswith('siemens-adapter-')
+        from universal_tools.resources import ResourceLedger, TERMINAL
+        ledger = ResourceLedger(self.root/'management-registry')
+        actor = ledger.owner('siemens-mcp-server')
+        deadline = time.monotonic()+10
+        records = [r for r in ledger.records() if r.app_id == 'siemens-mcp-server' and r.state not in TERMINAL]
+        for record in records:
+            while (ledger.driver.state(record.owner.model_dump()) not in {'absent', 'different'}
+                   or (record.process and ledger.driver.state(record.process.model_dump()) not in {'absent', 'different'})):
+                assert time.monotonic() < deadline, 'Disposable fixture process did not exit'
+                time.sleep(.05)
+            current = ledger.get(record.resource_id)
+            actor.reconcile(record.resource_id, current.revision,
+                'Only this isolated fake-native fixture: exact process identities confirmed exited; original native effect/write receipts retained for barrier assertions.')
+        actor.close()
+
 
 async def connect(stack, command, args, env=None, mode="legacy"):
     client = await stack.enter_async_context(Client(StdioServerParameters(command=str(command), args=args, env=env),
@@ -97,11 +116,12 @@ def events(root, name):
 async def exercise(broker, fixture, native, external):
     project = str(native/'FixtureProject.ap15_1')
     policy_arg = '--settings-file=' + str(native/'safeguards.json')
-    env = {**os.environ, 'SIEMENS_FIXTURE_STATE': str(native)}
+    env = {**os.environ, 'SIEMENS_FIXTURE_STATE': str(native), 'SIEMENS_MCP_MANAGEMENT_REGISTRY': str(broker.root/'management-registry')}
     counter = 0
     async with AsyncExitStack() as stack:
         proxy_args = ['-B', str(broker.payload/'framework/launch.py')]
-        frontend_env = {**os.environ, 'SIEMENS_MCP_APPHOST':str(broker.config)}
+        frontend_env = {**os.environ, 'SIEMENS_MCP_APPHOST':str(broker.config),
+            'SIEMENS_MCP_MANAGEMENT_REGISTRY': str(broker.root/'management-registry')}
         owner = await connect(stack, sys.executable, proxy_args, frontend_env)
         other = await connect(stack, sys.executable, proxy_args, frontend_env)
         direct = await connect(stack, fixture, ['--allow-writes', policy_arg, '--artifact-root='+str(native/'direct-artifacts'), '--extensions-root='+str(external)], env, mode='auto')
@@ -258,7 +278,8 @@ async def exercise(broker, fixture, native, external):
             'lostReplyReceipt': receipt['status'], 'independentImportEffects': 3, 'zeroReplay': True,
             'projectAttached': False, 'nativeWrites': False, 'requestBoundMonotonicStageNotifications': True,
             'stageUnitsHaveNoInventedTotalOrPercent': True, 'httpSkillsResourcesHashVerified': http_resources,
-            'httpSkillsAndStdioGuidesMatch': True, 'nativeBackendModernProtocolAssessed': True}
+            'httpSkillsAndStdioGuidesMatch': True, 'nativeBackendModernProtocolAssessed': True,
+            'packagedNativeSupervisorExercised': False}
 
 
 async def barrier_after_restart(broker):
@@ -316,7 +337,7 @@ def main():
         broker = AppHost(root/'app-state', payload)
         registration = {'schema_version': 1, 'id': 'siemens-engineering', 'display_name': 'Siemens adapter fixture',
             'transport': {'type': 'stdio', 'command': str(fixture), 'args': ['--allow-writes', '--settings-file='+str(policy), '--artifact-root='+str(root/'artifacts'), '--extensions-root='+str(external)],
-                'env_vars': ['SIEMENS_FIXTURE_STATE']}, 'allow_writes': True,
+                'env_vars': ['SIEMENS_FIXTURE_STATE', 'SIEMENS_MCP_MANAGEMENT_REGISTRY']}, 'allow_writes': True,
             'allowed_write_tools': ['tia_attach', 'hmi_read_text_list', 'hmi_preview_text_edits', 'hmi_apply_text_edits', 'tia_reload_extensions', 'hmi_compile', 'tia_save_project', 'tia_reopen_project'],
             'session_mode': 'exclusive', 'resource_id': 'synthetic-siemens-resource', 'timeout_seconds': 60,
             'protocol_mode': 'auto', 'watch_catalog': True, 'discovery_cache_ttl_seconds': 5}
@@ -352,7 +373,7 @@ def main():
                 assert broker.process.poll() is None
             else:
                 raise AssertionError('Uncertain outcome/context must block graceful shutdown')
-            broker.crash_fixture(); broker.start()
+            broker.crash_fixture(); broker.retire_disposable_resources(); broker.start()
             asyncio.run(barrier_after_restart(broker))
             broker.crash_fixture()
             assert len(events(native, 'import-effect')) == 3

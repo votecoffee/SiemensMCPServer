@@ -19,14 +19,18 @@ def main():
     manager = ordinary(Path(runtime['payloadRoot'])/'framework/manage.py')
     if not python.is_file() or digest(manager) != runtime['managerSha256']:
         raise ValueError('Framework runtime is missing or changed; rerun its installer')
-    command = [str(python), '-B', str(manager), 'proxy', '--config', str(config)]
+    command = [str(python), '-B', str(Path(runtime['payloadRoot'])/'framework/frontend_stdio.py'), '--config', str(config)]
     if os.name == 'nt':
         import subprocess
-        from lifetime import contain_current_process
-        contain_current_process(watch_parent=True)
+        from lifetime import contain_current_process, FrontendSlot, frontend_limit
+        contain_current_process(watch_parent=True, watch_stdin=False, max_processes=256)
         # Windows exec terminates the tracked launcher while its child keeps the pipes.
         # Wait instead, preserving the MCP client's process lifetime and exit status.
-        return subprocess.call(command)
+        # Bound app-created wrappers before importing/starting the dedicated
+        # runtime. Proxy admission separately bounds all actual connections,
+        # including clients launched directly through manage.py.
+        with FrontendSlot(Path(runtime['state'])/'bootstrap-admission', frontend_limit(runtime)):
+            return subprocess.call(command)
     os.execv(str(python), command)
 
 

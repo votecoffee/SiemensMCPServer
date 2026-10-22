@@ -52,6 +52,12 @@ namespace SiemensMCPServer
         public int AnalysisParallelism { get; set; } = 2;
         [Category("5. Request limits (host restart)"), DisplayName("Maximum connected MCP chats"), Description("1..16. Bounds lightweight frontend processes. New connections read this limit; lowering it never terminates an existing chat. The application service must be started explicitly.")]
         public int MaxMcpFrontends { get; set; } = 4;
+        [Category("5. Request limits (host restart)"), DisplayName("Maximum owned software resources"), Description("1..256. Default 32 non-retired resource claims per Siemens app across supervisor generations. Includes private workers and user-owned TIA attachments. Retained or uncertain claims require reviewed recovery; increasing this does not clear them.")]
+        public int MaxOwnedResources { get; set; } = 32;
+        [Category("5. Request limits (host restart)"), DisplayName("Maximum processes per owned tree"), Description("1..256, default 64. Windows Job limit includes each supervisor and its descendants. Applies to new process trees; lowering it never terminates existing ones.")]
+        public int MaxProcessTreeSize { get; set; } = 64;
+        [Category("5. Request limits (host restart)"), DisplayName("MCP stdio EOF drain seconds"), Description("1..600, default 15. Grace for an owned child to finish after client EOF. A timeout closes the supervisor's private tree and retains uncertainty; it never proves a native write rolled back.")]
+        public int StdioDrainTimeoutSeconds { get; set; } = 15;
         [Category("5. Request limits (host restart)"), DisplayName("Queued native requests"), Description("1..1000. Overflow is rejected before dispatch.")]
         public int NativeQueueCapacity { get; set; } = 100;
         [Category("5. Request limits (host restart)"), DisplayName("Queued analysis requests"), Description("1..1000.")]
@@ -87,6 +93,9 @@ namespace SiemensMCPServer
             Range(MaxPendingPreviews, 1, 1000, nameof(MaxPendingPreviews));
             Range(AnalysisParallelism, 1, 8, nameof(AnalysisParallelism));
             Range(MaxMcpFrontends, 1, 16, nameof(MaxMcpFrontends));
+            Range(MaxOwnedResources, 1, 256, nameof(MaxOwnedResources));
+            Range(MaxProcessTreeSize, 1, 256, nameof(MaxProcessTreeSize));
+            Range(StdioDrainTimeoutSeconds, 1, 600, nameof(StdioDrainTimeoutSeconds));
             Range(NativeQueueCapacity, 1, 1000, nameof(NativeQueueCapacity));
             Range(AnalysisQueueCapacity, 1, 1000, nameof(AnalysisQueueCapacity));
             Range(ControlQueueCapacity, 1, 1000, nameof(ControlQueueCapacity));

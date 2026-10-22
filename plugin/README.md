@@ -12,7 +12,7 @@ A selected historical V15.1 native pilot passed single-line English/German Unico
 
 Host 0.15.0 and desktop 1.3.0 share [GUI-editable safeguards](SAFEGUARDS.md): write ceilings, operation restrictions, confirmations, preview limits, project scope and request limits. Permissions are rechecked for subsequent operations; scheduling/location changes require a host restart. Local settings do not grant client or Siemens permission.
 
-Host/plugin **0.21.0** uses the app-owned framework 0.18.0 gateway: fourteen engineering discovery/invocation tools reach 51 native operations, plus four read-only current-guidance/doctor tools. Stable packaged bootstraps retrieve [current workflow guides](CURRENT-GUIDANCE.md); the app-host HTTP profile also publishes verified Skills-over-MCP. The native executable retains direct access to its 51 tools. Fresh installations and upgrades always install the standalone Siemens plugin and its four native skills. The shared framework is a package dependency; the independent Windows manager needs no Codex connection. There is no universal Codex plugin. See [app host operation](APP-HOST.md).
+Host/plugin **0.22.0** uses the app-owned framework 0.20.0 gateway: fourteen engineering discovery/invocation tools reach 51 native operations, plus four read-only current-guidance/doctor tools. Stable packaged bootstraps retrieve [current workflow guides](CURRENT-GUIDANCE.md); the app-host HTTP profile also publishes verified Skills-over-MCP. The native executable retains direct access to its 51 tools. Fresh installations and upgrades always install the standalone Siemens plugin and its four native skills. The shared framework is a package dependency; the independent Windows manager needs no Codex connection. There is no universal Codex plugin. See [app host operation](APP-HOST.md).
 
 The owning host also reports cached state and component versions to the optional [tray service manager](APP-HOST.md#tray-management). No duplicate manager is installed. Tray restart remains disabled because safe native quiescence and a surviving restart supervisor are not implemented.
 
@@ -193,7 +193,7 @@ dotnet build Mcp/SiemensMCPServer.Mcp.csproj -c Release -p:TiaPortalVersion=V15.
 dotnet test Tests/SiemensMCPServer.Tests.csproj -c Release
 py -3 -X utf8 scripts/test_mcp_protocol.py Mcp/bin/Release/V15.1/net48/SiemensMCPServer.Mcp.exe --native-read-only
 powershell.exe -NoProfile -File scripts/test_native_contracts.ps1 -Version V15.1 -ServerDirectory Mcp/bin/Release/V15.1/net48
-powershell.exe -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1 -FrameworkWheel 'C:\packages\universal_codex_tools-0.18.0-py3-none-any.whl'
+powershell.exe -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1 -FrameworkWheel 'C:\packages\universal_codex_tools-0.20.0-py3-none-any.whl'
 ```
 
 The protocol test checks all 51 engineering tools, required schemas, same-host extension reload, classic export conversion, and apply/compile/save write guards. It never attaches, imports, compiles, or saves a project. `--native-read-only` exercises real Siemens process enumeration, API-member checks, and unattached-object rejection. The native contract script checks installed classic/PLC signatures and production export dispatch without creating a TiaPortal instance. Unit tests cover XML/YAML, caption styling, object preview lifecycles, typed bounds, companion files, legacy category/folder conversion, hashes, DTD rejection and unsafe bundle paths. These checks do not simulate Siemens transactions or establish native acceptance.

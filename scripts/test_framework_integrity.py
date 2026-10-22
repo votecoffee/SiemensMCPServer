@@ -141,6 +141,7 @@ class DeploymentTests(unittest.TestCase):
             (framework/name).write_bytes((FRAMEWORK/name).read_bytes())
         manager = framework/'manage.py'
         manager.write_text("import sys\nprint('frontend-ready', flush=True)\nfor line in sys.stdin:\n print(line.strip(), flush=True)\nsys.exit(7)\n", encoding='utf-8')
+        (framework/'frontend_stdio.py').write_bytes(manager.read_bytes())  # harmless echo, no MCP/app runtime
         self.entries = [{'path':path.relative_to(self.payload).as_posix(), 'bytes':path.stat().st_size,
                          'sha256':integrity.digest(path)} for path in self.payload.rglob('*')
                         if path.is_file() and path.name!='manifest.json']
@@ -148,7 +149,8 @@ class DeploymentTests(unittest.TestCase):
         config = self.root/'active.json'
         integrity.atomic_json(config, {'payloadRoot':str(self.payload), 'python':sys.executable,
             'payloadManifestSha256':integrity.digest(self.payload/'manifest.json'),
-            'managerSha256':integrity.digest(manager)})
+            'managerSha256':integrity.digest(manager), 'state': str(self.root/'state'),
+            'launchOptions': {'settings_file': str(self.root/'absent-policy.json')}})
         process = subprocess.Popen([sys.executable, '-B', str(framework/'launch.py')],
             env={**os.environ, 'SIEMENS_MCP_APPHOST':str(config), 'PYTHONDONTWRITEBYTECODE':'1'},
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,

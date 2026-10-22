@@ -26,6 +26,7 @@ namespace SiemensMCPServer.Mcp
         private readonly IFeatureEngine features;
         private readonly Func<SafeguardSettings> safeguards;
         private int? processId;
+        private string? attachmentResource;
         private object? textListImportStaging;
         private NativeStagingReport? textListExportStaging;
         public object? TextListImportStaging => textListImportStaging;
@@ -108,6 +109,9 @@ namespace SiemensMCPServer.Mcp
             Dispose();
             try
             {
+                attachmentResource = ResourceOwnership.Current.Begin("User-owned TIA Portal attachment", attached: true);
+                ResourceOwnership.Current.Bind(attachmentResource, pid);
+                ResourceOwnership.Current.Barrier(attachmentResource, "User-owned TIA may contain unsaved or uncertain engineering work. This is a report-only attachment; never terminate it.");
                 portal = selected.Attach();
                 if (portal.Projects.Count != 1) throw new InvalidOperationException("Exactly one open project is required.");
                 project = portal.Projects[0];
@@ -465,6 +469,7 @@ namespace SiemensMCPServer.Mcp
             // Dispose detaches Openness; never close/kill the user's TIA process or project here.
             workflow = null; unifiedWorkflow = null; engineeringWorkflow = null; classicXmlWorkflow = null; hmis = new List<HmiReference>(); project = null; projectPath = null; processId = null;
             if (portal != null) { portal.Dispose(); portal = null; }
+            if (attachmentResource != null) { ResourceOwnership.Current.ReleaseAttachment(attachmentResource); attachmentResource = null; }
         }
     }
 }

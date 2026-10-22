@@ -66,7 +66,7 @@ def dependencies():
 def load_runtime(path, *, upgrade=False):
     path = ordinary(path)
     value = json.loads(path.read_bytes())
-    allowed_versions = {FRAMEWORK_VERSION, '0.17.0'} if upgrade else {FRAMEWORK_VERSION}
+    allowed_versions = {FRAMEWORK_VERSION, '0.17.0', '0.18.0'} if upgrade else {FRAMEWORK_VERSION}
     if value['schemaVersion'] != 1 or value['frameworkVersion'] not in allowed_versions or value.get('mcpPythonVersion', MCP_VERSION) != MCP_VERSION:
         raise ValueError('Unsupported Siemens app runtime')
     root = ordinary(value['payloadRoot'])
@@ -201,6 +201,7 @@ def configure(args, *, _startup_locked=False):
             with socket.socket() as handle:
                 handle.bind(('127.0.0.1', 0)); port = handle.getsockname()[1]
             settings = initialize(state, port)
+        wait_for_instance_exit(state, lock_name='supervisor.lock')
         with InstanceLock(state/'broker.lock'):
             if OwnershipJournal(state/'ownership.sqlite3').entries():
                 raise ValueError('Retained ownership needs app outcome reconciliation before a runtime update')
@@ -218,7 +219,9 @@ def configure(args, *, _startup_locked=False):
                     arguments.append('--'+name.replace('_', '-')+'='+str(Path(value).absolute()))
             service = {'schema_version': 1, 'id': SERVICE, 'display_name': 'Siemens engineering',
                 'description': 'TIA Portal HMI and offline PLC engineering; explicit target/review required.',
-                'transport': {'type': 'stdio', 'command': str(command), 'args': arguments, 'cwd': str(command.parent)},
+                'transport': {'type': 'stdio', 'command': sys.executable,
+                    'args': ['-B', str(payload/'framework/native_stdio.py'), str(command), *arguments],
+                    'cwd': str(command.parent), 'env_vars': ['SIEMENS_MCP_MANAGEMENT_REGISTRY']},
                 'session_mode': 'exclusive', 'resource_id': 'siemens-tia-openness', 'protocol_mode': 'auto',
                 'watch_catalog': True, 'discovery_cache_ttl_seconds': 5,
                 'timeout_seconds': 300, 'max_argument_bytes': 64*1024*1024,
@@ -247,13 +250,13 @@ def configure(args, *, _startup_locked=False):
                 'mcpPythonVersion': MCP_VERSION, 'backendTools': len(tools), 'writesEnabled': args.allow_writes}))
 
 
-def wait_for_instance_exit(state, timeout=35):
+def wait_for_instance_exit(state, timeout=35, lock_name='broker.lock'):
     from universal_tools.daemon import InstanceLock
     from universal_tools.models import BrokerError
     deadline = time.monotonic()+timeout
     while True:
         try:
-            with InstanceLock(Path(state)/'broker.lock'):
+            with InstanceLock(Path(state)/lock_name):
                 return
         except BrokerError:
             if time.monotonic() >= deadline:
@@ -272,11 +275,12 @@ def ensure_running(config_path, config):
             return
         # HTTP shutdown precedes journal/adapter teardown. Do not race the old owner.
         wait_for_instance_exit(state)
+        wait_for_instance_exit(state, lock_name='supervisor.lock')
         with socket.socket() as handle:
             handle.bind((settings.host, settings.port))
         log = state/'app-host.log'
         with log.open('ab') as stream:
-            child = subprocess.Popen([sys.executable, '-B', str(Path(__file__).resolve()), 'serve',
+            child = subprocess.Popen([sys.executable, '-B', str(Path(__file__).with_name('service_supervisor.py')),
                 '--config', str(config_path)], stdin=subprocess.DEVNULL, stdout=stream, stderr=stream, **process_options())
         end = time.monotonic()+90
         while time.monotonic() < end:
@@ -337,6 +341,7 @@ def reconcile_upgrade(args, config):
         if probe(load_settings(state)):
             stop(state)
         wait_for_instance_exit(state)
+        wait_for_instance_exit(state, lock_name='supervisor.lock')
         receipts = []
         for review in batch:
             receipts.append(reconcile(state, review['requestId'], review['fingerprint'], Path(review['evidence']),
@@ -352,7 +357,7 @@ def reconcile_upgrade(args, config):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['prepare', 'configure', 'catalog', 'start', 'serve', 'proxy', 'status', 'stop', 'contexts', 'reconcile-request', 'reconcile-upgrade', 'prepare-guidance', 'publish-guidance'])
+    parser.add_argument('command', choices=['prepare', 'configure', 'catalog', 'start', 'serve', 'proxy', 'status', 'stop', 'contexts', 'reconcile-request', 'reconcile-upgrade', 'reconcile-resource', 'prepare-guidance', 'publish-guidance'])
     parser.add_argument('--payload', type=Path)
     parser.add_argument('--root', type=Path, default=default_root())
     parser.add_argument('--config', type=Path)
@@ -374,6 +379,7 @@ def main():
     parser.add_argument('--expected-revision')
     parser.add_argument('--expected-sha256')
     parser.add_argument('--max-frontends', type=int, default=4)
+    parser.add_argument('--resource-id')
     args = parser.parse_args()
     if args.command == 'catalog':
         atomic_json(args.output, backend_catalog(args.executable.resolve()))
@@ -389,7 +395,13 @@ def main():
     from universal_tools.cli import list_contexts, probe, stop
     from universal_tools.models import load_settings
     state = Path(config['state'])
-    if args.command == 'prepare-guidance':
+    if args.command == 'reconcile-resource':
+        from resource_management import reconcile_reviewed
+        if not args.resource_id or not args.expected_revision or not args.evidence_json or not args.expected_evidence_sha256:
+            raise ValueError('Supply --resource-id, --expected-revision, --evidence-json and --expected-evidence-sha256')
+        print(json.dumps(reconcile_reviewed(args.resource_id, args.expected_revision, args.evidence_json,
+            args.expected_evidence_sha256, args.acknowledge_outcome), indent=2))
+    elif args.command == 'prepare-guidance':
         from guidance import prepare_bundle
         if not args.source or not args.output:
             raise ValueError('Supply --source canonical plugin root and a new --output bundle directory')
@@ -421,9 +433,14 @@ def main():
         print(json.dumps({'state': 'started', 'automaticRestart': False}))
     elif args.command == 'serve':
         from service_management import serve_managed
-        from lifetime import contain_current_process
-        contain_current_process()
-        serve_managed(config_path, config)
+        from lifetime import contain_current_process, resource_limits
+        from resource_management import verify_shared_host
+        verify_shared_host()
+        contain_current_process(max_processes=resource_limits(config)[1])
+        # The background profile has no inherited streams; retain diagnostics.
+        from contextlib import redirect_stdout, redirect_stderr
+        with (state/'app-host-worker.log').open('a', encoding='utf-8') as stream, redirect_stdout(stream), redirect_stderr(stream):
+            serve_managed(config_path, config)
     elif args.command == 'proxy':
         from lifetime import FrontendSlot, frontend_limit
         with FrontendSlot(state, frontend_limit(config)):
@@ -440,6 +457,7 @@ def main():
             'stop': lambda: stop(state), 'contexts': lambda: list_contexts(state)}[args.command]()
         if args.command == 'stop':
             wait_for_instance_exit(state)
+            wait_for_instance_exit(state, lock_name='supervisor.lock')
         print(json.dumps(result, indent=2))
 
 

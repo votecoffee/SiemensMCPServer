@@ -43,6 +43,9 @@ public sealed class SafeguardTests
     [InlineData("{\"nativeQueueCapacity\":1001}")][InlineData("{\"workerTimeoutSeconds\":0}")]
     [InlineData("{\"analysisParallelism\":9}")][InlineData("{\"requiredProjectPath\":\"relative\"}")]
     [InlineData("{\"maxMcpFrontends\":0}")][InlineData("{\"maxMcpFrontends\":17}")]
+    [InlineData("{\"maxOwnedResources\":0}")][InlineData("{\"maxOwnedResources\":257}")]
+    [InlineData("{\"maxProcessTreeSize\":0}")][InlineData("{\"maxProcessTreeSize\":257}")]
+    [InlineData("{\"stdioDrainTimeoutSeconds\":0}")][InlineData("{\"stdioDrainTimeoutSeconds\":601}")]
     public void InvalidPolicyNeverFallsBackOrOverwritesEvidence(string json)
     {
         using var temp = new Scratch(); string path = Path.Combine(temp.Root, "safeguards.json"); File.WriteAllText(path, json);

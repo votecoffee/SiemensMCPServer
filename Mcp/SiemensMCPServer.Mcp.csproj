@@ -11,7 +11,7 @@
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <AssemblyName>SiemensMCPServer.Mcp</AssemblyName>
-    <Version>0.21.0</Version>
+    <Version>0.22.0</Version>
     <OutputPath>bin/$(Configuration)/$(TiaPortalVersion)/</OutputPath>
     <IntermediateOutputPath>obj/$(TiaPortalVersion)/$(Configuration)/</IntermediateOutputPath>
   </PropertyGroup>

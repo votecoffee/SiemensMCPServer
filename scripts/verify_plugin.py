@@ -102,20 +102,25 @@ def validate(files):
     if version >= (0, 17, 0):
         assert "framework/manage.py" in files and "framework/wheels.json" in files
         pins = files["framework/requirements-lock.txt"].decode("utf-8").splitlines()
-        framework_version, framework_commit = (("0.18.0", "7d8a0ccdc06598313061147ee8774837118a8861") if version >= (0, 19, 0)
+        framework_version, framework_commit = (("0.20.0", "5b2cac50ca24d21a15b732e0424bb02fd794e1fb") if version >= (0, 22, 0)
+            else ("0.18.0", "7d8a0ccdc06598313061147ee8774837118a8861") if version >= (0, 19, 0)
             else ("0.17.0", "87157f88de4a5320d2712224216b1e6f18a0ec8d") if version >= (0, 17, 1)
             else ("0.16.0", "579b065ecc37f98af72cb148ba47a65587bd167b"))
         assert "universal-codex-tools=="+framework_version in pins and "mcp==2.3.0" in pins
         wheel_index = json.loads(files["framework/wheels.json"])
         assert wheel_index["frameworkVersion"] == framework_version and wheel_index["sourceCommit"] == framework_commit
         if version >= (0, 19, 0):
-            reviewed_sha = '0c1084b424f079957ebd3bec763e609564aaef64cd1fedee78b61a45bfbc24ac'
+            reviewed_sha = ('a1b3777f8e8c1900e136a514d89ddb485a6bf4d69a525e3d24e1d04cd040efb3' if version >= (0, 22, 0)
+                else '0c1084b424f079957ebd3bec763e609564aaef64cd1fedee78b61a45bfbc24ac')
             assert wheel_index['frameworkWheelSha256'] == reviewed_sha
             assert next(e['sha256'] for e in wheel_index['files'] if e['name'] == 'universal-codex-tools') == reviewed_sha
             assert 'framework/service_management.py' in files
         for entry in wheel_index["files"]:
             assert hashlib.sha256(files["framework/"+entry["path"]]).hexdigest() == entry["sha256"]
         assert "scripts/New-BrokerRegistration.ps1" not in files and "BROKER-INTEGRATION.md" not in files
+        if version >= (0, 22, 0):
+            assert all('framework/'+name in files for name in ('frontend_stdio.py', 'native_stdio.py',
+                'stdio_supervisor.py', 'service_supervisor.py', 'resource_management.py', 'lifetime.py'))
         installer = files["scripts/Install-CodexPlugin.ps1"].decode("utf-8-sig")
         assert "$Integration" not in installer and "integration-choice.json" not in installer
     assert not any('fixture' in name.lower() or '/fixtures/' in name.lower() for name in files), 'Test fixtures must not be distributed'

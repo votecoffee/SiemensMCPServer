@@ -51,7 +51,9 @@ Host/plugin 0.19.0 uses framework 0.18.0 and reports service state, active reque
 
 Host/plugin 0.20.0 keeps four stable packaged skill bootstraps and serves current, hash-pinned guides/references through ordinary tools. The app-owned HTTP profile also publishes the same content through Skills-over-MCP. Native tools report real queue/dispatch/return stages and retain bounded cancellation/status telemetry. See [guidance publication and feature boundaries](plugin/CURRENT-GUIDANCE.md) for live-update behavior, doctor reporting and remaining Tasks/cache/artifact limitations.
 
-Source version 0.21.0 adds explicit service startup, a GUI-editable connected-chat limit, shutdown admission fencing and private process-tree containment. Static/in-process checks are separate from the pending process-level and installed acceptance. Durable resource recovery awaits the common framework ledger package/API. See [process lifetimes and ownership](plugin/LIFETIME-MANAGEMENT.md).
+Source version 0.21.0 added explicit service startup, a GUI-editable connected-chat limit, shutdown admission fencing and private process-tree containment. Version 0.22.0 below adds the common durable ledger. See [process lifetimes and ownership](plugin/LIFETIME-MANAGEMENT.md) for the remaining native and installed acceptance.
+
+Source version 0.22.0 integrates the reviewed framework 0.20 ownership ledger: retained stdio supervisors, native worker/attachment records, exact process identities, cleanup receipts and GUI resource/tree limits. Harmless process fixtures and cross-language record checks are separate from pending packaged MCP, native TIA and installed Codex acceptance. See [resource ownership and recovery](plugin/RESOURCE-OWNERSHIP.md). No automatic cleanup or write replay is enabled.
 
 ## Install
 
@@ -71,7 +73,7 @@ Build the package for the installed API:
 ```powershell
 git clone https://github.com/votecoffee/SiemensMCPServer.git
 cd SiemensMCPServer
-powershell.exe -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1 -FrameworkWheel 'C:\packages\universal_codex_tools-0.18.0-py3-none-any.whl'
+powershell.exe -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1 -FrameworkWheel 'C:\packages\universal_codex_tools-0.20.0-py3-none-any.whl'
 ```
 
 The build prints the ZIP path and creates its SHA-256 sidecar under `artifacts/`. Pass that exact ZIP to the installer, keeping the sidecar beside it:
@@ -80,7 +82,7 @@ The build prints the ZIP path and creates its SHA-256 sidecar under `artifacts/`
 powershell.exe -NoProfile -File build/Install-CodexPlugin.ps1 -Package 'C:\path\to\plugin.zip'
 ```
 
-The installer installs the standalone Siemens Codex plugin with its app-owned framework gateway (framework 0.18.0 / MCP Python 2.3.0). Python 3.13 is required; exact dependencies are installed offline from the verified bundle into a dedicated per-user runtime. Use `-PrepareOnly` to verify and stage a package without changing Codex settings. Load the installed tools and skills in a new Codex chat. See the [plugin guide](plugin/README.md).
+The installer installs the standalone Siemens Codex plugin with its app-owned framework gateway (framework 0.20.0 / MCP Python 2.3.0). Python 3.13 is required; exact dependencies are installed offline from the verified bundle into a dedicated per-user runtime. Use `-PrepareOnly` to verify and stage a package without changing Codex settings. Load the installed tools and skills in a new Codex chat. See the [plugin guide](plugin/README.md).
 
 Each application keeps its own Codex plugin and native skills. The shared app framework is a package dependency; the optional independent Windows manager provides administration without a Codex MCP connection. There is no universal Codex plugin. The retained Python names `universal-codex-tools` and `universal_tools` identify the shared dependency, not a plugin installation route.
 

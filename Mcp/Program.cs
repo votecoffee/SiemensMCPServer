@@ -17,7 +17,6 @@ namespace SiemensMCPServer.Mcp
         {
             try
             {
-                OwnedWorkerJob.Install();
                 string? version = Environment.GetEnvironmentVariable("TIA_PORTAL_VERSION");
                 string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SiemensMCPServer", "Mcp", "Sessions");
                 bool writes = false;
@@ -40,6 +39,8 @@ namespace SiemensMCPServer.Mcp
                 }
                 var safeguards = new SafeguardStore(settingsFile);
                 var initial = safeguards.Current();
+                OwnedWorkerJob.Install(initial.MaxProcessTreeSize);
+                ResourceOwnership.Initialize(initial.MaxOwnedResources);
                 if (!explicitArtifactRoot && initial.McpArtifactRoot.Length != 0) root = initial.McpArtifactRoot;
                 var builder = Host.CreateApplicationBuilder();
                 builder.Logging.ClearProviders();

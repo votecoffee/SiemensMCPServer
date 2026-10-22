@@ -15,8 +15,19 @@ _tracking_lock = threading.Lock()
 
 def default_policy_path():
     if os.name == 'nt':
-        from win32com.shell import shell, shellcon
-        base = Path(shell.SHGetKnownFolderPath(shell.FOLDERID_LocalAppData, shellcon.KF_FLAG_NO_PACKAGE_REDIRECTION))
+        # Also used by the standard-library bootstrap before the dedicated
+        # framework environment is entered; do not import global pywin32.
+        import uuid
+        folder = (ctypes.c_byte*16).from_buffer_copy(uuid.UUID('f1b32785-6fba-4fcf-9d55-7b8e7f157091').bytes_le)
+        shell = ctypes.WinDLL('shell32'); ole = ctypes.WinDLL('ole32')
+        shell.SHGetKnownFolderPath.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+        shell.SHGetKnownFolderPath.restype = ctypes.c_long
+        ole.CoTaskMemFree.argtypes = [ctypes.c_void_p]; ole.CoTaskMemFree.restype = None
+        result = ctypes.c_void_p()
+        if shell.SHGetKnownFolderPath(ctypes.byref(folder), 0x10000, None, ctypes.byref(result)) != 0:
+            raise OSError('Cannot resolve the canonical Windows safeguards folder')
+        try: base = Path(ctypes.wstring_at(result))
+        finally: ole.CoTaskMemFree(result)
     else:
         base = Path(os.environ.get('LOCALAPPDATA', Path.home()/'.local/share'))
     return base/'SiemensMCPServer/safeguards.json'
@@ -50,6 +61,37 @@ def frontend_limit(config):
         value = policy.get('maxMcpFrontends', value)
     if type(value) is not int or not 1 <= value <= 16:
         raise ValueError('Set Maximum connected MCP chats to 1..16 in the desktop safeguards editor')
+    return value
+
+
+def resource_policy(config):
+    configured = config.get('launchOptions', {}).get('settings_file')
+    path = Path(configured) if configured else default_policy_path()
+    policy = {}
+    if path.exists():
+        from integrity import ordinary
+        with ordinary(path).open('rb') as stream:
+            raw = stream.read(65537)
+        if len(raw) > 65536:
+            raise ValueError('Shared resource policy is oversized')
+        policy = json.loads(raw, object_pairs_hook=unique_properties)
+        if not isinstance(policy, dict):
+            raise ValueError('Shared resource policy must be an object')
+    return policy
+
+
+def resource_limits(config):
+    policy = resource_policy(config)
+    values = policy.get('maxOwnedResources', 32), policy.get('maxProcessTreeSize', 64)
+    if any(type(value) is not int or not 1 <= value <= 256 for value in values):
+        raise ValueError('Set owned-resource and process-tree limits to 1..256 in desktop safeguards')
+    return values
+
+
+def stdio_drain_timeout(config):
+    value = resource_policy(config).get('stdioDrainTimeoutSeconds', 15)
+    if type(value) is not int or not 1 <= value <= 600:
+        raise ValueError('Set MCP stdio EOF drain seconds to 1..600 in desktop safeguards')
     return value
 
 
@@ -109,7 +151,7 @@ class FrontendSlot:
             self.stream = None
 
 
-def contain_current_process(*, watch_parent=False):
+def contain_current_process(*, watch_parent=False, watch_stdin=True, max_processes=64):
     """Keep one kill-on-exit Job handle for this process lifetime on Windows.
 
     Intentional OS lifetime: the handle is never inherited or closed prematurely.
@@ -117,6 +159,8 @@ def contain_current_process(*, watch_parent=False):
     never creates the separately started shared service, so it cannot kill it.
     """
     global _job_handle, _kernel
+    if type(max_processes) is not int or not 1 <= max_processes <= 256:
+        raise ValueError('Invalid process-tree ceiling')
     if os.name != 'nt' or _job_handle is not None:
         return
     from ctypes import wintypes as w
@@ -138,7 +182,8 @@ def contain_current_process(*, watch_parent=False):
     job = kernel.CreateJobObjectW(None, None)
     if not job:
         raise OSError('Cannot create the Siemens process lifetime boundary')
-    limits = Extended(); limits.basic.flags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+    limits = Extended(); limits.basic.flags = 0x2000 | 0x8  # KILL_ON_JOB_CLOSE | ACTIVE_PROCESS
+    limits.basic.active_limit = max_processes
     if not kernel.SetInformationJobObject(job, 9, ctypes.byref(limits), ctypes.sizeof(limits)):
         kernel.CloseHandle(job)
         raise OSError('Cannot configure the Siemens process lifetime boundary')
@@ -151,9 +196,18 @@ def contain_current_process(*, watch_parent=False):
     if watch_parent:
         kernel.OpenProcess.argtypes = [w.DWORD, w.BOOL, w.DWORD]; kernel.OpenProcess.restype = w.HANDLE
         kernel.WaitForSingleObject.argtypes = [w.HANDLE, w.DWORD]; kernel.WaitForSingleObject.restype = w.DWORD
-        parent = kernel.OpenProcess(0x00100000, False, os.getppid())  # SYNCHRONIZE
+        parent = kernel.OpenProcess(0x00101000, False, os.getppid())  # SYNCHRONIZE | QUERY_LIMITED_INFORMATION
         if not parent:
             raise OSError('Cannot monitor the tracked Siemens launcher parent')
+        kernel.GetProcessTimes.argtypes = [w.HANDLE, ctypes.POINTER(w.FILETIME), ctypes.POINTER(w.FILETIME), ctypes.POINTER(w.FILETIME), ctypes.POINTER(w.FILETIME)]
+        kernel.GetProcessTimes.restype = w.BOOL
+        parent_created, self_created, exited, user, system = (w.FILETIME() for _ in range(5))
+        verified = (kernel.GetProcessTimes(parent, ctypes.byref(parent_created), ctypes.byref(exited), ctypes.byref(user), ctypes.byref(system))
+            and kernel.GetProcessTimes(kernel.GetCurrentProcess(), ctypes.byref(self_created), ctypes.byref(exited), ctypes.byref(user), ctypes.byref(system)))
+        if (not verified or ((parent_created.dwHighDateTime << 32) | parent_created.dwLowDateTime) > ((self_created.dwHighDateTime << 32) | self_created.dwLowDateTime)
+                or kernel.WaitForSingleObject(parent, 0) != 258):
+            kernel.CloseHandle(parent)
+            raise OSError('Launcher parent exited, changed creation identity or could not be verified; no child was started')
         def parent_exit():
             try:
                 if kernel.WaitForSingleObject(parent, 0xFFFFFFFF) == 0:
@@ -161,6 +215,8 @@ def contain_current_process(*, watch_parent=False):
             finally:
                 kernel.CloseHandle(parent)
         threading.Thread(target=parent_exit, name='siemens-parent-lifetime', daemon=True).start()
+        if not watch_stdin:
+            return  # The retained stdio supervisor forwards EOF and owns its drain deadline.
         # Do not consume stdin a second time. Peek only detects a closed writer;
         # the SDK gets a short grace period for normal EOF/session cleanup.
         import msvcrt

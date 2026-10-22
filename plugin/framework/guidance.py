@@ -15,7 +15,7 @@ from universal_tools.skill_catalog import SkillCatalog
 from universal_tools.skill_manifest import OPENAI_IMPORT_PROFILE, frontmatter
 from universal_tools.surface import READ, error_result, json_result
 
-from integrity import atomic_json, ordinary, relative
+from integrity import FRAMEWORK_VERSION, atomic_json, ordinary, relative
 
 FORMAT = 'siemens-guidance-bundle-v1'
 READERS = {'siemens_list_workflows', 'siemens_read_workflow', 'siemens_read_reference', 'siemens_doctor'}
@@ -185,14 +185,20 @@ class Guidance:
 
     async def doctor(self):
         from lifetime import owned_resources
-        return {**(await self.list_workflows()), 'framework_version': '0.18.0', 'python_sdk_version': '2.3.0',
+        from resource_management import summary
+        try:
+            ledger = summary()
+        except Exception:
+            ledger = {'available': False, 'reason': 'Resource ledger is unreadable; no cleanup or identity guessing was attempted.'}
+        return {**(await self.list_workflows()), 'framework_version': FRAMEWORK_VERSION, 'python_sdk_version': '2.3.0',
             'resource_ownership': owned_resources(),
+            'durable_resource_ledger': ledger,
             'profiles': {'standalone_stdio': 'engineering plus ordinary guide tools; no Skills extension advertised',
                 'authenticated_app_host_http': 'engineering plus guide tools, Skills extension and directory reads'},
             'features': {
                 'current_guides_and_references': {'status': 'enabled-and-tested', 'evidence': 'connected-client revision/hash and resource parity tests'},
-                'managed_process_lifetimes': {'status': 'implemented-but-unassessed', 'reason': 'Explicit start, bounded frontend slots, EOF/parent-exit containment and atomic shutdown need authorized isolated runtime validation.'},
-                'durable_resource_ledger': {'status': 'blocked', 'reason': 'Awaiting the published common ownership-ledger package/API. Current process Job membership is not a durable restart/recovery ledger.'},
+                'managed_process_lifetimes': {'status': 'harmless-fixtures-assessed-native-unassessed', 'reason': 'Policy/admission, byte forwarding and private Python parent/owner-loss fixtures are checked. Packaged MCP, native TIA cleanup and installed Codex acceptance remain pending.'},
+                'durable_resource_ledger': {'status': 'source-integrated-runtime-unassessed', 'reason': 'Reviewed framework 0.20 API, retained Python stdio supervisors and native interoperable worker/attachment records. Requires isolated process and packaged/native/Codex acceptance; no automatic recovery.'},
                 'skills_publication_and_resource_notifications': {'status': 'enabled-and-tested', 'evidence': 'app-host HTTP profile; explicit CAS publication and reconnect/refetch'},
                 'native_operation_stages': {'status': 'enabled-and-tested', 'evidence': 'request lane stages/structured status; notifications need caller progress support'},
                 'queued_cancellation': {'status': 'enabled-and-tested', 'evidence': 'queued work removed before dispatch; running native calls are never aborted'},
@@ -201,7 +207,7 @@ class Guidance:
                 'approval_continuations': {'status': 'blocked', 'reason': 'No target/preview-bound native approval adapter; ordinary authorization and reviewed hashes remain required.'},
                 'engineering_artifact_resources': {'status': 'blocked', 'reason': 'No owner-bound retained export registry for resource authorization; existing scoped engineering readers remain usable.'},
                 'redis_oauth_apps': {'status': 'outside-app-workflow', 'reason': 'Local single-owner engineering profile; no replicas or additional remote/UI grants.'}},
-            'acceptance': {'source_protocol_tests': '0.20 profile covered; 0.21 process lifetimes unassessed', 'codex_native_skill_activation': 'not-established',
+            'acceptance': {'source_protocol_tests': 'prior guide profile covered; 0.22 packaged MCP/native ledger integration unassessed', 'codex_native_skill_activation': 'not-established',
                            'native_project_runtime_acceptance': 'not-established', 'guide_read_grants_write_approval': False}}
 
     async def read(self, workflow_id, expected_revision, expected_sha256, reference_id=None):
