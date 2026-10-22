@@ -119,10 +119,17 @@ $registration = & $codex plugin marketplace add $root 2>&1
 if ($LASTEXITCODE -ne 0) { throw ('Codex marketplace registration failed: ' + ($registration -join "`n")) }
 $installation = & $codex plugin add 'siemens-mcp-server@siemens-mcp-server-local' --json
 if ($LASTEXITCODE -ne 0) { throw 'Codex plugin installation failed. Verified source and configuration backup were retained.' }
+$codexInstalled = $installation | ConvertFrom-Json
+if ($codexInstalled.pluginId -cne 'siemens-mcp-server@siemens-mcp-server-local' -or $codexInstalled.version -cne $plugin.version) { throw 'Installed Codex identity/version differs from the verified Siemens plugin.' }
+$componentReceipt = [ordered]@{ pluginId = $codexInstalled.pluginId; pluginVersion = $codexInstalled.version; frameworkVersion = '0.18.0'; mcpPythonVersion = '2.3.0' }
+$componentPath = Join-Path ([IO.Path]::GetFullPath($AppHostRoot)) 'installed-components.json'
+$componentStage = $componentPath + '.' + [Guid]::NewGuid().ToString('N') + '.tmp'
+[IO.File]::WriteAllText($componentStage, ($componentReceipt | ConvertTo-Json), $utf8)
+if (Test-Path -LiteralPath $componentPath) { [IO.File]::Replace($componentStage, $componentPath, $null) } else { [IO.File]::Move($componentStage, $componentPath) }
 $result = @{ state = 'installed'; version = $plugin.version; api = $build.tiaPortalApi; packageSha256 = $zipHash;
     marketplaceRoot = $root; pluginSource = $destination; configurationBackup = $backupDirectory;
     codex = ($installation | ConvertFrom-Json); nativeProjectChanged = $false; integration = 'Standalone';
-    frameworkVersion = '0.17.0'; mcpPythonVersion = '2.3.0'; frameworkConfig = $framework.config;
+    frameworkVersion = '0.18.0'; mcpPythonVersion = '2.3.0'; frameworkConfig = $framework.config;
     nextStep = 'Start a new Codex chat to load the plugin skills/tools. Native project attachment and edits require an explicit target.' }
 $result | ConvertTo-Json -Depth 12 | Tee-Object -FilePath (Join-Path $root 'installation.json')
 } finally { if ($installOwned) { $installMutex.ReleaseMutex() }; $installMutex.Dispose() }

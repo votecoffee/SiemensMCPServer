@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'plugin/framework'))
-from integrity import FRAMEWORK_COMMIT, FRAMEWORK_VERSION, atomic_json, digest, verify_wheels, wheel_metadata
+from integrity import FRAMEWORK_COMMIT, FRAMEWORK_VERSION, FRAMEWORK_WHEEL_SHA256, atomic_json, digest, verify_wheels, wheel_metadata
 
 
 def main():
@@ -15,6 +15,7 @@ def main():
     parser.add_argument('wheel', type=Path)
     parser.add_argument('destination', type=Path)
     args = parser.parse_args()
+    assert digest(args.wheel) == FRAMEWORK_WHEEL_SHA256, 'Framework wheel differs from reviewed package bytes'
     info = wheel_metadata(args.wheel)
     assert info == {'name': 'universal-codex-tools', 'version': FRAMEWORK_VERSION}
     destination = args.destination.resolve()
@@ -26,7 +27,7 @@ def main():
     entries = [{'path': 'wheels/'+path.name, 'bytes': path.stat().st_size, 'sha256': digest(path),
                 **wheel_metadata(path)} for path in sorted(wheels.glob('*.whl'))]
     atomic_json(destination/'wheels.json', {'schemaVersion': 1, 'frameworkVersion': FRAMEWORK_VERSION,
-        'sourceCommit': FRAMEWORK_COMMIT, 'files': entries})
+        'sourceCommit': FRAMEWORK_COMMIT, 'frameworkWheelSha256': FRAMEWORK_WHEEL_SHA256, 'files': entries})
     verify_wheels(destination)
     print(json.dumps({'frameworkVersion': FRAMEWORK_VERSION, 'wheels': len(entries), 'RECORD': 'verified'}))
 

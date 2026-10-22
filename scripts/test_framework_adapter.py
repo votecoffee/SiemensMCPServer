@@ -54,7 +54,8 @@ class AppHost:
 
     def start(self):
         self.process = subprocess.Popen([sys.executable, '-B', str(self.manager), 'serve', '--config', str(self.config)],
-            stdin=subprocess.DEVNULL, stdout=self.log, stderr=self.log, **process_options())
+            stdin=subprocess.DEVNULL, stdout=self.log, stderr=self.log,
+            env={**os.environ, 'SIEMENS_MCP_MANAGEMENT_REGISTRY': str(self.root/'management-registry')}, **process_options())
         deadline = time.monotonic()+30
         while not probe(self.settings):
             assert self.process.poll() is None and time.monotonic() < deadline, 'Isolated broker startup failed'
@@ -282,6 +283,12 @@ def main():
         broker.config.write_text(json.dumps(config), encoding='utf-8')
         try:
             broker.start()
+            from universal_tools.management import ManagementClient
+            manager = ManagementClient(broker.root/'management-registry')
+            managed = manager.snapshot()['services']
+            assert len(managed) == 1 and managed[0]['status']['state'] == 'running'
+            assert managed[0]['plugin_id'] == 'siemens-mcp-server@siemens-mcp-server-local'
+            assert not managed[0]['status']['restart_allowed']
             context, report = asyncio.run(exercise(broker, fixture, native, external))
             broker.stop(); broker.start()
             asyncio.run(barrier_after_restart(broker))
@@ -292,7 +299,10 @@ def main():
             recover_context(broker.root, 'siemens-engineering', context, acknowledged=True)
             assert len(events(native, 'import-effect')) == 3
             report.update({'durableBarrierAfterRestart': True, 'fixtureReconciliationAddsNoEffect': True,
-                'hostSha256': hashlib.sha256(host.read_bytes()).hexdigest(), 'frameworkVersion': framework_version})
+                'hostSha256': hashlib.sha256(host.read_bytes()).hexdigest(), 'frameworkVersion': framework_version,
+                'trayReportOnly': True, 'trayOwningHostRegistered': True,
+                'trayCleanShutdownReported': all(r['status']['state'] == 'stopped' for r in manager.snapshot()['services'])})
+            assert report['trayCleanShutdownReported']
             if args.previous_host:
                 asyncio.run(previous_host_rejects_worker(args.previous_host.resolve(), host, root))
                 report['previousHostRejectedNewWorkerAndRetainedGeneration'] = True

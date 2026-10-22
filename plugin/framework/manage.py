@@ -61,10 +61,11 @@ def dependencies():
             raise ValueError('Framework modules must come from the dedicated installed runtime')
 
 
-def load_runtime(path):
+def load_runtime(path, *, upgrade=False):
     path = ordinary(path)
     value = json.loads(path.read_bytes())
-    if value['schemaVersion'] != 1 or value['frameworkVersion'] != FRAMEWORK_VERSION:
+    allowed_versions = {FRAMEWORK_VERSION, '0.17.0'} if upgrade else {FRAMEWORK_VERSION}
+    if value['schemaVersion'] != 1 or value['frameworkVersion'] not in allowed_versions or value.get('mcpPythonVersion', MCP_VERSION) != MCP_VERSION:
         raise ValueError('Unsupported Siemens app runtime')
     root = ordinary(value['payloadRoot'])
     if verify_payload(root) != value['payloadManifestSha256'] or digest(root/'framework/manage.py') != value['managerSha256']:
@@ -72,7 +73,7 @@ def load_runtime(path):
     publication = ordinary(value['publication'])
     if digest(publication) != value['publicationSha256']:
         raise ValueError('App publication changed; use an explicit app-admin update')
-    if Path(sys.executable).resolve() != Path(value['python']).resolve():
+    if not upgrade and Path(sys.executable).resolve() != Path(value['python']).resolve():
         raise ValueError('Use this deployment\'s dedicated Python runtime')
     dependencies()
     return value
@@ -157,6 +158,12 @@ def prepare(args):
             value = getattr(args, name)
             if value:
                 command += ['--'+name.replace('_', '-'), str(Path(value).absolute())]
+        if args.reconciliation_batch:
+            if not args.acknowledge_outcome:
+                raise ValueError('Cross-runtime upgrade requires reviewed outcomes and --acknowledge-outcome')
+            command[command.index('configure')] = 'reconcile-upgrade'
+            command += ['--config', str(root/'active.json'), '--reconciliation-batch',
+                        str(args.reconciliation_batch.resolve()), '--acknowledge-outcome']
         subprocess.run(command, check=True)
 
 
@@ -366,7 +373,7 @@ def main():
         configure(args)
         return
     config_path = args.config or args.root/'active.json'
-    config = load_runtime(config_path)
+    config = load_runtime(config_path, upgrade=args.command == 'reconcile-upgrade')
     from universal_tools.cli import list_contexts, probe, stop
     from universal_tools.models import load_settings
     state = Path(config['state'])
@@ -382,8 +389,8 @@ def main():
             activation = asyncio.run(activate_reconciled(config, [args.request_id]))
             print(json.dumps({**receipt, **activation}, indent=2))
     elif args.command == 'serve':
-        from universal_tools.framework import serve_application
-        serve_application(state, Path(config['publication']))
+        from service_management import serve_managed
+        serve_managed(config_path, config)
     elif args.command == 'proxy':
         from universal_tools.surface import RemoteBackend, create_surface
         ensure_running(config_path, config)

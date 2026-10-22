@@ -47,6 +47,8 @@ Host 0.18.0 adds [Comfort V15.1 TextLists preflight and evidence workflows](plug
 
 Host 0.18.3 reads selected TextLists directly from verified ZIP streams, preserving whole-archive integrity without extracting unrelated graphic/screen folders. Validation reports distinguish non-applicable input checks, optional evidence and required checks; a required check that did not run blocks publication.
 
+Host/plugin 0.19.0 uses framework 0.18.0 and reports service state, active requests and component versions to the optional Windows MCP Service Manager. Reporting does not attach engineering projects. Tray restart stays disabled until an app-owned supervisor can safely fence all chats and native work. See [tray management](plugin/APP-HOST.md#tray-management).
+
 ## Install
 
 ### Dependencies
@@ -65,7 +67,7 @@ Build the package for the installed API:
 ```powershell
 git clone https://github.com/votecoffee/SiemensMCPServer.git
 cd SiemensMCPServer
-powershell.exe -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1 -FrameworkWheel 'C:\packages\universal_codex_tools-0.17.0-py3-none-any.whl'
+powershell.exe -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1 -FrameworkWheel 'C:\packages\universal_codex_tools-0.18.0-py3-none-any.whl'
 ```
 
 The build prints the ZIP path and creates its SHA-256 sidecar under `artifacts/`. Pass that exact ZIP to the installer, keeping the sidecar beside it:
@@ -74,7 +76,7 @@ The build prints the ZIP path and creates its SHA-256 sidecar under `artifacts/`
 powershell.exe -NoProfile -File build/Install-CodexPlugin.ps1 -Package 'C:\path\to\plugin.zip'
 ```
 
-The installer installs the standalone Siemens Codex plugin with its app-owned framework gateway (framework 0.17.0 / MCP Python 2.3.0). Python 3.13 is required; exact dependencies are installed offline from the verified bundle into a dedicated per-user runtime. Use `-PrepareOnly` to verify and stage a package without changing Codex settings. Load the installed tools and skills in a new Codex chat. See the [plugin guide](plugin/README.md).
+The installer installs the standalone Siemens Codex plugin with its app-owned framework gateway (framework 0.18.0 / MCP Python 2.3.0). Python 3.13 is required; exact dependencies are installed offline from the verified bundle into a dedicated per-user runtime. Use `-PrepareOnly` to verify and stage a package without changing Codex settings. Load the installed tools and skills in a new Codex chat. See the [plugin guide](plugin/README.md).
 
 Fresh installations and upgrades always install the standalone plugin. Obsolete integration-choice files do not affect installation. Concurrent installers using one root are rejected before settings changes.
 

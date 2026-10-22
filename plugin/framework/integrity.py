@@ -10,9 +10,10 @@ from pathlib import Path, PurePosixPath
 import re
 import zipfile
 
-FRAMEWORK_VERSION = '0.17.0'
+FRAMEWORK_VERSION = '0.18.0'
 MCP_VERSION = '2.3.0'
-FRAMEWORK_COMMIT = '87157f88de4a5320d2712224216b1e6f18a0ec8d'
+FRAMEWORK_COMMIT = '7d8a0ccdc06598313061147ee8774837118a8861'
+FRAMEWORK_WHEEL_SHA256 = '0c1084b424f079957ebd3bec763e609564aaef64cd1fedee78b61a45bfbc24ac'
 
 
 def digest(path):
@@ -107,7 +108,8 @@ def wheel_metadata(path):
 def verify_wheels(root):
     root = Path(root)
     index = json.loads((root/'wheels.json').read_bytes())
-    if index['frameworkVersion'] != FRAMEWORK_VERSION or index['sourceCommit'] != FRAMEWORK_COMMIT:
+    if (index['frameworkVersion'] != FRAMEWORK_VERSION or index['sourceCommit'] != FRAMEWORK_COMMIT
+            or index.get('frameworkWheelSha256') != FRAMEWORK_WHEEL_SHA256):
         raise ValueError('Unaccepted framework bundle')
     expected = {}
     for line in (root/'requirements-lock.txt').read_text(encoding='utf-8-sig').splitlines():
@@ -124,6 +126,8 @@ def verify_wheels(root):
             raise ValueError('Wheel bundle bytes changed')
         info = wheel_metadata(path)
         key = re.sub('[-_.]+', '-', info['name']).lower()
+        if key == 'universal-codex-tools' and entry['sha256'] != FRAMEWORK_WHEEL_SHA256:
+            raise ValueError('Framework wheel differs from the reviewed package bytes')
         if key in observed:
             raise ValueError('Duplicate wheel distribution')
         observed[key] = info['version']

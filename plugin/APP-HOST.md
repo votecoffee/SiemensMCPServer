@@ -1,6 +1,18 @@
 # Standalone app host
 
-Plugin 0.18.4 uses framework 0.17.0, Python MCP SDK 2.3.0 and matching wire types. Its 14 frontend tools discover and invoke the existing 51 Siemens engineering operations. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. The framework's `broker_status` tool reports this app host's status.
+Plugin 0.19.0 uses framework 0.18.0, Python MCP SDK 2.3.0 and matching wire types. Its 14 frontend tools discover and invoke the existing 51 Siemens engineering operations. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. The framework's `broker_status` tool reports this app host's status.
+
+## Tray management
+
+The owning long-lived `serve` process registers with the optional Windows MCP Service Manager using the framework's authenticated loopback management interface. Proxy connections and temporary metadata/upgrade hosts do not register separate service rows. The canonical installed plugin ID is `siemens-mcp-server@siemens-mcp-server-local`; each owning process receives a random instance ID. The app does not install or start another manager. The shared framework repository's `InstallManager.cmd` remains the optional manager installer.
+
+Tray status reads a thread-safe memory snapshot. A background refresh checks only local installed-component metadata and existing ownership/write journals. It never acquires a TIA context, selects a project, calls engineering status tools or contacts a controller. Active operations count all frontend invocations, including requests waiting behind another chat's service gate. Retained contexts and unreconciled receipts affect the reported state; this is not inspection of native selections, review plans or unsaved projects. Failed/stale local snapshots are explicitly degraded.
+
+The installer records the exact Codex plugin identity/version in private `installed-components.json`. App, plugin, framework and Python SDK components retain separate installed/running versions and explicit `update_pending` fields. Available versions remain unknown: the service does not check GitHub or claim a newer package exists. A missing install receipt leaves the installed plugin version unknown. The manager's own read-only plugin inventory can supplement this information separately.
+
+**Tray restart is disabled, including when idle.** There is no surviving app-owned supervisor with an atomic admission fence and complete verification of every chat's contexts, selections, prepared plans, unsaved projects and queued native operations. The endpoint returns the specific refusal; it never kills a process, discards a plan, releases another chat's lease, clears an uncertain effect or restarts a native session. The framework retains its durable restart journal and at-most-once receipts; no MCP or tray action can reconcile its barriers. A future restart implementation requires app-owned quiescence and replacement-health acceptance. An unreachable host currently needs explicit app administration.
+
+The default registry uses the Windows user's canonical Local AppData known folder through the framework, independently of host `LOCALAPPDATA` overrides. Isolated tests can set `SIEMENS_MCP_MANAGEMENT_REGISTRY` to a dedicated private directory. Do not put registry files, tokens, journals or machine receipts in the public repository. Synthetic HTTP/duplicate/uncertainty coverage does not establish native TIA restart acceptance.
 
 ## Engineering workflow
 
@@ -61,7 +73,7 @@ Host/plugin 0.18.1 adds stopped-host `reconcile-request` administration. Session
   --summary 'Independent outcome review and evidence retained; original request must not replay' --acknowledge-outcome
 ```
 
-When upgrading an older host that lacks this command, first stage the verified new package with the installer’s `-PrepareOnly` option, then use its `framework/manage.py` as `$siemensManager` with the existing dedicated Python runtime and config. The host must be stopped and all ownership reconciled first. Keep the normal state directory; do not create a fresh one to bypass receipts.
+When upgrading an older host that lacks this command, first stage the verified new package with the installer’s `-PrepareOnly` option. For the same framework version, use its `framework/manage.py` as `$siemensManager` with the existing dedicated Python runtime and config. The host must be stopped and all ownership reconciled first. Keep the normal state directory; do not create a fresh one to bypass receipts.
 
 The command retains a separate immutable copy of the reviewed evidence and an attestation bound to all original request fields. It does not change the original write-journal row, mark a failed request successful, perform native work, retry or roll back. Repeating the original request ID remains blocked. An upgrade accepts only an exact attestation with intact retained evidence; another unresolved request, changed receipt, damaged/missing evidence or a running host still blocks it. This records an operator assertion; hashes do not authenticate native provenance. The installer never generates acknowledgments automatically.
 
@@ -74,6 +86,8 @@ Existing chat connections may try to restart the idle host during an update. For
 ```
 
 Then rerun the normal installer against that same verified package to update the plugin selection. `--allow-writes` retains the usual installation ceiling; native safeguards remain independent. Old launchers reject a mismatched active deployment rather than restarting retired code. This command never forces a process to exit or acknowledges evidence automatically.
+
+For a framework 0.17.0 to 0.18.0 upgrade, run the verified candidate manager's `prepare` with Python 3.13, the existing `--root`, candidate `--payload`, reviewed `--reconciliation-batch`, `--acknowledge-outcome` and the authorized `--allow-writes` ceiling. It first creates a separate compatible runtime from the pinned offline wheels, then invokes the same guarded `reconcile-upgrade` there. Only that explicit upgrade route can inspect a verified previous-framework config; normal serving/proxy commands still require their own exact runtime. The original Python environment is retained. A fresh install or an already stopped, fully reconciled host can use ordinary preparation. Normal installation never invents or acknowledges outcomes.
 
 Version 0.18.2 also invokes the framework's supported `ApplicationHost.acknowledge_reload_outcome` app-admin API for those exact reviewed receipts. This preserves the original request rows and allows the framework to publish the new backend. The command verifies the actual backend initialization version against the candidate plugin, rather than treating updated plugin files as proof that the backend changed. Discovery during this check only initializes/lists metadata; it does not acquire a TIA context or run project operations.
 

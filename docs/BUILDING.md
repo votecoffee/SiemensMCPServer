@@ -52,7 +52,7 @@ For an API V16 build supplied by Portal V19, the runtime engineering selection i
 ## Package and verify
 
 ```powershell
-powershell.exe -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1 -FrameworkWheel 'C:\packages\universal_codex_tools-0.17.0-py3-none-any.whl'
+powershell.exe -NoProfile -File build/Build-Plugin.ps1 -TiaPortalVersion V15.1 -FrameworkWheel 'C:\packages\universal_codex_tools-0.18.0-py3-none-any.whl'
 py -3 -X utf8 scripts/verify_plugin.py 'C:\path\to\plugin.zip'
 ```
 
@@ -167,6 +167,8 @@ The installer profile uses disposable Codex homes and fake CLI commands to verif
 
 ## App-owned framework build
 
-Plugin 0.18.4 pins `universal-codex-tools==0.17.0`, MCP Python 2.3.0 and matching wire types in `plugin/framework/requirements-lock.txt`. Build or obtain a verified wheel from framework commit `87157f88de4a5320d2712224216b1e6f18a0ec8d`, then supply it through `-FrameworkWheel`. Packaging checks its RECORD/metadata and collects the exact binary dependency wheels. Runtime installation uses `--no-index` and the bundled wheelhouse. The C# SDK remains 2.2.0.
+Plugin 0.19.0 pins `universal-codex-tools==0.18.0`, MCP Python 2.3.0 and matching wire types in `plugin/framework/requirements-lock.txt`. Build or obtain a verified wheel from framework commit `7d8a0ccdc06598313061147ee8774837118a8861`, then supply it through `-FrameworkWheel`. Packaging checks its RECORD/metadata and collects the exact binary dependency wheels. Runtime installation uses `--no-index` and the bundled wheelhouse. The C# SDK remains 2.2.0.
+
+The reviewed framework wheel SHA-256 is `0c1084b424f079957ebd3bec763e609564aaef64cd1fedee78b61a45bfbc24ac`. Build and runtime bundle checks enforce those exact bytes as well as the source commit and dependency pins. Management integration is part of the owning Python host, leaving the native TIA profiles intact. Run `scripts/test_service_management.py` and the existing framework integrity/lifecycle/reconciliation/adapter checks in the pinned test runtime. Keep synthetic registries separate from the real manager's registry. The native restart feature remains disabled; tests never restart a live engineering service through the tray.
 
 Use `scripts/test_framework_integrity.py` for deployment/bundle rejection controls and the pinned framework environment for `scripts/test_framework_adapter.py <extracted>/server/SiemensMCPServer.Mcp.exe`. The latter exercises two independent app frontends, complete direct/routed results, review guards, reload, receipts and a lost reply with a durable restart barrier, using a test-only native provider. Actual native acceptance remains separate. See [app lifecycle](../plugin/APP-HOST.md).
