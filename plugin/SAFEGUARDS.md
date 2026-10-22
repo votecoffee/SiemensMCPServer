@@ -20,7 +20,7 @@ The root command needs an installed desktop 1.3.0 or newer; rerun `InstallAndRun
 | Restricted changes | Native object Delete; overwrite; PLC source block replacement; project translation import; feature extension reload | Restrict the corresponding reviewed action. Overwrite still requires explicit selection for each import. |
 | Desktop confirmations | Confirm imports; confirm Save | Controls the desktop review dialogs. Defaults are on, with **No** selected. Disabling a dialog does not disable native validation. |
 | Preview limits | Lifetime in minutes (1–1440); pending previews per workflow (1–1000) | Defaults: 30 minutes and 100 plans. MCP uses both limits in all five reviewed workflow types; desktop Unified/PLC imports use expiry. |
-| Request limits | Parallel local jobs (1–8); native/local/control waiting capacities (1–1000 each); worker timeout (1–600 seconds) | Defaults: 2 jobs, queues of 100/32/16, and 30 seconds. Applied on MCP host restart. Native operations always retain one STA lane. |
+| Request limits | Parallel local jobs (1–8); native/local/control waiting capacities (1–1000 each); worker timeout (1–600 seconds); maximum connected MCP chats (1–16) | Defaults: 2 jobs, queues of 100/32/16, 30 seconds and 4 frontends. Scheduler/worker settings apply on host restart; the chat limit applies to new connections. Native operations always retain one STA lane. |
 | Project scope | Required project path | Empty permits any explicitly selected project. A populated value pins the exact absolute project path for desktop and MCP attachment and subsequent project operations. |
 | Evidence locations | Desktop import evidence folder; MCP artifact folder | Empty uses the existing per-user defaults. The MCP location applies on restart; an explicit `--artifact-root` overrides it. |
 
@@ -33,6 +33,8 @@ The classic Comfort desktop workflows retain their documented per-object import 
 The default file is `%LOCALAPPDATA%\SiemensMCPServer\safeguards.json`. **Save settings** validates and atomically replaces the file, retaining one previous version as `safeguards.json.previous`. A stale editor cannot overwrite a policy another editor saved. **Load defaults** changes the displayed draft; **Save settings** is still required. Compatibility defaults retain existing permissions, while MCP launch authorization remains required. No project or Codex registration is changed by editing this file.
 
 Permissions, project scope, confirmations and preview limits are read again for subsequent operations. Already dispatched native work finishes under its existing transaction rules; editing settings does not abort it. New scheduler limits, worker timeouts and the MCP artifact location require restarting/reconnecting the host. Extension reload does not rebuild the host scheduler.
+
+Source version 0.21.0 adds **Maximum connected MCP chats**, read for each frontend admission. Lowering the ceiling keeps existing connections alive and rejects new ones until capacity is available. This bounds lightweight connections; native transactions remain serialized. Service startup is explicit. These [process-lifetime changes](LIFETIME-MANAGEMENT.md) still require isolated runtime acceptance before deployment.
 
 Increasing the preview lifetime never extends an existing plan's captured deadline. Shortening it also limits older plans immediately. Reducing the pending-plan limit blocks new previews without deleting retained evidence or automatically applying old plans.
 

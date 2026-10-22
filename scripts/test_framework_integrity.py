@@ -137,7 +137,7 @@ class DeploymentTests(unittest.TestCase):
     def test_launcher_retains_process_and_relays_exit_status(self):
         framework = self.payload/'framework'
         framework.mkdir()
-        for name in ('launch.py', 'integrity.py'):
+        for name in ('launch.py', 'integrity.py', 'lifetime.py'):
             (framework/name).write_bytes((FRAMEWORK/name).read_bytes())
         manager = framework/'manage.py'
         manager.write_text("import sys\nprint('frontend-ready', flush=True)\nfor line in sys.stdin:\n print(line.strip(), flush=True)\nsys.exit(7)\n", encoding='utf-8')

@@ -7,6 +7,7 @@ import argparse
 import asyncio
 from contextlib import AsyncExitStack
 import hashlib
+import httpx
 import json
 import os
 from pathlib import Path
@@ -68,8 +69,16 @@ class AppHost:
         while probe(self.settings) and time.monotonic() < deadline:
             time.sleep(0.1)
         if self.process and self.process.poll() is None:
-            try: self.process.wait(10)
-            except subprocess.TimeoutExpired: self.process.terminate(); self.process.wait(10)
+            self.process.wait(10)
+
+    def crash_fixture(self):
+        # Test-only crash injection/cleanup, using the exact Popen handle. Never
+        # apply it to configured real services or native/user-owned processes.
+        assert self.root.parent.name.startswith('siemens-adapter-')
+        assert self.config.parent == self.root
+        if self.process and self.process.poll() is None:
+            self.process.kill()
+            self.process.wait(10)
 
 
 async def connect(stack, command, args, env=None, mode="legacy"):
@@ -320,7 +329,8 @@ def main():
             'payloadRoot': str(payload), 'payloadManifestSha256': hashlib.sha256((payload/'manifest.json').read_bytes()).hexdigest(),
             'managerSha256': hashlib.sha256(broker.manager.read_bytes()).hexdigest(),
             'state': str(broker.root), 'publication': str(publication),
-            'publicationSha256': hashlib.sha256(publication.read_bytes()).hexdigest()}
+            'publicationSha256': hashlib.sha256(publication.read_bytes()).hexdigest(),
+            'launchOptions': {'settings_file': str(policy)}}
         broker.config.write_text(json.dumps(config), encoding='utf-8')
         try:
             broker.start()
@@ -330,10 +340,21 @@ def main():
             assert len(managed) == 1 and managed[0]['status']['state'] == 'running'
             assert managed[0]['plugin_id'] == 'siemens-mcp-server@siemens-mcp-server-local'
             assert not managed[0]['status']['restart_allowed']
-            context, report = asyncio.run(exercise(broker, fixture, native, external))
-            broker.stop(); broker.start()
-            asyncio.run(barrier_after_restart(broker))
+            idle_instance = managed[0]['instance_id']
             broker.stop()
+            assert next(r for r in manager.snapshot()['services'] if r['instance_id'] == idle_instance)['status']['state'] == 'stopped'
+            broker.start()
+            context, report = asyncio.run(exercise(broker, fixture, native, external))
+            try:
+                broker.stop()
+            except httpx.HTTPStatusError as error:
+                assert error.response.status_code == 409
+                assert broker.process.poll() is None
+            else:
+                raise AssertionError('Uncertain outcome/context must block graceful shutdown')
+            broker.crash_fixture(); broker.start()
+            asyncio.run(barrier_after_restart(broker))
+            broker.crash_fixture()
             assert len(events(native, 'import-effect')) == 3
             assert 'Effect recorded, reply lost' in (native/'native-state.xml').read_text(encoding='utf-8')
             # Synthetic state inspected above; acknowledge only this isolated fixture.
@@ -342,8 +363,8 @@ def main():
             report.update({'durableBarrierAfterRestart': True, 'fixtureReconciliationAddsNoEffect': True,
                 'hostSha256': hashlib.sha256(host.read_bytes()).hexdigest(), 'frameworkVersion': framework_version,
                 'trayReportOnly': True, 'trayOwningHostRegistered': True,
-                'trayCleanShutdownReported': all(r['status']['state'] == 'stopped' for r in manager.snapshot()['services'])})
-            assert report['trayCleanShutdownReported']
+                'trayCleanIdleShutdownReported': True, 'uncertaintyBlocksGracefulShutdown': True,
+                'restartBarrierTestUsesExplicitIsolatedCrash': True})
             if args.previous_host:
                 asyncio.run(previous_host_rejects_worker(args.previous_host.resolve(), host, root))
                 report['previousHostRejectedNewWorkerAndRetainedGeneration'] = True
@@ -351,7 +372,7 @@ def main():
             print((broker.root/'daemon.log').read_text(encoding='utf-8', errors='replace'), file=sys.stderr)
             raise
         finally:
-            broker.stop(); broker.log.close()
+            broker.crash_fixture(); broker.log.close()
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(report, indent=2)+'\n', encoding='utf-8')

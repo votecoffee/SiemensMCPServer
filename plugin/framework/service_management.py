@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager, suppress
 from importlib.metadata import version
 import json
 import logging
+import hmac
 import os
 from pathlib import Path
 import secrets
@@ -31,13 +32,15 @@ def bounded_json(path):
     return json.loads(raw)
 
 
-def local_state(state):
+def local_state(state, *, require_journals=False):
     """Read existing journals only; never acquire a context or call engineering tools."""
     state = Path(state)
     contexts = unresolved = 0
     for name in ('ownership.sqlite3', 'writes.sqlite3'):
         path = state/name
         if not path.exists():
+            if require_journals:
+                raise ValueError('Required ownership/outcome journal is unavailable')
             continue
         db = sqlite3.connect(path.resolve().as_uri()+'?mode=ro', uri=True, timeout=0.2)
         try:
@@ -87,9 +90,13 @@ class StatusCache:
             if receipt and receipt.get('pluginId') != PLUGIN_ID:
                 raise ValueError('Installed plugin identity changed')
             contexts, unresolved = local_state(self.config['state'])
+            from lifetime import owned_resources, frontend_limit
+            owned = owned_resources()
+            owned_count = len(owned['owned_processes']) if owned.get('inventory_available') else 'unknown'
             current = ManagedStatus(
                 state='degraded' if unresolved else 'busy' if contexts else 'running',
                 message=(f'Engineering host; {contexts} retained context(s); {unresolved} unreconciled request(s). '
+                         f'Owned process tree: {owned_count}; connected-chat ceiling: {frontend_limit(self.config)}. '
                          'Native selection, previews and unsaved state are not inspected.'),
                 versions={
                     'app': ComponentVersion(installed=installed_app, running=self.running_app),
@@ -126,13 +133,53 @@ class ObservedBackend(ApplicationBackend):
     def __init__(self, host, cache):
         super().__init__(host)
         self.cache = cache
+        self.admission = asyncio.Lock()
+        self.draining = False
 
     async def invoke(self, name, arguments, *, relay=None):
-        self.cache.begin()  # Includes requests queued behind another chat's service gate.
+        from universal_tools.surface import error_result
+        async with self.admission:
+            if self.draining:
+                return error_result('Siemens service is stopping; no new engineering request was admitted.')
+            self.cache.begin()  # Includes requests queued behind another chat's service gate.
         try:
             return await super().invoke(name, arguments, relay=relay)
         finally:
             self.cache.end()
+
+    async def request_shutdown(self, state):
+        async with self.admission:
+            if self.cache.snapshot().active_operations:
+                return False, 'Active requests must finish before service shutdown.'
+            try:
+                contexts, unresolved = await asyncio.to_thread(local_state, state, require_journals=True)
+            except Exception:
+                return False, 'Cannot verify ownership/outcomes; service remains running.'
+            if contexts or unresolved:
+                return False, 'Retained contexts or unreconciled outcomes block service shutdown.'
+            self.draining = True
+            return True, 'Service admission fenced; graceful shutdown scheduled.'
+
+
+class SafeShutdown:
+    """Server-side ownership check and admission fence, without a lease-admission race."""
+    def __init__(self, protected, settings, process, backend, state):
+        self.protected, self.settings, self.process, self.backend, self.state = protected, settings, process, backend, state
+
+    async def __call__(self, scope, receive, send):
+        if scope['type'] != 'http' or scope['path'] != '/shutdown':
+            return await self.protected(scope, receive, send)
+        from starlette.responses import JSONResponse
+        headers = dict(scope.get('headers', []))
+        authenticated = (scope['method'] == 'POST' and b'origin' not in headers
+            and headers.get(b'host') == f'{self.settings.host}:{self.settings.port}'.encode()
+            and hmac.compare_digest(headers.get(b'authorization', b''), ('Bearer '+self.settings.token).encode()))
+        if not authenticated:
+            return await JSONResponse({'error': 'unauthorized'}, status_code=401)(scope, receive, send)
+        accepted, message = await self.backend.request_shutdown(self.state)
+        if accepted:
+            self.process.should_exit = True
+        await JSONResponse({'stopping': accepted, 'message': message}, status_code=200 if accepted else 409)(scope, receive, send)
 
 
 def serve_managed(config_path, config):
@@ -184,5 +231,6 @@ def serve_managed(config_path, config):
     options = uvicorn.Config(app, host=settings.host, port=settings.port, log_level='warning',
                              access_log=False, timeout_graceful_shutdown=15)
     process = uvicorn.Server(options)
-    options.app = ProtectedApp(GuidanceAdmin(app, guidance, settings.port), settings, process, secrets.token_hex(16))
+    protected = ProtectedApp(GuidanceAdmin(app, guidance, settings.port), settings, process, secrets.token_hex(16))
+    options.app = SafeShutdown(protected, settings, process, host.backend, state)
     process.run()

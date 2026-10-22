@@ -32,7 +32,8 @@ class ManagementTests(unittest.TestCase):
         (self.payload/'plugin.json').write_text('{"version":"0.19.0"}')
         self.state = self.root/'state'; self.state.mkdir()
         self.config = self.root/'active.json'
-        self.config.write_text(json.dumps({'payloadRoot': str(self.payload), 'state': str(self.state)}))
+        self.config.write_text(json.dumps({'payloadRoot': str(self.payload), 'state': str(self.state),
+            'launchOptions': {'settings_file': str(self.root/'safeguards.json')}}))
         (self.root/'installed-components.json').write_text(json.dumps({'pluginId': PLUGIN_ID, 'pluginVersion': '0.19.0'}))
         self.cache = StatusCache(self.config, json.loads(self.config.read_text()))
         self.cache.refresh()
@@ -91,6 +92,8 @@ class ManagementTests(unittest.TestCase):
                 await blocker.wait()
             backend = object.__new__(ObservedBackend)
             backend.cache = self.cache
+            backend.admission = asyncio.Lock()
+            backend.draining = False
             with patch.object(ApplicationBackend, 'invoke', new=pending):
                 tasks = [asyncio.create_task(backend.invoke('call_read_tool', {})) for _ in range(2)]
                 await asyncio.sleep(0)

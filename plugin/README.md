@@ -1,6 +1,6 @@
-# SiemensMCPServer plugin 0.20.1
+# SiemensMCPServer plugin 0.21.0
 
-Host 0.20.1 and Comfort worker 0.15.1 add [classic TextLists validation and evidence](CLASSIC-TEXT-LIST-WORKFLOW.md): original-byte encoding/metadata checks, exact entry/translation delta preservation, actual screen bindings, scoped folder/ZIP preparation and native workflow receipt consistency. Prepare and native text-list imports enforce required preflight checks automatically. These additions have offline/package coverage; native acceptance of the new staging route remains pending.
+Host 0.21.0 and Comfort worker 0.15.1 add [classic TextLists validation and evidence](CLASSIC-TEXT-LIST-WORKFLOW.md): original-byte encoding/metadata checks, exact entry/translation delta preservation, actual screen bindings, scoped folder/ZIP preparation and native workflow receipt consistency. Prepare and native text-list imports enforce required preflight checks automatically. These additions have offline/package coverage; native acceptance of the new staging route remains pending.
 
 The project and GitHub repository are now **SiemensMCPServer**. The plugin/MCP ID is `siemens-mcp-server`, the local marketplace is `siemens-mcp-server-local`, and the host is `SiemensMCPServer.Mcp.exe`. Remove the old `siemens-tia-openness` plugin or direct MCP registration through Codex before installing the renamed plugin. The installer refuses to register a second copy while the old server is enabled. Do not remove its cache manually while it is running. This rename needs a host upgrade; feature-worker reload remains available afterward.
 
@@ -12,7 +12,7 @@ A selected historical V15.1 native pilot passed single-line English/German Unico
 
 Host 0.15.0 and desktop 1.3.0 share [GUI-editable safeguards](SAFEGUARDS.md): write ceilings, operation restrictions, confirmations, preview limits, project scope and request limits. Permissions are rechecked for subsequent operations; scheduling/location changes require a host restart. Local settings do not grant client or Siemens permission.
 
-Host/plugin **0.20.1** uses the app-owned framework 0.18.0 gateway: fourteen engineering discovery/invocation tools reach 51 native operations, plus four read-only current-guidance/doctor tools. Stable packaged bootstraps retrieve [current workflow guides](CURRENT-GUIDANCE.md); the app-host HTTP profile also publishes verified Skills-over-MCP. The native executable retains direct access to its 51 tools. Fresh installations and upgrades always install the standalone Siemens plugin; no Universal Tools plugin or shared registration is used. See [app host operation](APP-HOST.md).
+Host/plugin **0.21.0** uses the app-owned framework 0.18.0 gateway: fourteen engineering discovery/invocation tools reach 51 native operations, plus four read-only current-guidance/doctor tools. Stable packaged bootstraps retrieve [current workflow guides](CURRENT-GUIDANCE.md); the app-host HTTP profile also publishes verified Skills-over-MCP. The native executable retains direct access to its 51 tools. Fresh installations and upgrades always install the standalone Siemens plugin; no Universal Tools plugin or shared registration is used. See [app host operation](APP-HOST.md).
 
 The owning host also reports cached state and component versions to the optional [tray service manager](APP-HOST.md#tray-management). No duplicate manager is installed. Tray restart remains disabled because safe native quiescence and a surviving restart supervisor are not implemented.
 
@@ -37,6 +37,8 @@ powershell.exe -NoProfile -File 'C:\path\to\extracted-plugin\scripts\Install-Cod
 ```
 
 From this repository, the equivalent installer is `build/Install-CodexPlugin.ps1`. It checks ZIP/payload hashes, safe paths, member limits and plugin identity; keeps a versioned source under `%LOCALAPPDATA%\SiemensMCPServer\CodexMarketplace`; prepares the dedicated per-user framework runtime; backs up affected settings; then uses `codex plugin marketplace add` and `codex plugin add`. Existing unrelated plugins/settings are preserved. `-PrepareOnly` verifies/stages a package without registering it. A direct Siemens MCP registration blocks plugin installation to prevent duplicate tools. Resolve that existing registration explicitly before switching installation methods. No TIA project is attached or changed.
+
+Source version 0.21.0 requires an explicit [app-manager start](APP-HOST.md#installation-and-private-state) before connecting; installing or opening a chat does not start the service. The GUI's **Maximum connected MCP chats** policy defaults to four and accepts 1–16. [Process lifetimes and ownership](LIFETIME-MANAGEMENT.md) explains the source changes and pending process-level/installed acceptance, including the durable ledger integration still awaiting a published framework API.
 
 Verify the installed configuration using `py -3 -X utf8 scripts/test_codex_integration.py` from the extracted plugin or repository. The probe gets the actual registered command/arguments from Codex, starts that cached server, checks both skills and the tool list, and reads API capabilities/process metadata without attachment or model calls. Start a new Codex chat to load the installed tools and skills. This validates configuration and transport; it does not establish native project editing or a model-driven project trial.
 

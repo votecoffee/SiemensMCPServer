@@ -1,6 +1,8 @@
 # Standalone app host
 
-Plugin 0.20.1 uses framework 0.18.0, Python MCP SDK 2.3.0 and matching wire types. Its fourteen engineering frontend tools discover/invoke the existing 51 Siemens operations; four additional read-only tools provide current guidance and doctor reporting. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. See [current guidance and host features](CURRENT-GUIDANCE.md) for the selected stdio and HTTP extension profiles.
+Plugin 0.21.0 uses framework 0.18.0, Python MCP SDK 2.3.0 and matching wire types. Its fourteen engineering frontend tools discover/invoke the existing 51 Siemens operations; four additional read-only tools provide current guidance and doctor reporting. The C# backend retains SDK 2.2.0 and direct MCP access. This is a dedicated Siemens application: installation neither requires the Universal Tools plugin nor registers Siemens with a shared broker. See [current guidance and host features](CURRENT-GUIDANCE.md) for the selected stdio and HTTP extension profiles.
+
+Version 0.21.0 process-lifetime changes are source implementations pending isolated runtime acceptance. Service startup is explicit: a stopped owner is reported by a chat connection without launching it. [Process lifetimes and ownership](LIFETIME-MANAGEMENT.md) describes connection limits, attached-app preservation, shutdown fencing and the pending durable resource ledger.
 
 ## Tray management
 
@@ -38,6 +40,8 @@ $siemensRuntime = Get-Content -LiteralPath $siemensConfig -Raw | ConvertFrom-Jso
 $siemensManager = Join-Path $siemensRuntime.payloadRoot 'framework\manage.py'
 & $siemensRuntime.python -B $siemensManager status --config $siemensConfig
 & $siemensRuntime.python -B $siemensManager contexts --config $siemensConfig
+# Deliberately start the owner before opening a connection:
+& $siemensRuntime.python -B $siemensManager start --config $siemensConfig
 # After completing/releasing engineering work:
 & $siemensRuntime.python -B $siemensManager stop --config $siemensConfig
 ```
@@ -45,6 +49,8 @@ $siemensManager = Join-Path $siemensRuntime.payloadRoot 'framework\manage.py'
 Startup verifies the entire payload, publication and pinned module origins before serving requests. An update refuses to replace a running different deployment, retained ownership or non-completed write receipts. Finish/reconcile work, release contexts and stop this app host before updating. Prior runtime pointers and Codex configuration backups are retained. Do not edit immutable installed payloads; rebuild and reinstall them. Start a new Codex chat after installation to load updated skills and tools.
 
 The Windows launcher waits for its frontend and returns that process's exit status. The client can therefore track the connection lifetime until shutdown. Verification checks this lifetime and explicitly releases its test context before reporting success.
+
+Installation does not start the owner. A proxy only connects to an already running service; closing it does not stop the shared owner. The desktop Safeguards editor's **Maximum connected MCP chats** setting defaults to four and bounds new frontend admissions to 1–16. Lowering it preserves existing connections. The source's EOF/parent-loss/crash containment needs separate runtime acceptance before deployment.
 
 Stopping waits for the host's OS-owned state lock to be released, after HTTP shutdown and adapter/journal teardown. Startup also waits for that lock before launching a replacement. A busy owner times out safely; it is never forcibly killed and native work is not replayed.
 
@@ -77,7 +83,7 @@ When upgrading an older host that lacks this command, first stage the verified n
 
 The command retains a separate immutable copy of the reviewed evidence and an attestation bound to all original request fields. It does not change the original write-journal row, mark a failed request successful, perform native work, retry or roll back. Repeating the original request ID remains blocked. An upgrade accepts only an exact attestation with intact retained evidence; another unresolved request, changed receipt, damaged/missing evidence or a running host still blocks it. This records an operator assertion; hashes do not authenticate native provenance. The installer never generates acknowledgments automatically.
 
-Existing chat connections may try to restart the idle host during an update. For an evidence-reviewed upgrade, the candidate manager also supports `reconcile-upgrade`: it holds the startup lock across the idle-host stop, exact request attestations and publication of the new deployment. It refuses retained ownership and keeps the same state directory and original replay journal. Use a private batch JSON array with `{requestId,fingerprint,evidence,sha256,summary}` for each reviewed request (`evidence` is the exact JSON file path):
+Older installed launchers may try to restart the idle host during an update; version 0.21.0 removes that behavior from proxy connections. For an evidence-reviewed upgrade, the candidate manager also supports `reconcile-upgrade`: it holds the startup lock across the idle-host stop, exact request attestations and publication of the new deployment. It refuses retained ownership and keeps the same state directory and original replay journal. Use a private batch JSON array with `{requestId,fingerprint,evidence,sha256,summary}` for each reviewed request (`evidence` is the exact JSON file path):
 
 ```powershell
 & $siemensRuntime.python -B $siemensManager reconcile-upgrade --config $siemensConfig `

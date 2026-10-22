@@ -22,6 +22,8 @@ def main():
     command = [str(python), '-B', str(manager), 'proxy', '--config', str(config)]
     if os.name == 'nt':
         import subprocess
+        from lifetime import contain_current_process
+        contain_current_process(watch_parent=True)
         # Windows exec terminates the tracked launcher while its child keeps the pipes.
         # Wait instead, preserving the MCP client's process lifetime and exit status.
         return subprocess.call(command)

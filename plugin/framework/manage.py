@@ -153,7 +153,7 @@ def prepare(args):
                 subprocess.run([str(python), '-m', 'pip', 'check'], check=True, stdout=log, stderr=log)
             atomic_json(ready, {'bundleSha256': bundle, 'frameworkVersion': FRAMEWORK_VERSION})
         command = [str(python), '-B', str(payload/'framework/manage.py'), 'configure',
-            '--payload', str(payload), '--root', str(root)]
+            '--payload', str(payload), '--root', str(root), '--max-frontends', str(getattr(args, 'max_frontends', 4))]
         if args.allow_writes:
             command.append('--allow-writes')
         for name in ('settings_file', 'artifact_root', 'extensions_root'):
@@ -181,7 +181,10 @@ def configure(args, *, _startup_locked=False):
     root = ordinary(args.root)
     state = root/'state'
     state.mkdir(parents=True, exist_ok=True)
-    launch = {'payloadRoot': str(payload), 'allowWrites': args.allow_writes,
+    maximum = getattr(args, 'max_frontends', 4)
+    if type(maximum) is not int or not 1 <= maximum <= 16:
+        raise ValueError('Maximum connected chats must be between 1 and 16')
+    launch = {'payloadRoot': str(payload), 'allowWrites': args.allow_writes, 'maxFrontends': maximum,
               **{name: str(Path(getattr(args, name)).absolute()) if getattr(args, name) else None
                  for name in ('settings_file', 'artifact_root', 'extensions_root')}}
     binding = hashlib.sha256((fingerprint+json.dumps(launch, sort_keys=True)).encode('utf-8')).hexdigest()
@@ -234,7 +237,8 @@ def configure(args, *, _startup_locked=False):
                 'deploymentBinding': binding, 'launchOptions': launch,
                 'payloadManifestSha256': fingerprint, 'managerSha256': digest(payload/'framework/manage.py'),
                 'python': sys.executable, 'state': str(state), 'publication': str(publication_path),
-                'publicationSha256': digest(publication_path), 'backendTools': len(tools), 'writesEnabled': args.allow_writes}
+                'publicationSha256': digest(publication_path), 'backendTools': len(tools), 'writesEnabled': args.allow_writes,
+                'maxFrontends': maximum, 'serviceStartup': 'explicit-only'}
             active = root/'active.json'
             if active.exists():
                 atomic_json(root/'active.previous.json', json.loads(active.read_bytes()))
@@ -348,7 +352,7 @@ def reconcile_upgrade(args, config):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['prepare', 'configure', 'catalog', 'serve', 'proxy', 'status', 'stop', 'contexts', 'reconcile-request', 'reconcile-upgrade', 'prepare-guidance', 'publish-guidance'])
+    parser.add_argument('command', choices=['prepare', 'configure', 'catalog', 'start', 'serve', 'proxy', 'status', 'stop', 'contexts', 'reconcile-request', 'reconcile-upgrade', 'prepare-guidance', 'publish-guidance'])
     parser.add_argument('--payload', type=Path)
     parser.add_argument('--root', type=Path, default=default_root())
     parser.add_argument('--config', type=Path)
@@ -369,6 +373,7 @@ def main():
     parser.add_argument('--bundle', type=Path)
     parser.add_argument('--expected-revision')
     parser.add_argument('--expected-sha256')
+    parser.add_argument('--max-frontends', type=int, default=4)
     args = parser.parse_args()
     if args.command == 'catalog':
         atomic_json(args.output, backend_catalog(args.executable.resolve()))
@@ -411,17 +416,25 @@ def main():
                 args.expected_evidence_sha256, args.summary, args.acknowledge_outcome, _startup_locked=True)
             activation = asyncio.run(activate_reconciled(config, [args.request_id]))
             print(json.dumps({**receipt, **activation}, indent=2))
+    elif args.command == 'start':
+        ensure_running(config_path, config)  # Only this explicit operator command may launch the owner.
+        print(json.dumps({'state': 'started', 'automaticRestart': False}))
     elif args.command == 'serve':
         from service_management import serve_managed
+        from lifetime import contain_current_process
+        contain_current_process()
         serve_managed(config_path, config)
     elif args.command == 'proxy':
-        from universal_tools.surface import RemoteBackend, create_surface
-        from guidance import register_readers
-        ensure_running(config_path, config)
-        remote = RemoteBackend(load_settings(state))
-        server = create_surface(remote, name='SiemensMCPServer', instructions=INSTRUCTIONS)
-        register_readers(server, remote=remote)
-        server.run(transport='stdio')
+        from lifetime import FrontendSlot, frontend_limit
+        with FrontendSlot(state, frontend_limit(config)):
+            if not probe(load_settings(state)):
+                raise ValueError('Siemens service is stopped. Start it explicitly with the app manager start command. A chat connection never starts or restarts it.')
+            from universal_tools.surface import RemoteBackend, create_surface
+            from guidance import register_readers
+            remote = RemoteBackend(load_settings(state))
+            server = create_surface(remote, name='SiemensMCPServer', instructions=INSTRUCTIONS)
+            register_readers(server, remote=remote)
+            server.run(transport='stdio')
     else:
         result = {'status': lambda: probe(load_settings(state)) or {'running': False},
             'stop': lambda: stop(state), 'contexts': lambda: list_contexts(state)}[args.command]()

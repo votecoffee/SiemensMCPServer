@@ -184,11 +184,15 @@ class Guidance:
             return {**self.identity(), 'workflows': workflows}
 
     async def doctor(self):
+        from lifetime import owned_resources
         return {**(await self.list_workflows()), 'framework_version': '0.18.0', 'python_sdk_version': '2.3.0',
+            'resource_ownership': owned_resources(),
             'profiles': {'standalone_stdio': 'engineering plus ordinary guide tools; no Skills extension advertised',
                 'authenticated_app_host_http': 'engineering plus guide tools, Skills extension and directory reads'},
             'features': {
                 'current_guides_and_references': {'status': 'enabled-and-tested', 'evidence': 'connected-client revision/hash and resource parity tests'},
+                'managed_process_lifetimes': {'status': 'implemented-but-unassessed', 'reason': 'Explicit start, bounded frontend slots, EOF/parent-exit containment and atomic shutdown need authorized isolated runtime validation.'},
+                'durable_resource_ledger': {'status': 'blocked', 'reason': 'Awaiting the published common ownership-ledger package/API. Current process Job membership is not a durable restart/recovery ledger.'},
                 'skills_publication_and_resource_notifications': {'status': 'enabled-and-tested', 'evidence': 'app-host HTTP profile; explicit CAS publication and reconnect/refetch'},
                 'native_operation_stages': {'status': 'enabled-and-tested', 'evidence': 'request lane stages/structured status; notifications need caller progress support'},
                 'queued_cancellation': {'status': 'enabled-and-tested', 'evidence': 'queued work removed before dispatch; running native calls are never aborted'},
@@ -197,7 +201,7 @@ class Guidance:
                 'approval_continuations': {'status': 'blocked', 'reason': 'No target/preview-bound native approval adapter; ordinary authorization and reviewed hashes remain required.'},
                 'engineering_artifact_resources': {'status': 'blocked', 'reason': 'No owner-bound retained export registry for resource authorization; existing scoped engineering readers remain usable.'},
                 'redis_oauth_apps': {'status': 'outside-app-workflow', 'reason': 'Local single-owner engineering profile; no replicas or additional remote/UI grants.'}},
-            'acceptance': {'source_protocol_tests': 'covered', 'codex_native_skill_activation': 'not-established',
+            'acceptance': {'source_protocol_tests': '0.20 profile covered; 0.21 process lifetimes unassessed', 'codex_native_skill_activation': 'not-established',
                            'native_project_runtime_acceptance': 'not-established', 'guide_read_grants_write_approval': False}}
 
     async def read(self, workflow_id, expected_revision, expected_sha256, reference_id=None):

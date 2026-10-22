@@ -51,6 +51,8 @@ Host/plugin 0.19.0 uses framework 0.18.0 and reports service state, active reque
 
 Host/plugin 0.20.0 keeps four stable packaged skill bootstraps and serves current, hash-pinned guides/references through ordinary tools. The app-owned HTTP profile also publishes the same content through Skills-over-MCP. Native tools report real queue/dispatch/return stages and retain bounded cancellation/status telemetry. See [guidance publication and feature boundaries](plugin/CURRENT-GUIDANCE.md) for live-update behavior, doctor reporting and remaining Tasks/cache/artifact limitations.
 
+Source version 0.21.0 adds explicit service startup, a GUI-editable connected-chat limit, shutdown admission fencing and private process-tree containment. Static/in-process checks are separate from the pending process-level and installed acceptance. Durable resource recovery awaits the common framework ledger package/API. See [process lifetimes and ownership](plugin/LIFETIME-MANAGEMENT.md).
+
 ## Install
 
 ### Dependencies
@@ -133,6 +135,8 @@ tia_get_api_capabilities()
 ```
 
 Acquire the `siemens-engineering` service and retain its framework context throughout an engineering workflow. The native executable remains available for direct clients. Keep a persistent native MCP connection for direct engineering workflows: attachments, preview plans and worker generations belong to the running host. A transport that starts a fresh host for each call cannot carry an attach/preview/apply sequence. Inspect current native state and retained artifacts before retrying an uncertain write.
+
+With version 0.21.0, start the shared owner explicitly through [app administration](plugin/APP-HOST.md#installation-and-private-state) before opening the standalone plugin connection. A stopped service is reported without an automatic launch/restart. The desktop **Safeguards...** editor controls the connection ceiling; it defaults to four.
 
 ### Reload feature workers
 

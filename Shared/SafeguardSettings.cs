@@ -50,6 +50,8 @@ namespace SiemensMCPServer
         public int MaxPendingPreviews { get; set; } = 100;
         [Category("5. Request limits (host restart)"), DisplayName("Parallel local analysis jobs"), Description("1..8. Native operations always use a single STA lane. Restart applies changes; an explicit --analysis-parallelism launch argument overrides this value.")]
         public int AnalysisParallelism { get; set; } = 2;
+        [Category("5. Request limits (host restart)"), DisplayName("Maximum connected MCP chats"), Description("1..16. Bounds lightweight frontend processes. New connections read this limit; lowering it never terminates an existing chat. The application service must be started explicitly.")]
+        public int MaxMcpFrontends { get; set; } = 4;
         [Category("5. Request limits (host restart)"), DisplayName("Queued native requests"), Description("1..1000. Overflow is rejected before dispatch.")]
         public int NativeQueueCapacity { get; set; } = 100;
         [Category("5. Request limits (host restart)"), DisplayName("Queued analysis requests"), Description("1..1000.")]
@@ -84,6 +86,7 @@ namespace SiemensMCPServer
             Range(PreviewLifetimeMinutes, 1, 1440, nameof(PreviewLifetimeMinutes));
             Range(MaxPendingPreviews, 1, 1000, nameof(MaxPendingPreviews));
             Range(AnalysisParallelism, 1, 8, nameof(AnalysisParallelism));
+            Range(MaxMcpFrontends, 1, 16, nameof(MaxMcpFrontends));
             Range(NativeQueueCapacity, 1, 1000, nameof(NativeQueueCapacity));
             Range(AnalysisQueueCapacity, 1, 1000, nameof(AnalysisQueueCapacity));
             Range(ControlQueueCapacity, 1, 1000, nameof(ControlQueueCapacity));

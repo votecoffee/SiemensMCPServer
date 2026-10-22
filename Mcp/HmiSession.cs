@@ -125,6 +125,8 @@ namespace SiemensMCPServer.Mcp
         {
             if (project != null) CheckProject();
             return new { attached = project != null, processId, projectPath, projectModified = project?.IsModified, textListWorkflow = workflow?.Status(),
+                softwareOwnership = project == null ? "not-attached" : "attached-user-owned",
+                nativeApplicationLaunchedByThisSession = false, closeNativeApplicationOnDispose = false,
                 plcTargets = project == null ? Array.Empty<object>() : SoftwareCatalog.Discover(project).Where(s => s.Family == "plc")
                     .Select(s => (object)new { plcId = s.Id, label = s.Label, name = s.Software.Name }).ToArray(),
                 hmis = hmis.Select(h => new { hmiId = h.Id, label = h.Label, name = h.Software.Name, family = h.Family,
@@ -459,6 +461,8 @@ namespace SiemensMCPServer.Mcp
 
         public void Dispose()
         {
+            // This handle was acquired through an existing process.Attach().
+            // Dispose detaches Openness; never close/kill the user's TIA process or project here.
             workflow = null; unifiedWorkflow = null; engineeringWorkflow = null; classicXmlWorkflow = null; hmis = new List<HmiReference>(); project = null; projectPath = null; processId = null;
             if (portal != null) { portal.Dispose(); portal = null; }
         }
