@@ -69,6 +69,7 @@ $sources=@($sourcePaths | ForEach-Object {[ordered]@{path=$_;sha256=Get-NativeHa
 [IO.File]::WriteAllText((Join-Path $packageRoot 'source-manifest.json'),(ConvertTo-Json -InputObject $sources -Depth 5),$utf8)
 $files=@(Get-ChildItem -LiteralPath $packageRoot -File -Recurse -Force | Sort-Object FullName | ForEach-Object {[ordered]@{path=$_.FullName.Substring($packageRoot.Length+1).Replace('\','/');bytes=$_.Length;sha256=Get-NativeHash $_.FullName}})
 [IO.File]::WriteAllText((Join-Path $packageRoot 'manifest.json'),(ConvertTo-Json -InputObject $files -Depth 5),$utf8)
+Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zipPath=Join-Path $artifactRoot ($name+'.zip'); $zip=[IO.Compression.ZipFile]::Open($zipPath,[IO.Compression.ZipArchiveMode]::Create)
 try { foreach($file in Get-ChildItem -LiteralPath $packageRoot -File -Recurse -Force){[IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip,$file.FullName,$file.FullName.Substring($packageRoot.Length+1).Replace('\','/'),[IO.Compression.CompressionLevel]::Optimal)|Out-Null} } finally {$zip.Dispose()}
