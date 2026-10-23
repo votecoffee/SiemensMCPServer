@@ -20,6 +20,10 @@ dotnet test Tests/SiemensMCPServer.Tests.csproj -c Release -p:RestoreLockedMode=
 
 Use [docs/BUILDING.md](docs/BUILDING.md) for transport and packaging checks. Verify documentation links and examples when updating documentation. Keep the root README description aligned with the plugin manifests.
 
+[Architecture](docs/ARCHITECTURE.md) records which profile owns each behavior and its acceptance boundary. The shared framework and separate management app live in [CodexMCPBroker](https://github.com/votecoffee/CodexMCPBroker); this repository retains its own standalone server, Codex plugin and skills. Do not replace them with a universal plugin or upgrade reviewed dependency pins as part of a documentation change.
+
+Run `scripts/test_root_commands.py` for CMD quoting/forwarding, help, install-only/check-only and failure propagation in a disposable copied checkout. Run `scripts/test_codex_config_bytes.py` for byte-exact UTF-8 TOML publication. These fixtures do not access a normal Codex config or start an engineering application. Reusable publication code must emit explicit CRLF as binary bytes on Windows, preserve parsed unrelated settings, reject malformed/stale inputs and retain evidence without automatic repair/retry. See [configuration publication](docs/CONFIG-PUBLICATION.md).
+
 Describe the problem, resulting behavior and checks in the pull request. Distinguish offline tests, installed API checks, native engineering acceptance and runtime behavior. A build or exported-file comparison does not establish native import, save/reopen, download or device behavior.
 
 Native checks should use a dedicated test copy with a backup and restoration plan. Retain raw evidence locally; publish only a generic, appropriately scoped validation summary.

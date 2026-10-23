@@ -1,10 +1,14 @@
 # Current workflow guidance and host features
 
+The selected profile determines its tools and entry points. The [direct offline profile](../plugin-offline/README.md) has three supplied-content tools and four scoped offline skills. The [native direct candidate](../plugin-native/README.md) declares 52 engineering/lifecycle tools plus the four readers below; its native bootstraps use direct live schemas and require no service/context acquisition. Its doctor reports management/restart unavailable. Build and harmless fixture checks do not activate or accept that native profile.
+
+The sections below describe the earlier optional Python framework profile and its context/HTTP publication mechanisms. [CodexMCPBroker](https://github.com/votecoffee/CodexMCPBroker) is the shared framework plus a separate Windows management app; neither replaces Siemens' own plugin/skills or installs a universal plugin. Direct-profile guidance remains data-only and revision/hash pinned; optional HTTP Skills support is not inferred for the direct host.
+
 Host/plugin 0.20.0 keeps four focused packaged bootstraps: HMI, offline PLC, library inspection and project texts. Their names/descriptions/triggers remain unchanged. Detailed procedures live in `guidance/<workflow>/SKILL.md`; supporting public references remain the root Markdown documents in this plugin. Those are the canonical maintained sources. Data-only bundle preparation generates self-contained reference views, resource manifests and hashes from them; generated snapshots are not parallel manually maintained instructions.
 
 ## Selected routes
 
-The standalone Codex stdio connection has the fourteen existing framework discovery/invocation tools plus four read-only app tools:
+The earlier framework Codex stdio connection has fourteen framework discovery/invocation tools plus four read-only app tools:
 
 | Tool | Purpose |
 | --- | --- |

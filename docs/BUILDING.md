@@ -2,6 +2,18 @@
 
 Build on Windows x64 with a .NET 8 or newer SDK, .NET Framework 4.8 targeting support and the required installed Siemens Openness API. Visual Studio can open `SiemensMCPServer.sln`; the desktop project can also be built independently.
 
+[Implementation architecture](ARCHITECTURE.md) distinguishes the direct offline/native profiles, shared native adapters and earlier optional framework host. The [CodexMCPBroker project](https://github.com/votecoffee/CodexMCPBroker) provides a shared versioned framework and [separate Windows manager](https://github.com/votecoffee/CodexMCPBroker/blob/main/docs/service-management.md). Siemens retains its standalone server, application-owned Codex plugin and skills; no universal plugin is installed. Direct profiles need no framework wheel. Do not substitute the framework repository's latest release for the optional profile's reviewed pins.
+
+## Source and disposable entry-point checks
+
+```powershell
+py -3.13 -B scripts/test_codex_config_bytes.py
+py -3.13 -B scripts/test_root_commands.py
+py -3.13 -B scripts/test_native_package.py
+```
+
+These checks use byte fixtures, a copied CMD checkout, a synthetic installation receipt and harmless PowerShell installer stubs. They do not start a GUI/MCP/native worker, invoke Codex registration or access the normal Codex config. They exercise explicit Windows CRLF publication, parsed settings preservation, quoting/argument forwarding, help and failure exit codes. See [configuration publication](CONFIG-PUBLICATION.md). `InstallAndRun.cmd -InstallOnly -NoPause` is available for a separately authorized disposable GUI installation; `Run.cmd -CheckOnly -NoPause` verifies its selection without opening it.
+
 ## MCP server and desktop utility
 
 For the standalone direct native candidate, run `build/Build-NativePlugin.ps1 -TiaPortalVersion V15.1`. This compiles/publishes only; it does not execute MCP, feature workers or TIA. The candidate includes four native skill entry points and a hash-pinned projection of the maintained native guides, with direct tool invocation. Its installer/normal activation remains held pending a coordinated disposable MCP/TIA pilot. See [candidate build and pilot scope](../plugin-native/README.md). The accepted offline profile is a separate build/install route.
@@ -173,11 +185,11 @@ For source-only validation without starting MCP/native processes, run `scripts/t
 
 Set `SIEMENS_RESOURCE_CONTRACT_OUTPUT` to a private output directory before the focused .NET tests to retain their native JSON/revision vectors. Run `scripts/test_resource_contract.py <private-output> --check-lock` with the reviewed framework dependency to validate its actual model/revision parser and C# FileStream/Python byte-lock exclusion. That optional lock fixture starts only the focused .NET unit runner. Keep `SIEMENS_MCP_MANAGEMENT_REGISTRY` isolated in process fixtures; none of these checks use native engineering software.
 
-Plugin 26.1022.173616 pins `universal-codex-tools==0.20.0`, MCP Python 2.3.0 and matching wire types in `plugin/framework/requirements-lock.txt`. Build or obtain a verified wheel from framework commit `5b2cac50ca24d21a15b732e0424bb02fd794e1fb`, then supply it through `-FrameworkWheel`. Packaging checks its RECORD/metadata and collects the exact binary dependency wheels. Runtime installation uses `--no-index` and the bundled wheelhouse. The C# SDK remains 2.2.0.
+The earlier optional Python framework profile pins `universal-codex-tools==0.20.0`, MCP Python 2.3.0 and matching wire types in `plugin/framework/requirements-lock.txt`. Build or obtain a verified wheel from framework commit `5b2cac50ca24d21a15b732e0424bb02fd794e1fb`, then supply it through `-FrameworkWheel`. Packaging checks its RECORD/metadata and collects the exact binary dependency wheels. Runtime installation uses `--no-index` and the bundled wheelhouse. The C# SDK remains 2.2.0. These are profile-specific reviewed pins, not a claim about the framework repository's current release or direct-profile dependencies.
 
 The reviewed framework wheel SHA-256 is `a1b3777f8e8c1900e136a514d89ddb485a6bf4d69a525e3d24e1d04cd040efb3`. Build and runtime bundle checks enforce those exact bytes as well as the source commit and dependency pins. Management integration is part of the owning Python host, leaving the native TIA profiles intact. Run `scripts/test_service_management.py` and the existing framework integrity/lifecycle/reconciliation/adapter checks in the pinned test runtime. Keep synthetic registries separate from the real manager's registry. The native restart feature remains disabled; tests never restart a live engineering service through the tray.
 
-For host 26.1022.173616 also run `scripts/test_guidance.py`, the request-lane unit tests and the packaged adapter/installed-connection probes. Canonical procedures are under `plugin/guidance/`; root public plugin Markdown references are projected into data-only snapshots. Packaged `plugin/skills/` files remain stable entrypoints. [Current guidance](../plugin/CURRENT-GUIDANCE.md) documents the ordinary tools, the separate HTTP Skills profile, explicit publication, session-only overrides and precise optional-feature blockers. No native project is needed for guide discovery or protocol tests.
+For that optional framework host, also run `scripts/test_guidance.py`, the request-lane unit tests and separately authorized packaged adapter/installed-connection probes. Canonical procedures are under `plugin/guidance/`; root public plugin Markdown references are projected into data-only snapshots. `plugin/skills/`, `plugin-native/skills/` and `plugin-offline/skills/` contain distinct profile entrypoints. [Current guidance](../plugin/CURRENT-GUIDANCE.md) distinguishes their direct tools from the optional HTTP Skills profile, publication and session-only overrides. No native project is needed for guide discovery or protocol tests, but starting a real host still belongs to its separate runtime acceptance.
 
 `scripts/test_discovery_cache.py <backend-executable> --report <private-report.json>` measures actual native metadata round trips with/without the private five-second hints, verifies fresh bypass, detached copies, per-connection isolation and watcher acknowledgment. Timing is diagnostic; the regression asserts round-trip counts, not machine-dependent latency. The app-owned publication retains exclusive resource ownership and selects `auto` discovery with legacy fallback; unsupported notifications/hints never imply native effects or cached authorization.
 

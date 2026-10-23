@@ -1,4 +1,8 @@
-# SiemensMCPServer plugin 0.21.0
+# SiemensMCPServer plugin profiles
+
+Siemens distributes its standalone MCP server and its own Codex plugin/skills. The [direct offline profile](../plugin-offline/README.md) exposes three tools over sixteen supplied-content operations. The [native direct candidate](../plugin-native/README.md), last packaged as 26.1023.072948, declares 56 direct tools including explicit detach and four guidance/doctor readers. That candidate still needs its separate packaged/native installation pilot; the accepted offline profile remains separate.
+
+The rest of this guide retains the earlier optional framework deployment and historical feature compatibility notes. The [CodexMCPBroker repository](https://github.com/votecoffee/CodexMCPBroker) provides a versioned shared framework and [separate Windows management app](https://github.com/votecoffee/CodexMCPBroker/blob/main/docs/service-management.md). Neither is a universal plugin; direct Siemens profiles do not require either. Reviewed optional-profile dependency pins and native acceptance do not advance just because that repository has a newer release. See [implementation architecture](../docs/ARCHITECTURE.md) and [current profile guidance](CURRENT-GUIDANCE.md).
 
 Host 0.21.0 and Comfort worker 0.15.1 add [classic TextLists validation and evidence](CLASSIC-TEXT-LIST-WORKFLOW.md): original-byte encoding/metadata checks, exact entry/translation delta preservation, actual screen bindings, scoped folder/ZIP preparation and native workflow receipt consistency. Prepare and native text-list imports enforce required preflight checks automatically. These additions have offline/package coverage; native acceptance of the new staging route remains pending.
 

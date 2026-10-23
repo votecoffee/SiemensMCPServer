@@ -74,6 +74,8 @@ $PSBoundParameters | ConvertTo-Json
         result=self.run_command('InstallAndRun.cmd','-InstallOnly','-NoPause');self.assertEqual(result.returncode,37,result.stdout)
         result=self.run_command('Run.cmd','-InstallRoot',str(self.root/'missing'),'-CheckOnly','-NoPause')
         self.assertNotEqual(result.returncode,0);self.assertIn('not installed here',result.stdout)
+        result=self.run_command('Run.cmd','-InstallOnly','-NoPause')
+        self.assertNotEqual(result.returncode,0);self.assertIn('Install options belong',result.stdout)
 
 
 if __name__=='__main__':unittest.main(verbosity=2)

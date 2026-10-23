@@ -15,7 +15,7 @@ Two Windows applications are included:
 
 The repository and .NET solution use `SiemensMCPServer`; the plugin and MCP registration use the package ID `siemens-mcp-server`.
 
-Current app/source checkpoint: **26.1023.072948** (America/New_York). The plugin/package identity is `26.1023.72948`; bounded .NET assembly/file identity is `26.1023.729.48`. See [timestamp release rules](docs/VERSIONING.md).
+Last packaged native candidate: **26.1023.072948** (America/New_York), package `26.1023.72948`, bounded .NET assembly/file identity `26.1023.729.48`. The accepted direct offline profile is a separate package; source/documentation changes do not install or activate either profile. See [timestamp release rules](docs/VERSIONING.md).
 
 ## Table of Contents
 
@@ -41,21 +41,19 @@ The server exposes engineering operations through the Model Context Protocol (MC
 | Libraries | Read-only project/open global library metadata: folders, types, versions and master-copy contents. No library updates or instance creation. |
 | Project texts | Active-language discovery, native XLSX extraction/search, language-aware comment/description/text records and reviewed existing-translation updates. Native import acceptance pending. |
 
-Host/Comfort worker 0.14.1 preserves literal CR/LF values in classic text-list XML and fingerprints. Upgrade/reconnect the host before loading this worker; older hosts reject its new internal text contract and retain their prior generation. Native multiline import acceptance remains separate.
-
 The server does not provide device download, runtime control, watch or force operations. See [feature coverage](plugin/FEATURE-COVERAGE.md) and [validation status](plugin/NATIVE-ACCEPTANCE.md) for supported routes and their limits.
 
-Host 0.18.0 adds [Comfort V15.1 TextLists preflight and evidence workflows](plugin/CLASSIC-TEXT-LIST-WORKFLOW.md): original-byte XML encoding checks, exact reviewed entry/translation deltas, exported screen-to-list binding checks, immutable folder/ZIP preparation and native apply/readback/compile/save receipt consistency. Required preparation/import checks block invalid candidates; supplied evidence validation performs no native operations. The new managed staging route still requires native acceptance.
+The current native candidate adds explicit detach, four revision/hash-pinned guidance tools, retained parent identity, bounded EOF drain and Windows Job process/memory limits. The GUI exposes the shared Safeguards policy. Exact worker and TIA attachment claims retain ownership and uncertainty; no automatic cleanup of user-owned TIA or write replay is enabled. Its source/build/harmless-fixture checks pass; packaged native activation and project editing still need their own acceptance.
 
-Host 0.18.3 reads selected TextLists directly from verified ZIP streams, preserving whole-archive integrity without extracting unrelated graphic/screen folders. Validation reports distinguish non-applicable input checks, optional evidence and required checks; a required check that did not run blocks publication.
+[Comfort TextLists preparation](plugin/CLASSIC-TEXT-LIST-WORKFLOW.md) validates original XML encoding, reviewed entry/translation deltas and supplied native evidence. Selected TextLists stream from verified ZIPs without extracting unrelated graphics/screens. Required checks gate publication. Literal CR/LF preservation in exported XML does not establish that the native HMI accepts every multiline value.
 
-Host/plugin 0.19.0 uses framework 0.18.0 and reports service state, active requests and component versions to the optional Windows MCP Service Manager. Reporting does not attach engineering projects. Tray restart stays disabled until an app-owned supervisor can safely fence all chats and native work. See [tray management](plugin/APP-HOST.md#tray-management).
+| MCP profile | Exposure | Dependency and acceptance boundary |
+| --- | --- | --- |
+| [Direct offline](plugin-offline/README.md) | Three tools / sixteen supplied-content operations; four scoped skills | Windows/.NET 8; no TIA, worker or framework service. Bounded offline acceptance. |
+| [Direct native candidate](plugin-native/README.md) | 52 engineering/lifecycle tools plus four guidance/doctor readers; four native skills | Windows/.NET Framework 4.8 and matching Openness API. Packaged native pilot/installation held. |
+| [Earlier optional framework profile](plugin/APP-HOST.md) | App-owned discovery/context/receipt frontend to native backends and dynamic guidance | Separately pinned Python framework; direct-profile acceptance does not validate this route. |
 
-Host/plugin 0.20.0 keeps four stable packaged skill bootstraps and serves current, hash-pinned guides/references through ordinary tools. The app-owned HTTP profile also publishes the same content through Skills-over-MCP. Native tools report real queue/dispatch/return stages and retain bounded cancellation/status telemetry. See [guidance publication and feature boundaries](plugin/CURRENT-GUIDANCE.md) for live-update behavior, doctor reporting and remaining Tasks/cache/artifact limitations.
-
-Source version 0.21.0 added explicit service startup, a GUI-editable connected-chat limit, shutdown admission fencing and private process-tree containment. Version 0.22.0 below adds the common durable ledger. See [process lifetimes and ownership](plugin/LIFETIME-MANAGEMENT.md) for the remaining native and installed acceptance.
-
-Source version 0.22.0 integrates the reviewed framework 0.20 ownership ledger: retained stdio supervisors, native worker/attachment records, exact process identities, cleanup receipts and GUI resource/tree limits. Harmless process fixtures and cross-language record checks are separate from pending packaged MCP, native TIA and installed Codex acceptance. See [resource ownership and recovery](plugin/RESOURCE-OWNERSHIP.md). No automatic cleanup or write replay is enabled.
+The [CodexMCPBroker project](https://github.com/votecoffee/CodexMCPBroker) provides a **shared MCP application framework** and a **separate Windows management app**. Siemens keeps its standalone MCP server, application-owned Codex plugin and skills. There is no universal plugin. Direct Siemens profiles do not depend on the framework; the earlier framework profile retains its reviewed dependency pins. The independent manager is optional, is not installed by Siemens' root commands, and cannot infer native project state. Direct-native doctor reports management/restart unavailable. See [implementation architecture](docs/ARCHITECTURE.md) and [profile-specific guidance](plugin/CURRENT-GUIDANCE.md).
 
 ## Install
 
@@ -102,7 +100,7 @@ powershell.exe -NoProfile -File build/Install-CodexPlugin.ps1 -Package 'C:\path\
 
 The installer installs the standalone Siemens Codex plugin with its app-owned framework gateway (framework 0.20.0 / MCP Python 2.3.0). Python 3.13 is required; exact dependencies are installed offline from the verified bundle into a dedicated per-user runtime. Use `-PrepareOnly` to verify and stage a package without changing Codex settings. Load the installed tools and skills in a new Codex chat. See the [plugin guide](plugin/README.md).
 
-Each application keeps its own Codex plugin and native skills. The shared app framework is a package dependency; the optional independent Windows manager provides administration without a Codex MCP connection. There is no universal Codex plugin. The retained Python names `universal-codex-tools` and `universal_tools` identify the shared dependency, not a plugin installation route.
+For that optional profile, `universal-codex-tools` / `universal_tools` identify the versioned [shared framework dependency](https://github.com/votecoffee/CodexMCPBroker), not a universal plugin. The framework repository's newer source does not upgrade this app's reviewed wheel automatically. The [separate Windows manager](https://github.com/votecoffee/CodexMCPBroker/blob/main/docs/service-management.md) has its own installer/runtime and needs no Codex connection.
 
 Fresh installations and upgrades always install the standalone plugin. Obsolete integration-choice files do not affect installation. Concurrent installers using one root are rejected before settings changes.
 
@@ -121,6 +119,8 @@ Double-click [InstallAndRun.cmd](InstallAndRun.cmd) in the project root, or run:
 It builds the V15.1 desktop GUI, installs it under `%LOCALAPPDATA%\SiemensMCPServer\Desktop`, adds **SiemensMCPServer (V15.1)** to the Start menu with an application icon, and opens the GUI. No administrator access is required for the app installation. Building requires a .NET 8 or newer SDK, .NET Framework 4.8 targeting support and the selected installed Openness API. Later, use the Start menu shortcut or [Run.cmd](Run.cmd) to launch without rebuilding.
 
 For another installed API, use `.\InstallAndRun.cmd -TiaPortalVersion V19`. Add `-TiaPortalInstallVersion V19` when an older API is supplied by that installation; `-NoShortcut` skips the Start menu entry. Each update uses a fresh application folder and retains earlier versions. These commands install the GUI only; Codex plugin setup remains separate. See [desktop installation options](docs/DESKTOP.md#install-and-launch).
+
+Both root commands accept `-Help` and `-NoPause`. Use `InstallAndRun.cmd -InstallOnly` to install without opening the GUI, and `Run.cmd -CheckOnly` to verify the selected installation without launching it. Quoted paths with spaces/Unicode are forwarded through the shared command wrapper; failures return a nonzero exit code.
 
 Open the project in TIA Portal, attach to its process and select a target labeled **Comfort / Advanced**, **Unified** or **PLC**. Classic targets retain selected-screen/folder export, all-screen export, screen XML import, screens-only import and complete-HMI export/import. Unified and PLC targets show a resource browser with selected/whole-target exports, native resource-folder imports and export-bundle imports. Imports leave the project unsaved; inspect and compile before saving explicitly.
 
@@ -156,9 +156,9 @@ tia_list_processes()
 tia_get_api_capabilities()
 ```
 
-Acquire the `siemens-engineering` service and retain its framework context throughout an engineering workflow. The native executable remains available for direct clients. Keep a persistent native MCP connection for direct engineering workflows: attachments, preview plans and worker generations belong to the running host. A transport that starts a fresh host for each call cannot carry an attach/preview/apply sequence. Inspect current native state and retained artifacts before retrying an uncertain write.
+Direct native clients keep one owning stdio connection: attachments, preview plans and worker generations belong to that host. Read the current guide, attach to an explicit process/project and invoke the direct live tool schemas. A transport that starts a fresh host for every call cannot carry an attach/preview/apply sequence. Explicit `tia_detach` releases the Openness attachment and previews without saving or closing user TIA. Preserve uncertain outcomes and inspect native state; do not replay an old plan or switch hosts to bypass retained evidence.
 
-With version 0.21.0, start the shared owner explicitly through [app administration](plugin/APP-HOST.md#installation-and-private-state) before opening the standalone plugin connection. A stopped service is reported without an automatic launch/restart. The desktop **Safeguards...** editor controls the connection ceiling; it defaults to four.
+Only the earlier framework profile requires explicit [app-service startup](plugin/APP-HOST.md#installation-and-private-state) and acquisition of `siemens-engineering`. Keep that context for the workflow. A stopped service is reported without automatic launch/restart. Direct profiles require no service/context acquisition. The desktop **Safeguards...** editor controls the native connection ceiling and Job memory along with the other shared policy settings.
 
 ### Reload feature workers
 

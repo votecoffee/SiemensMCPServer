@@ -23,6 +23,10 @@ The default app root is `%LOCALAPPDATA%\SiemensMCPServer\Desktop`. Each installa
 
 Additional options:
 
+- `InstallAndRun.cmd -Help` / `Run.cmd -Help`: show options without building, installing or launching.
+- `InstallAndRun.cmd -InstallOnly`: install without opening the GUI.
+- Either command with `-NoPause`: return failures immediately for unattended use. Nonzero child exit codes propagate to the caller.
+- `Run.cmd -CheckOnly`: verify the selected executable/receipt and print launch arguments without opening it.
 - `InstallAndRun.cmd -NoShortcut`: install and launch without creating a shortcut.
 - `InstallAndRun.cmd -InstallRoot "C:\path\to\desktop"`: choose another application root; pass the same `-InstallRoot` to `Run.cmd`.
 - `powershell.exe -NoProfile -File build/Install-Desktop.ps1`: install and create the shortcut without opening the GUI. Add `-Run` to open it.
