@@ -30,6 +30,27 @@ try {
     [IO.Directory]::CreateDirectory($root) | Out-Null
     # File sharing exclusion also serializes different logical aliases of this root.
     $publishLock = [IO.File]::Open((Join-Path $root 'publication.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+    # MSIX can virtualize individual AppData files while the directory's spelling
+    # stays logical. Resolve the actual opened file, then publish its physical root.
+    if (-not ('SiemensInstalledPath' -as [type])) { Add-Type -TypeDefinition @'
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+public static class SiemensInstalledPath {
+    [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+    private static extern uint GetFinalPathNameByHandle(IntPtr handle, StringBuilder path, uint length, uint flags);
+    public static string FromHandle(IntPtr handle) {
+        var path = new StringBuilder(32768);
+        uint length = GetFinalPathNameByHandle(handle, path, (uint)path.Capacity, 0);
+        if (length == 0 || length >= path.Capacity) throw new InvalidOperationException("Cannot establish physical installation path.");
+        string value = path.ToString();
+        return value.StartsWith(@"\\?\UNC\") ? @"\\" + value.Substring(8) : value.StartsWith(@"\\?\") ? value.Substring(4) : value;
+    }
+}
+'@
+    }
+    $root = [IO.Path]::GetDirectoryName([SiemensInstalledPath]::FromHandle($publishLock.SafeFileHandle.DangerousGetHandle()))
+    Assert-NoLinks $root
     $mutexKey = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($root.ToUpperInvariant())).Replace('\', '_').Replace('/', '_')
     $mutex = [Threading.Mutex]::new($false, ('Local\SiemensStablePublish-' + $mutexKey))
     $owned = $false
@@ -90,7 +111,10 @@ try {
         if (Test-Path -LiteralPath $snapshotPath) { Assert-NoLinks $snapshotPath; if ((Get-Digest $snapshotPath) -cne $snapshotHash) { throw 'Existing snapshot differs.' } }
         else { [IO.File]::Move($snapshotStage, $snapshotPath) }
         # Derived app-owned standalone plugin. Original package/cache stays immutable.
-        $plugin = Join-Path $root ('CodexMarketplace\plugins\' + $runtimeName)
+        $rootSha = [Security.Cryptography.SHA256]::Create()
+        try { $bindingId = [BitConverter]::ToString($rootSha.ComputeHash([Text.Encoding]::UTF8.GetBytes($root))).Replace('-', '').ToLowerInvariant().Substring(0,8) } finally { $rootSha.Dispose() }
+        $pluginName = $runtimeName + '-' + $bindingId
+        $plugin = Join-Path $root ('CodexMarketplace\plugins\' + $pluginName)
         if (-not (Test-Path -LiteralPath $plugin)) { [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($plugin)) | Out-Null; Copy-Item -LiteralPath $source -Destination $plugin -Recurse }
         $launch = Get-Content -LiteralPath (Join-Path $source '.mcp.json') -Raw -Encoding UTF8 | ConvertFrom-Json
         $launch.mcpServers.'siemens-mcp-server'.command = Join-Path $root 'SiemensMCPServer.Launcher.exe'
@@ -121,7 +145,7 @@ try {
         $catalogRoot = Join-Path $root 'CodexMarketplace\.agents\plugins'; [IO.Directory]::CreateDirectory($catalogRoot) | Out-Null
         $catalog = Join-Path $catalogRoot 'marketplace.json'
         $catalogStage = $catalog + '.' + [Guid]::NewGuid().ToString('N') + '.tmp'
-        Write-Json $catalogStage @{ name='siemens-mcp-server-local'; interface=@{displayName='SiemensMCPServer (local)'}; plugins=@(@{ name='siemens-mcp-server'; source=@{source='local';path=('./plugins/' + $runtimeName)}; policy=@{installation='AVAILABLE';authentication='ON_INSTALL'};category='Productivity' }) }
+        Write-Json $catalogStage @{ name='siemens-mcp-server-local'; interface=@{displayName='SiemensMCPServer (local)'}; plugins=@(@{ name='siemens-mcp-server'; source=@{source='local';path=('./plugins/' + $pluginName)}; policy=@{installation='AVAILABLE';authentication='ON_INSTALL'};category='Productivity' }) }
         $pointerStage = $pointer + '.' + [Guid]::NewGuid().ToString('N') + '.tmp'
         Write-Json $pointerStage @{ schemaVersion=1; snapshotSha256=$snapshotHash }
         $readback = Get-Content -LiteralPath $pointerStage -Raw -Encoding UTF8 | ConvertFrom-Json

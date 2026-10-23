@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 
 from codex_config_bytes import parse
@@ -14,8 +15,9 @@ def prepare(config, receipt, output):
     installed = json.loads(receipt.read_bytes())
     if installed['state'] != 'selected' or installed['profile'] != 'direct-offline' or installed['settingsChanged']:
         raise ValueError('Expected a selected closed-offline installation receipt')
-    root = Path(installed['cwd']).resolve()
-    if root / 'SiemensMCPServer.Launcher.exe' != Path(installed['command']).resolve() or installed['args']:
+    command = Path(installed['command']).resolve(strict=True)
+    root = command.parent
+    if command.name != 'SiemensMCPServer.Launcher.exe' or not os.path.samefile(Path(installed['cwd']) / command.name, command) or installed['args']:
         raise ValueError('Expected the fixed stable entry point without arguments')
     selection = root / 'launcher/current.json'
     selected_bytes = selection.read_bytes()
@@ -42,7 +44,7 @@ def prepare(config, receipt, output):
         'schemaVersion': 1, 'application': 'SiemensMCPServer', 'configPath': str(config),
         'expectedConfigSha256': hashlib.sha256(raw).hexdigest(), 'exactBackup': str(backup),
         'expectedRoute': settings.get('mcp_servers', {}).get('siemens-mcp-server'),
-        'proposedRoute': {key: installed[key] for key in ('command', 'args', 'cwd', 'env')},
+        'proposedRoute': {'command': str(command), 'args': [], 'cwd': str(root), 'env': installed['env']},
         'profile': 'direct-offline', 'version': installed['version'],
         'packageSha256': installed['packageSha256'], 'selectionSha256': installed['selectionSha256'],
         'snapshotSha256': installed['snapshotSha256'], 'runtime': installed['runtime'],

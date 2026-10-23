@@ -17,7 +17,7 @@ The repository and .NET solution use `SiemensMCPServer`; the plugin and MCP regi
 
 Last packaged native candidate: **26.1023.072948** (America/New_York), package `26.1023.72948`, bounded .NET assembly/file identity `26.1023.729.48`. The accepted direct offline profile is a separate package; source/documentation changes do not install or activate either profile. See [timestamp release rules](docs/VERSIONING.md).
 
-The current offline launcher checkpoint is **26.1023.170559**. It retains the explicit JSON string input correction and adds an app-owned, windowless in-process launcher with immutable runtime selection and durable generation records. Installed/selected bytes, an actual MCP connection and current-chat activation have separate verification steps.
+The current offline launcher checkpoint is **26.1023.171630**. It retains the explicit JSON string input correction and adds an app-owned, windowless in-process launcher with immutable runtime selection, durable generation records and physical installation paths under Windows MSIX virtualization. Installed/selected bytes, an actual MCP connection and current-chat activation have separate verification steps.
 
 ## Table of Contents
 

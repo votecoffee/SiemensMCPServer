@@ -10,6 +10,8 @@ Build a reviewed offline ZIP, then run:
 
 The default application root is `%USERPROFILE%\AppData\Local\SiemensMCPServer\Mcp`. `-InstallRoot` selects another persistent application directory. `-ExpectedSelectionSha256 <hash-or-absent>` enforces a reviewed prior pointer. `-Help` explains the command. Installation does not start a server, register a Codex plugin or edit host settings. New offline packages also redirect normal `Install-CodexPlugin.ps1` installation through this stable installer; `-PrepareOnly` remains extraction-only.
 
+MSIX may virtualize individual AppData files while an existing directory retains its logical path. The installer resolves the opened publication-lock file with `GetFinalPathNameByHandle` and publishes that physical app-owned root. Receipts and derived plugin metadata use the same physical command/cwd/runtime paths. The proposal helper also checks filesystem identity and resolves the actual launcher file rather than assuming directory resolution maps identically. Earlier package/plugin derivations remain retained; a binding-root identity gives a new derivation its own directory.
+
 The app-owned installation contains:
 
 ```text
