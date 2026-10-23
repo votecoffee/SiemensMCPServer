@@ -1,12 +1,12 @@
 # Application timestamp versions
 
-The latest fixed generated checkpoint is **26.1023.072948**, stamped in **America/New_York** from `2026-10-23T11:29:48Z`. New artifacts built from those generated properties share the display/package/bounded .NET identity; existing accepted installations and previously tested package bytes keep their earlier versions. Documentation/source-only checks do not install, activate or restamp a release. SDK, protocol, validation-rule and independently reviewed framework dependency versions remain separate.
+The latest fixed generated checkpoint is **26.1023.164730**, stamped in **America/New_York** from `2026-10-23T20:47:30.755625Z`, for the direct offline JSON input correction. New artifacts built from those generated properties share the display/package/bounded .NET identity; existing accepted installations and previously tested package bytes keep their earlier versions. Documentation/source-only checks do not install, activate or restamp a release. SDK, protocol, validation-rule and independently reviewed framework dependency versions remain separate.
 
 | Identity | Current value | Rule |
 | --- | --- | --- |
-| Human/Product/Informational/MCP display | `26.1023.072948` | Fully padded `YY.MMDD.HHmmss`; never generated at runtime. |
-| Plugin/cache/package | `26.1023.72948` | Three numeric components with leading zeros removed for strict SemVer/PEP 440. |
-| .NET Assembly/File | `26.1023.729.48` | Bounded `YY.MMDD.HHmm.ss`, with each numeric component normalized. |
+| Human/Product/Informational/MCP display | `26.1023.164730` | Fully padded `YY.MMDD.HHmmss`; never generated at runtime. |
+| Plugin/cache/package | `26.1023.164730` | Three numeric components with leading zeros removed for strict SemVer/PEP 440. |
+| .NET Assembly/File | `26.1023.1647.30` | Bounded `YY.MMDD.HHmm.ss`, with each numeric component normalized. |
 
 For example, display `26.0103.000507` has package identity `26.103.507` and assembly/file identity `26.103.5.7`. Midnight `00.0101.000000` maps to `0.101.0` / `0.101.0.0`. Calendar dates, leap years and clock ranges are validated. Comparisons normalize numeric components instead of comparing padded strings. The final `.NET` field retains seconds, so no second-level release information is lost. The six-digit clock is never used directly as a 16-bit assembly/file field.
 
@@ -17,7 +17,7 @@ Run the explicit release operation once when creating a checkpoint:
 ```powershell
 .\build\Stamp-AppVersion.ps1
 # To reproduce a deliberately selected instant:
-.\build\Stamp-AppVersion.ps1 -Utc '2026-10-23T11:29:48Z'
+.\build\Stamp-AppVersion.ps1 -Utc '2026-10-23T20:47:30.755625Z'
 ```
 
 The wrapper uses Windows' New York/Eastern time-zone conversion, including daylight saving time, and passes that fixed instant to the source generator. It writes `plugin/app-version.json`, `build/AppVersion.props`, `Shared/ReleaseStamp.cs`, desktop release attributes and both plugin manifests. `Directory.Build.props` imports the generated version properties for builds. Review and commit the coherent change before producing release artifacts.

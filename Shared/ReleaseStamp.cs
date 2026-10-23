@@ -3,8 +3,8 @@ namespace SiemensMCPServer
 {
     internal static partial class AppRelease
     {
-        public const string DisplayVersion = "26.1023.072948";
-        public const string PackageVersion = "26.1023.72948";
-        public const string AssemblyVersion = "26.1023.729.48";
+        public const string DisplayVersion = "26.1023.164730";
+        public const string PackageVersion = "26.1023.164730";
+        public const string AssemblyVersion = "26.1023.1647.30";
     }
 }

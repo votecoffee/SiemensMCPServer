@@ -17,6 +17,8 @@ The repository and .NET solution use `SiemensMCPServer`; the plugin and MCP regi
 
 Last packaged native candidate: **26.1023.072948** (America/New_York), package `26.1023.72948`, bounded .NET assembly/file identity `26.1023.729.48`. The accepted direct offline profile is a separate package; source/documentation changes do not install or activate either profile. See [timestamp release rules](docs/VERSIONING.md).
 
+The direct offline input correction uses checkpoint **26.1023.164730**, with explicit JSON string arguments and MCP protocol regression tests. It requires a separately verified package deployment to update an existing connection.
+
 ## Table of Contents
 
 - [Background](#background)
