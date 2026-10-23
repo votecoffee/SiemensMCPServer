@@ -37,7 +37,10 @@ internal sealed class OfflineTools
             return new CallToolResult { StructuredContent = envelope, Content = new[] { new TextContentBlock { Text = envelope.GetRawText() } } };
         }
         catch (OperationCanceledException) { throw; }
-        catch (Exception ex) { return Error(ex.GetBaseException().Message); }
+        catch (Exception ex) when (ex is ArgumentException or JsonException or System.IO.InvalidDataException or System.Xml.XmlException or FormatException)
+        { return Error(ex.Message); }
+        catch (System.Collections.Generic.KeyNotFoundException) { return Error("A required operation argument is missing. Check siemens_offline_describe."); }
+        catch (Exception) { return Error("Offline analysis failed unexpectedly. No native operation was performed."); }
         finally { Slots.Release(); }
     }
 

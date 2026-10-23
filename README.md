@@ -17,7 +17,7 @@ The repository and .NET solution use `SiemensMCPServer`; the plugin and MCP regi
 
 Last packaged native candidate: **26.1023.072948** (America/New_York), package `26.1023.72948`, bounded .NET assembly/file identity `26.1023.729.48`. The accepted direct offline profile is a separate package; source/documentation changes do not install or activate either profile. See [timestamp release rules](docs/VERSIONING.md).
 
-The direct offline input correction uses checkpoint **26.1023.164730**, with explicit JSON string arguments and MCP protocol regression tests. It requires a separately verified package deployment to update an existing connection.
+The current offline launcher checkpoint is **26.1023.170559**. It retains the explicit JSON string input correction and adds an app-owned, windowless in-process launcher with immutable runtime selection and durable generation records. Installed/selected bytes, an actual MCP connection and current-chat activation have separate verification steps.
 
 ## Table of Contents
 
@@ -77,6 +77,8 @@ powershell.exe -NoProfile -File build/Build-OfflinePlugin.ps1
 ```
 
 That package contains three direct tools and four scoped Siemens skills, requires Windows x64/.NET 8, and has no framework service, Python runtime, native attachment or controller route. It analyzes supplied XML/L5X/PLCopen content, HMI references/bindings/impact and classic/Unified text-list translations. Its installer skips framework preparation. Static/package checks and a disposable MCP/Codex loading check are separate acceptance steps. The engineering package described below remains a separate profile.
+
+Install/select the reviewed offline package with `.\InstallMcp.cmd -Package 'C:\packages\reviewed-offline.zip' -NoPause`. This stages the standalone plugin and selects retained bytes behind a stable app-owned launcher/cwd outside the checkout and disposable plugin caches. It does not start MCP or edit Codex settings. Publish the returned stable binding through one serialized host-settings update, then check a fresh connection. See [launcher deployment and verification](docs/STABLE-LAUNCHER.md). The root `InstallAndRun.cmd` and `Run.cmd` remain desktop GUI commands.
 
 For `siemens_offline_analyze`, pass `input` as one JSON string encoding the described operation object. `siemens_offline_describe.inputSchema` applies to the decoded object; the [offline guide](plugin-offline/README.md) includes an exact call example and input limits.
 
@@ -191,6 +193,7 @@ Run the offline tests from the repository root:
 ```powershell
 dotnet test Tests/SiemensMCPServer.Tests.csproj -c Release -p:RestoreLockedMode=true
 dotnet test Offline.Tests/SiemensMCPServer.Offline.Tests.csproj -c Release -p:RestoreLockedMode=true
+dotnet test Launcher.Tests/SiemensMCPServer.Launcher.Tests.csproj -c Release -p:RestoreLockedMode=true
 ```
 
 [Build configuration](docs/BUILDING.md) covers API selection, desktop/MCP builds, packaging and protocol checks. Offline tests do not establish native project or runtime acceptance.

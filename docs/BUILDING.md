@@ -77,10 +77,11 @@ The package contains the stdio host, workers, plugin manifests, skills, public p
 ```powershell
 dotnet test Tests/SiemensMCPServer.Tests.csproj -c Release -p:RestoreLockedMode=true
 dotnet test Offline.Tests/SiemensMCPServer.Offline.Tests.csproj -c Release -p:RestoreLockedMode=true
+dotnet test Launcher.Tests/SiemensMCPServer.Launcher.Tests.csproj -c Release -p:RestoreLockedMode=true
 py -3 -X utf8 scripts/test_mcp_protocol.py Mcp/bin/Release/V15.1/net48/SiemensMCPServer.Mcp.exe
 ```
 
-`Offline.Tests` uses the production offline assembly and SDK stream transport to test JSON-RPC initialization, tool discovery, schema/argument binding, JSON string decoding, Unicode, large exports, exact UTF-8 limits and malformed/duplicate/envelope refusals. Its synthetic in-process streams do not start the product executable, use an offline admission slot or load settings. For a separately authorized supplied-executable check, run `py -3.13 -B scripts/test_offline_protocol.py <path-to-SiemensMCPServer.Offline.exe>`; one of the four offline session slots must be free. The probe reports capacity refusal without terminating another session. This does not install or activate a Codex connection.
+`Offline.Tests` uses the production offline assembly and SDK stream transport to test JSON-RPC initialization, tool discovery, schema/argument binding, JSON string decoding, Unicode, large exports, exact UTF-8 limits and malformed/duplicate/envelope refusals. Its synthetic in-process streams do not start the product executable, use an offline admission slot or load settings. `Launcher.Tests` covers immutable selection and full-generation image/claim identity. See [stable launcher verification](STABLE-LAUNCHER.md#verification) for the cache-independent CMD/update/stdio canary. For a supplied-executable check, run `py -3.13 -B scripts/test_offline_protocol.py <path-to-SiemensMCPServer.Launcher.exe>`; one of the four offline session slots must be free. The probe reports capacity refusal without terminating another session. This does not install or activate a Codex connection.
 
 The native protocol probe starts a local stdio host and never attaches to a project. Adding `--native-read-only` checks installed API capabilities and process enumeration without attaching or editing. Contract checks load installed API metadata without creating a TIA instance:
 

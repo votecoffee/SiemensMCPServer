@@ -37,6 +37,7 @@ internal static class OfflineOperations
             }).ToArray(),
         maxInputBytes = MaxInputBytes, maxOutputBytes = MaxOutputBytes,
         inputContract = InputContract,
+        management = new { status = "Not reporting", restartAvailable = false },
         nativeEngineeringAvailable = false, filesystemAccessAvailable = false,
         scope = "Caller-supplied serialized exports and declarations only. No file reads/writes, native import, compile, save, attachment, controller, service or worker launch. Caller-supplied native evidence is not established by this server."
     };

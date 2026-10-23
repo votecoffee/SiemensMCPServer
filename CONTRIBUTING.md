@@ -17,6 +17,7 @@ Run the offline tests for changes to the engineering adapters:
 ```powershell
 dotnet test Tests/SiemensMCPServer.Tests.csproj -c Release -p:RestoreLockedMode=true
 dotnet test Offline.Tests/SiemensMCPServer.Offline.Tests.csproj -c Release -p:RestoreLockedMode=true
+dotnet test Launcher.Tests/SiemensMCPServer.Launcher.Tests.csproj -c Release -p:RestoreLockedMode=true
 ```
 
 Use [docs/BUILDING.md](docs/BUILDING.md) for transport and packaging checks. Verify documentation links and examples when updating documentation. Keep the root README description aligned with the plugin manifests.

@@ -2,6 +2,7 @@ param(
     [Parameter(Mandatory = $true)][string]$Package,
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'SiemensMCPServer\CodexMarketplace'),
     [string]$AppHostRoot = (Join-Path $env:LOCALAPPDATA 'SiemensMCPServer\AppHost'),
+    [string]$StableRoot = (Join-Path $env:USERPROFILE 'AppData\Local\SiemensMCPServer\Mcp'),
     [switch]$PrepareOnly
 )
 $ErrorActionPreference = 'Stop'
@@ -107,6 +108,13 @@ if (Test-Path -LiteralPath $destination) {
 }
 if ($PrepareOnly) {
     @{ state = 'prepared'; marketplaceRoot = $root; pluginSource = $destination; packageSha256 = $zipHash; settingsChanged = $false; legacyZipSeparatorsNormalized = $legacySeparators } | ConvertTo-Json
+    exit 0
+}
+if ($isOffline -and $payload.ContainsKey('launcher-assets/SiemensMCPServer.Launcher.exe')) {
+    # New offline deployments always select durable app-owned bytes. Host config
+    # publication/standalone plugin registration is a separate serialized step.
+    & (Join-Path $PSScriptRoot 'Install-StableMcp.ps1') -Package $packagePath -InstallRoot $StableRoot -NoPause
+    if (-not $?) { throw 'Stable offline installation failed.' }
     exit 0
 }
 $codex = (Get-Command codex -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source

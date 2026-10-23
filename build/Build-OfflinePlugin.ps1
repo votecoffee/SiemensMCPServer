@@ -40,7 +40,9 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination $packageRoot
 Copy-Item -LiteralPath (Join-Path $repoRoot 'plugin/app-version.json') -Destination $packageRoot
 Copy-Item -LiteralPath (Join-Path $repoRoot 'plugin/licenses') -Destination $packageRoot -Recurse
 $scripts = Join-Path $packageRoot 'scripts'; [IO.Directory]::CreateDirectory($scripts) | Out-Null
-foreach ($helper in @('Install-CodexPlugin.ps1', 'Version-Common.ps1')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $helper) -Destination $scripts }
+foreach ($helper in @('Install-CodexPlugin.ps1', 'Install-StableMcp.ps1', 'Version-Common.ps1')) { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $helper) -Destination $scripts }
+& dotnet publish (Join-Path $repoRoot 'Launcher/SiemensMCPServer.Launcher.csproj') -c Release --nologo -v minimal -p:RestoreLockedMode=true -o (Join-Path $packageRoot 'launcher-assets')
+if ($LASTEXITCODE -ne 0) { throw 'Stable launcher publish failed.' }
 & dotnet publish (Join-Path $repoRoot 'Offline/SiemensMCPServer.Offline.csproj') -c Release --nologo -v minimal -p:RestoreLockedMode=true -o (Join-Path $packageRoot 'server')
 if ($LASTEXITCODE -ne 0) { throw 'Offline publish failed; incomplete package retained.' }
 $assembly = Join-Path $packageRoot 'server/SiemensMCPServer.Offline.dll'

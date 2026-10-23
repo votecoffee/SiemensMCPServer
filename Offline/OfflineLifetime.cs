@@ -53,6 +53,18 @@ internal static class OfflineLifetime
     public static void Install()
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Direct offline containment requires Windows.");
+        // App-owned in-process launcher and backend share exactly one fence.
+        // No environment/settings input can create this process-local token.
+        if (AppContext.GetData("SiemensOfflineFence-v1") is string receipt) {
+            using var document = System.Text.Json.JsonDocument.Parse(receipt);
+            var recorded = document.RootElement.GetProperty("owner");
+            if (!GetProcessTimes(GetCurrentProcess(), out long fenceCreation, out _, out _, out _) ||
+                recorded.GetProperty("pid").GetUInt32() != (uint)Environment.ProcessId ||
+                recorded.GetProperty("creationFileTime").GetString() != fenceCreation.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                throw new InvalidOperationException("Offline process fence identity differs.");
+            Identity = document.RootElement.Clone();
+            return;
+        }
         if (job != IntPtr.Zero) throw new InvalidOperationException("Offline lifetime already installed.");
         uint ownPid = (uint)Environment.ProcessId, parentPid = 0;
         IntPtr snapshot = CreateToolhelp32Snapshot(2, 0);
@@ -103,6 +115,7 @@ internal static class OfflineLifetime
         if (!admission.Wait(TimeSpan.FromSeconds(5)) || slot == null)
             throw new InvalidOperationException("Direct offline capacity is unavailable (four sessions per user/logon session). No MCP host was started.");
         Identity = new { owner = ownIdentity, parent = parentIdentity, activeProcessLimit = 1, jobMemoryBytes = 512u * 1024 * 1024, maxSessions = 4 };
+        AppContext.SetData("SiemensOfflineFence-v1", System.Text.Json.JsonSerializer.Serialize(Identity));
         Console.Error.WriteLine("Siemens direct offline lifetime: " + System.Text.Json.JsonSerializer.Serialize(Identity));
     }
 }
