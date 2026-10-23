@@ -183,9 +183,26 @@ def run(old_package, new_package, output, metadata_only=False):
     try:
         assert peer.probe() == old['version']
         claim_path = next((root / 'state/active').glob('*.json'))
-        owner = json.loads(claim_path.read_bytes())['owner']
+        original_claim = claim_path.read_bytes()
+        owner = json.loads(original_claim)['owner']
         assert owner['pid'] == peer.process.pid
         assert LifetimeTests.observed_children(owner) == []
+        # Fill only available slots with our own harmless clients. Existing peers
+        # count toward the unchanged ceiling and are never stopped or adopted.
+        extra = []
+        denied = False
+        try:
+            for _ in range(4):
+                try:
+                    extra.append(Client(exe))
+                except AssertionError as error:
+                    assert 'capacity is unavailable' in str(error), str(error)
+                    denied = True
+                    break
+            assert denied, 'Expected the fixed four-session admission ceiling'
+        finally:
+            for client in extra:
+                client.close()
         # A live selected payload is held against writes/deletion until this root exits.
         payload = root / old['runtime'] / 'SiemensMCPServer.Offline.dll'
         try:
@@ -196,6 +213,8 @@ def run(old_package, new_package, output, metadata_only=False):
         prior = (root / 'launcher/current.json').read_bytes()
         new = install(new_package, root, hashlib.sha256(prior).hexdigest())
         assert new['packageSha256'] != old['packageSha256']
+        assert claim_path.read_bytes() == original_claim
+        assert json.loads((root / 'launcher/current.json').read_bytes())['snapshotSha256'] != json.loads(original_claim)['snapshotSha256']
         assert peer.probe() == old['version']  # update never rebinds the live generation
         assert peer.process.poll() is None
     finally:
@@ -204,6 +223,7 @@ def run(old_package, new_package, output, metadata_only=False):
     try:
         assert peer.probe() == new['version']
         claimed = json.loads(next((root / 'state/active').glob('*.json')).read_bytes())
+        assert claimed['snapshotSha256'] == json.loads((root / 'launcher/current.json').read_bytes())['snapshotSha256']
         assert LifetimeTests.observed_children(claimed['owner']) == []
         # Crash this exact owned root; reconnect must reconcile its retained claim.
         crashed_generation = claimed['generation']
@@ -243,7 +263,7 @@ def run(old_package, new_package, output, metadata_only=False):
     result = {'state': 'passed', 'oldVersion': old['version'], 'newVersion': new['version'], 'stableCommand': str(exe),
         'cacheRemoval': 'passed', 'activePeerUpdate': 'passed; old peer readback before orderly close',
         'unicodeStdio': 'passed', 'actualChildren': [], 'exactOwnerDeathReconnect': 'passed', 'eof': 'exit 0',
-        'tamperRefusal': 'passed', 'stalePublicationRefusal': 'passed', 'settingsChanged': False}
+        'tamperRefusal': 'passed', 'stalePublicationRefusal': 'passed', 'boundedAdmission': 'four-session ceiling, live peers preserved', 'settingsChanged': False}
     (output / 'report.json').write_bytes(json.dumps(result, indent=2).encode())
     return result
 
