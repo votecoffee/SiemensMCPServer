@@ -95,6 +95,7 @@ public sealed class SafeguardTests
         var properties = TypeDescriptor.GetProperties(typeof(SafeguardSettings)).Cast<PropertyDescriptor>().Where(p => p.IsBrowsable).ToArray();
         Assert.Contains(properties, p => p.Name == "McpWritesEnabled" && !p.IsReadOnly);
         Assert.Contains(properties, p => p.Name == "MaxMcpFrontends" && !p.IsReadOnly);
+        Assert.Contains(properties, p => p.Name == "MaxOwnedJobMemoryMiB" && !p.IsReadOnly);
         Assert.Contains(properties, p => p.Name == "IdentityChecks" && p.IsReadOnly);
         foreach (var property in properties) Assert.False(string.IsNullOrEmpty(property.Category));
         var writable = typeof(SafeguardSettings).GetProperties().Where(p => p.CanWrite && p.Name != "SchemaVersion").Select(p => p.Name).OrderBy(n => n);

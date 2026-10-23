@@ -15,7 +15,7 @@ Two Windows applications are included:
 
 The repository and .NET solution use `SiemensMCPServer`; the plugin and MCP registration use the package ID `siemens-mcp-server`.
 
-Current app/source checkpoint: **26.1022.173616** (America/New_York). The plugin/package identity is `26.1022.173616`; bounded .NET assembly/file identity is `26.1022.1736.16`. See [timestamp release rules](docs/VERSIONING.md).
+Current app/source checkpoint: **26.1023.072948** (America/New_York). The plugin/package identity is `26.1023.72948`; bounded .NET assembly/file identity is `26.1023.729.48`. See [timestamp release rules](docs/VERSIONING.md).
 
 ## Table of Contents
 
@@ -78,7 +78,15 @@ powershell.exe -NoProfile -File build/Build-OfflinePlugin.ps1
 
 That package contains three direct tools and four scoped Siemens skills, requires Windows x64/.NET 8, and has no framework service, Python runtime, native attachment or controller route. It analyzes supplied XML/L5X/PLCopen content, HMI references/bindings/impact and classic/Unified text-list translations. Its installer skips framework preparation. Static/package checks and a disposable MCP/Codex loading check are separate acceptance steps. The engineering package described below remains a separate profile.
 
-Build the package for the installed API:
+The [native direct candidate](plugin-native/README.md) restores the existing TIA engineering implementation through a standalone stdio host, with 56 declared tools, four native workflow skills, revision-pinned guidance, explicit detach and bounded private-worker/parent/EOF lifetimes. Build it without starting any runtime:
+
+```powershell
+powershell.exe -NoProfile -File build/Build-NativePlugin.ps1 -TiaPortalVersion V15.1
+```
+
+This candidate has no gateway or shared-service dependency. Its installation is held pending a coordinated disposable MCP/TIA pilot; building it leaves the accepted offline installation available. Source builds, harmless lifetime fixtures and package hashes do not establish native engineering acceptance. See the candidate guide for isolated, read-only pilot inputs and remaining checks.
+
+The earlier framework engineering profile remains available for existing deployments. Build that separate profile for the installed API:
 
 ```powershell
 git clone https://github.com/votecoffee/SiemensMCPServer.git

@@ -1,6 +1,6 @@
 {
   "name": "siemens-mcp-server",
-  "version": "26.1022.183901",
+  "version": "26.1023.72948",
   "description": "Local MCP server for Siemens HMI and offline PLC engineering through TIA Portal Openness.",
   "author": {
     "name": "votecoffee"

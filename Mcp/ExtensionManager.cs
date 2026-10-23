@@ -93,7 +93,7 @@ namespace SiemensMCPServer.Mcp
         private long nextId;
         private bool faulted;
         private bool stopped;
-        private bool started, bound;
+        private bool startAttempted, started, bound;
         private string? resourceId;
         private readonly StringBuilder errors = new StringBuilder();
         public ExtensionHello Hello { get; private set; } = null!;
@@ -111,6 +111,7 @@ namespace SiemensMCPServer.Mcp
             try
             {
                 resourceId = ResourceOwnership.Current.Begin("Siemens pure feature worker: " + bundle.Manifest.Module);
+                startAttempted = true;
                 if (!process.Start()) throw new InvalidOperationException("Worker did not start.");
                 started = true;
                 ProcessId = process.Id;
@@ -169,11 +170,14 @@ namespace SiemensMCPServer.Mcp
             if (stopped) return;
             if (!bound) {
                 stopped = true; faulted = true;
-                bool gone = !started;
+                bool gone = !startAttempted;
                 try {
                     if (started) {
                         try { process.StandardInput.Close(); } catch (InvalidOperationException) { } catch (IOException) { }
                         gone = process.WaitForExit(2000);
+                    }
+                    else if (startAttempted) {
+                        try { gone = process.HasExited; } catch (InvalidOperationException) { } // failed Start is not proof of no native child
                     }
                     if (resourceId != null) ResourceOwnership.Current.FailedLaunch(resourceId, gone);
                 } finally { process.Dispose(); }

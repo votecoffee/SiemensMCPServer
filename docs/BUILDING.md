@@ -4,6 +4,8 @@ Build on Windows x64 with a .NET 8 or newer SDK, .NET Framework 4.8 targeting su
 
 ## MCP server and desktop utility
 
+For the standalone direct native candidate, run `build/Build-NativePlugin.ps1 -TiaPortalVersion V15.1`. This compiles/publishes only; it does not execute MCP, feature workers or TIA. The candidate includes four native skill entry points and a hash-pinned projection of the maintained native guides, with direct tool invocation. Its installer/normal activation remains held pending a coordinated disposable MCP/TIA pilot. See [candidate build and pilot scope](../plugin-native/README.md). The accepted offline profile is a separate build/install route.
+
 The default compile-time API is V15.1:
 
 ```powershell
