@@ -8,7 +8,7 @@ Build a reviewed offline ZIP, then run:
 .\InstallMcp.cmd -Package 'C:\packages\reviewed-offline.zip' -NoPause
 ```
 
-The default application root is `%USERPROFILE%\AppData\Local\SiemensMCPServer\Mcp`. `-InstallRoot` selects another persistent application directory. `-ExpectedSelectionSha256 <hash-or-absent>` enforces a reviewed prior pointer. `-Help` explains the command. Installation does not start a server, register a Codex plugin or edit host settings. New offline packages also redirect normal `Install-CodexPlugin.ps1` installation through this stable installer; `-PrepareOnly` remains extraction-only.
+The default application root is `%USERPROFILE%\AppData\Local\SiemensMCPServer\StandaloneMcp`. `-InstallRoot` selects another persistent application directory. `-ExpectedSelectionSha256 <hash-or-absent>` enforces a reviewed prior pointer. `-Help` explains the command. Installation does not start a server, register a Codex plugin or edit host settings. New offline packages also redirect normal `Install-CodexPlugin.ps1` installation through this stable installer; `-PrepareOnly` remains extraction-only.
 
 MSIX may virtualize individual AppData files while an existing directory retains its logical path. The installer resolves the opened publication-lock file with `GetFinalPathNameByHandle` and publishes that physical app-owned root. Receipts and derived plugin metadata use the same physical command/cwd/runtime paths. The proposal helper also checks filesystem identity and resolves the actual launcher file rather than assuming directory resolution maps identically. Earlier package/plugin derivations remain retained; a binding-root identity gives a new derivation its own directory.
 
@@ -26,6 +26,8 @@ state/receipts/<generation>/claim.json + outcome.json
 ```
 
 The fixed launcher ABI version is separate from the selected application's New York release stamp. The launcher runs the selected managed entry point **in the same windowless process**, using an isolated assembly load context and the selected dependency closure. It preserves original standard handles and Unicode JSON lines. It launches no shell, child server, conhost, Node process or helper. Protocol output belongs to MCP; lifecycle diagnostics go to stderr.
+
+Launcher builds disable repository-revision SourceLink data and map debug source paths to a fixed virtual root, so an app-only release/commit does not change the frozen launcher assets. Runtime source manifests and application builds retain their normal provenance. A real launcher/compiler change still requires reviewed ABI maintenance; ordinary installation refuses to overwrite differing stable assets.
 
 The launcher verifies the bounded pointer, snapshot hash, exact runtime inventory and every payload hash. It rejects duplicate keys, unknown selection fields, path escapes, linked paths, missing files and extra/tampered payloads. Read leases retain selected bytes until that process ends. Ordinary startup never installs dependencies, fetches updates, selects the newest directory or falls back to another profile.
 

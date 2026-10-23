@@ -2,7 +2,7 @@ param(
     [Parameter(Mandatory = $true)][string]$Package,
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'SiemensMCPServer\CodexMarketplace'),
     [string]$AppHostRoot = (Join-Path $env:LOCALAPPDATA 'SiemensMCPServer\AppHost'),
-    [string]$StableRoot = (Join-Path $env:USERPROFILE 'AppData\Local\SiemensMCPServer\Mcp'),
+    [string]$StableRoot = (Join-Path $env:USERPROFILE 'AppData\Local\SiemensMCPServer\StandaloneMcp'),
     [switch]$PrepareOnly
 )
 $ErrorActionPreference = 'Stop'

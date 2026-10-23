@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Package,
-    [string]$InstallRoot = (Join-Path $env:USERPROFILE 'AppData\Local\SiemensMCPServer\Mcp'),
+    [string]$InstallRoot = (Join-Path $env:USERPROFILE 'AppData\Local\SiemensMCPServer\StandaloneMcp'),
     [string]$ExpectedSelectionSha256 = '',
     [Alias('h')][switch]$Help,
     [switch]$NoPause
