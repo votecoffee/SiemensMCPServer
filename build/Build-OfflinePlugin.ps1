@@ -64,6 +64,7 @@ $files = @(Get-ChildItem -LiteralPath $packageRoot -File -Recurse -Force | Sort-
     [ordered]@{ path = $_.FullName.Substring($packageRoot.Length + 1).Replace('\', '/'); bytes = $_.Length; sha256 = Get-OfflineHash $_.FullName }
 })
 [IO.File]::WriteAllText((Join-Path $packageRoot 'manifest.json'), (ConvertTo-Json -InputObject $files -Depth 5), $utf8)
+Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zipPath = Join-Path $artifactRoot ($packageName + '.zip')
 $zip = [IO.Compression.ZipFile]::Open($zipPath, [IO.Compression.ZipArchiveMode]::Create)
