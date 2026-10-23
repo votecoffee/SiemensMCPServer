@@ -24,7 +24,9 @@ internal sealed class OfflineTools
 
     [McpServerTool(Name = "siemens_offline_analyze", ReadOnly = true, OpenWorld = false)]
     [Description("Analyze caller-supplied exported XML, Unified text-list bundles, controller declarations or evidence. Discover/describe first. Two concurrent analyses; excess requests return busy. No file paths or native operations.")]
-    public async Task<CallToolResult> Analyze(string operation, JsonElement input, CancellationToken cancellationToken)
+    public async Task<CallToolResult> Analyze(string operation,
+        [Description("One JSON string encoding the object described by siemens_offline_describe.inputSchema. Serialize that object once; do not wrap it in another input/arguments envelope. Maximum 4 MiB of UTF-8 after MCP string decoding.")]
+        string input, CancellationToken cancellationToken)
     {
         if (!Slots.Wait(0)) return Error("Offline analysis is busy (two active requests). Wait for completion.");
         try {

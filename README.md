@@ -76,6 +76,8 @@ powershell.exe -NoProfile -File build/Build-OfflinePlugin.ps1
 
 That package contains three direct tools and four scoped Siemens skills, requires Windows x64/.NET 8, and has no framework service, Python runtime, native attachment or controller route. It analyzes supplied XML/L5X/PLCopen content, HMI references/bindings/impact and classic/Unified text-list translations. Its installer skips framework preparation. Static/package checks and a disposable MCP/Codex loading check are separate acceptance steps. The engineering package described below remains a separate profile.
 
+For `siemens_offline_analyze`, pass `input` as one JSON string encoding the described operation object. `siemens_offline_describe.inputSchema` applies to the decoded object; the [offline guide](plugin-offline/README.md) includes an exact call example and input limits.
+
 The [native direct candidate](plugin-native/README.md) restores the existing TIA engineering implementation through a standalone stdio host, with 56 declared tools, four native workflow skills, revision-pinned guidance, explicit detach and bounded private-worker/parent/EOF lifetimes. Build it without starting any runtime:
 
 ```powershell
@@ -186,6 +188,7 @@ Run the offline tests from the repository root:
 
 ```powershell
 dotnet test Tests/SiemensMCPServer.Tests.csproj -c Release -p:RestoreLockedMode=true
+dotnet test Offline.Tests/SiemensMCPServer.Offline.Tests.csproj -c Release -p:RestoreLockedMode=true
 ```
 
 [Build configuration](docs/BUILDING.md) covers API selection, desktop/MCP builds, packaging and protocol checks. Offline tests do not establish native project or runtime acceptance.

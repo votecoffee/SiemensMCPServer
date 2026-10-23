@@ -25,7 +25,7 @@ internal static class Program
             builder.Services.AddHostedService<StdioEofShutdown>();
             builder.Services.AddMcpServer(options => {
                 options.ServerInfo = new ModelContextProtocol.Protocol.Implementation { Name = "siemens-mcp-server-offline", Version = AppRelease.DisplayVersion };
-                options.ServerInstructions = "Direct offline profile. Discover siemens_offline_catalog, then describe the operation. Supply serialized exported content only. No files, native TIA, attachment, edits, workers, service, controller or shared host. Static evidence never establishes native/runtime acceptance.";
+                options.ServerInstructions = "Direct offline profile. Discover siemens_offline_catalog, then describe the operation. For siemens_offline_analyze, input is a JSON string encoding the described operation object once; inputSchema describes the decoded object. Supply serialized exported content only. No files, native TIA, attachment, edits, workers, service, controller or shared host. Static evidence never establishes native/runtime acceptance.";
             }).WithStreamServerTransport(new BoundedInputStream(Console.OpenStandardInput()), Console.OpenStandardOutput()).WithTools<OfflineTools>();
             using var host = builder.Build();
             // Bound drain even if a pure analysis fails to observe cancellation.

@@ -13,6 +13,10 @@ internal static class OfflineOperations
 {
     public const int MaxInputBytes = 4 * 1024 * 1024;
     public const int MaxOutputBytes = 1024 * 1024;
+    private static object InputContract => new {
+        argument = "input", wireType = "string", maxDecodedUtf8Bytes = MaxInputBytes,
+        encoding = "Serialize the described operation object as JSON once. The operation inputSchema describes that decoded object, not the outer MCP arguments."
+    };
     private static readonly string[] Comfort = {
         "import_controller_declarations", "analyze_hmi_references", "validate_hmi_bindings", "reference_impact",
         "inspect_behaviors", "inspect_references", "inspect_screen_items", "inspect_screen_texts", "inspect_screen_layout",
@@ -32,13 +36,14 @@ internal static class OfflineOperations
                 new { name = "inspect_text_list", Description = "Inspect supplied classic XML or a Unified paired-YAML text-list bundle; bounded translation rows, no file access." }
             }).ToArray(),
         maxInputBytes = MaxInputBytes, maxOutputBytes = MaxOutputBytes,
+        inputContract = InputContract,
         nativeEngineeringAvailable = false, filesystemAccessAvailable = false,
         scope = "Caller-supplied serialized exports and declarations only. No file reads/writes, native import, compile, save, attachment, controller, service or worker launch. Caller-supplied native evidence is not established by this server."
     };
 
     public static object Describe(string operation)
     {
-        if (operation == "inspect_text_list") return new { name = operation, inputSchema = new {
+        if (operation == "inspect_text_list") return new { name = operation, inputContract = InputContract, inputSchema = new {
             type = "object", additionalProperties = false, required = new[] { "snapshot" }, properties = new {
                 snapshot = new { type = "string", maxLength = MaxInputBytes }, offset = new { type = "integer", minimum = 0, maximum = 1000000 },
                 maxItems = new { type = "integer", minimum = 1, maximum = 200 }
@@ -46,7 +51,7 @@ internal static class OfflineOperations
         }};
         RequireAllowed(operation);
         var op = FeatureOperations.Describe("comfort").Single(op => op.Name == operation);
-        return new { name = operation, op.Description, op.InputSchema };
+        return new { name = operation, op.Description, op.InputSchema, inputContract = InputContract };
     }
 
     private static void RequireAllowed(string operation)
@@ -54,10 +59,25 @@ internal static class OfflineOperations
         if (!Comfort.Contains(operation, StringComparer.Ordinal)) throw new ArgumentException("Operation unavailable in the direct offline profile.");
     }
 
+    public static JsonElement Execute(string operation, string input)
+    {
+        if (input == null) throw new ArgumentException("input must be a JSON string containing one object matching the described operation schema.");
+        // Bound the decoded string before parsing, including surrounding whitespace.
+        // Never recursively decode strings or accept an alternate argument envelope.
+        if (Encoding.UTF8.GetByteCount(input) > MaxInputBytes)
+            throw new ArgumentException("Decoded input exceeds the 4 MiB offline UTF-8 limit.");
+        JsonDocument document;
+        try { document = JsonDocument.Parse(input); }
+        catch (JsonException) { throw new ArgumentException("input must contain one valid JSON object matching the described operation schema."); }
+        using (document) return Execute(operation, document.RootElement);
+    }
+
     public static JsonElement Execute(string operation, JsonElement input)
     {
-        if (input.ValueKind != JsonValueKind.Object || Encoding.UTF8.GetByteCount(input.GetRawText()) > MaxInputBytes)
-            throw new ArgumentException("Supply a JSON object within the 4 MiB offline input limit.");
+        if (input.ValueKind != JsonValueKind.Object)
+            throw new ArgumentException("input must contain a JSON object matching the described operation schema.");
+        if (Encoding.UTF8.GetByteCount(input.GetRawText()) > MaxInputBytes)
+            throw new ArgumentException("Decoded input exceeds the 4 MiB offline UTF-8 limit.");
         // Reject ambiguous JSON at every depth, before any operation sees it.
         CheckKeys(input);
         JsonElement result;

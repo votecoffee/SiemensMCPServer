@@ -8,6 +8,7 @@
     <AssemblyName>SiemensMCPServer.Offline</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="SiemensMCPServer.Offline.Tests" />
     <PackageReference Include="ModelContextProtocol" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
     <PackageReference Include="YamlDotNet" Version="18.1.0" />
