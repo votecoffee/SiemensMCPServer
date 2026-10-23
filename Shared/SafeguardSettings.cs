@@ -56,6 +56,8 @@ namespace SiemensMCPServer
         public int MaxOwnedResources { get; set; } = 32;
         [Category("5. Request limits (host restart)"), DisplayName("Maximum processes per owned tree"), Description("1..256, default 64. Windows Job limit includes each supervisor and its descendants. Applies to new process trees; lowering it never terminates existing ones.")]
         public int MaxProcessTreeSize { get; set; } = 64;
+        [Category("5. Request limits (host restart)"), DisplayName("Owned process Job memory (MiB)"), Description("64..16384, default 1024. Bounds total committed memory of a new direct native host and inherited pure workers; never includes an externally opened TIA process.")]
+        public int MaxOwnedJobMemoryMiB { get; set; } = 1024;
         [Category("5. Request limits (host restart)"), DisplayName("MCP stdio EOF drain seconds"), Description("1..600, default 15. Grace for an owned child to finish after client EOF. A timeout closes the supervisor's private tree and retains uncertainty; it never proves a native write rolled back.")]
         public int StdioDrainTimeoutSeconds { get; set; } = 15;
         [Category("5. Request limits (host restart)"), DisplayName("Queued native requests"), Description("1..1000. Overflow is rejected before dispatch.")]
@@ -95,6 +97,7 @@ namespace SiemensMCPServer
             Range(MaxMcpFrontends, 1, 16, nameof(MaxMcpFrontends));
             Range(MaxOwnedResources, 1, 256, nameof(MaxOwnedResources));
             Range(MaxProcessTreeSize, 1, 256, nameof(MaxProcessTreeSize));
+            Range(MaxOwnedJobMemoryMiB, 64, 16384, nameof(MaxOwnedJobMemoryMiB));
             Range(StdioDrainTimeoutSeconds, 1, 600, nameof(StdioDrainTimeoutSeconds));
             Range(NativeQueueCapacity, 1, 1000, nameof(NativeQueueCapacity));
             Range(AnalysisQueueCapacity, 1, 1000, nameof(AnalysisQueueCapacity));

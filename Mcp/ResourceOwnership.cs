@@ -290,7 +290,19 @@ namespace SiemensMCPServer.Mcp
                 if (record.State != "launching" || record.Process != null) throw new InvalidOperationException("Resource already bound.");
                 var identity = capture();
                 if (record.Ownership == "private" && Records().Any(r => r.ResourceId != id && !Terminal(r) && ((r.Process?.Same(identity) ?? false) || r.Members.Any(m => m.Same(identity))))) throw new InvalidOperationException("Another retained claim references the process.");
+                if (record.Ownership == "attached" && Records().Any(r => r.ResourceId != id && !Terminal(r) && r.Ownership == "attached" && (r.Process?.Same(identity) ?? false)))
+                    throw new InvalidOperationException("Another native attachment owns or retains uncertainty for this exact TIA process. Inspect that claim before attaching again.");
                 record.Process = identity; record.State = "active"; record.UpdatedAt = Now(); Write(record); return true;
+            });
+        }
+        internal void FailedLaunch(string id, bool confirmedNotRunning)
+        {
+            Locked(() => {
+                var record = Read(id); Mine(record);
+                if (record.Ownership != "private" || record.State != "launching" || record.Process != null || record.Receipt != null) throw new InvalidOperationException("Not an unbound launch reservation.");
+                record.State = confirmedNotRunning ? "failed" : "uncertain";
+                if (!confirmedNotRunning) record.RecoveryBarrier = "Worker launch/binding failed; exit was not confirmed through the original handle. No PID-based cleanup or automatic retry.";
+                record.UpdatedAt = Now(); Write(record); return true;
             });
         }
         internal string BeginCleanup(string id)

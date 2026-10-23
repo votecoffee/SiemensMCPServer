@@ -43,16 +43,19 @@ namespace SiemensMCPServer.Mcp
                 }
                 var safeguards = new SafeguardStore(settingsFile);
                 var initial = safeguards.Current();
-                OwnedWorkerJob.Install(initial.MaxProcessTreeSize);
+                OwnedWorkerJob.Install(initial.MaxProcessTreeSize, initial.MaxOwnedJobMemoryMiB);
+                NativeHostLifetime.Install(initial.MaxMcpFrontends, initial.StdioDrainTimeoutSeconds);
                 ResourceOwnership.Initialize(initial.MaxOwnedResources);
                 if (!explicitArtifactRoot && initial.McpArtifactRoot.Length != 0) root = initial.McpArtifactRoot;
-                var builder = Host.CreateApplicationBuilder();
+                var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { DisableDefaults = true });
                 builder.Logging.ClearProviders();
                 builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
                 builder.Logging.SetMinimumLevel(LogLevel.Warning);
                 // Container ownership drains the STA queue and disposes workers before host exit.
-                builder.Services.AddSingleton(_ => new OpennessRuntime(version, root, writes, extensionsRoot, analysisParallelism ?? initial.AnalysisParallelism, sessionFactory, safeguards));
+                OpennessRuntime? runtimeInstance = null;
+                builder.Services.AddSingleton(_ => runtimeInstance = new OpennessRuntime(version, root, writes, extensionsRoot, analysisParallelism ?? initial.AnalysisParallelism, sessionFactory, safeguards));
                 builder.Services.AddHostedService<StdioEofShutdown>();
+                builder.Services.AddSingleton(new NativeGuidance(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "native-guidance")));
                 builder.Services.AddMcpServer(options => {
                     options.ServerInfo = new ModelContextProtocol.Protocol.Implementation { Name = sessionFactory == null ? "siemens-mcp-server" : "siemens-mcp-server-fixture", Version = AppRelease.Identity(typeof(Program).Assembly) };
                     options.ServerInstructions = "Use explicit TIA process, project path, and HMI IDs. Read a text list, preview edits, and inspect the diff before applying authorized changes. Apply never saves; compile and save are separate tools. Classic and capability-checked Unified operations; use tia_get_api_capabilities and the target family. Do not retry an uncertain write; inspect current state first.";
@@ -63,9 +66,16 @@ namespace SiemensMCPServer.Mcp
                     result.TimeToLive = TimeSpan.FromSeconds(5);
                     result.CacheScope = ModelContextProtocol.Protocol.CacheScope.Private;
                     return result;
-                })).WithStdioServerTransport().WithTools<McpTools>();
-                using (var host = builder.Build()) await host.RunAsync().ConfigureAwait(false);
-                return 0;
+                })).WithStreamServerTransport(new NativeInputStream(Console.OpenStandardInput(), () => {
+                    runtimeInstance?.BeginStop(); NativeHostLifetime.InputEnded();
+                }), Console.OpenStandardOutput()).WithTools<McpTools>().WithTools<NativeGuidanceTools>();
+                using (var host = builder.Build()) {
+                    var lifetime = host.Services.GetRequiredService<IHostApplicationLifetime>();
+                    lifetime.ApplicationStopping.Register(() => { runtimeInstance?.BeginStop(); NativeHostLifetime.BeginDrain("host-or-stdio-completion"); });
+                    NativeHostLifetime.BindStop(lifetime.StopApplication);
+                    await host.RunAsync().ConfigureAwait(false);
+                }
+                return NativeHostLifetime.ExitCode;
             }
             catch (Exception ex) { Console.Error.WriteLine(ex.Message); return 1; }
         }

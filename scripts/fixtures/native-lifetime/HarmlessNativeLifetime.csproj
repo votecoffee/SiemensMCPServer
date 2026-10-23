@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType><TargetFramework>net48</TargetFramework><PlatformTarget>x64</PlatformTarget>
+    <LangVersion>latest</LangVersion><Nullable>annotations</Nullable><AssemblyName>HarmlessNativeLifetime</AssemblyName>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Mcp/NativeHostLifetime.cs" Link="NativeHostLifetime.cs" />
+    <Compile Include="../../../Mcp/NativeInputStream.cs" Link="NativeInputStream.cs" />
+    <Compile Include="../../../Mcp/OwnedWorkerJob.cs" Link="OwnedWorkerJob.cs" />
+    <PackageReference Include="System.Text.Json" Version="10.0.10" />
+  </ItemGroup>
+</Project>

@@ -262,6 +262,10 @@ namespace SiemensMCPServer.Mcp
         [Description("Compile the selected offline PLC software and return Siemens diagnostics. Requires --allow-writes and verified Offline state. Does not save, download, connect or change CPU mode.")]
         public Task<CallToolResult> CompilePlc(string plcId, IProgress<ProgressNotificationValue> progress, CancellationToken token) => Result(progress, () => runtime.Invoke(s => s.CompilePlc(plcId), token, writes: true));
 
+        [McpServerTool(Name = "tia_detach", ReadOnly = false, Destructive = false, OpenWorld = false)]
+        [Description("Detach this host's explicit TIA session and discard its previews. Never save/close/kill the user's project or TIA process. Uncertain operations must be inspected before detaching.")]
+        public Task<CallToolResult> Detach(IProgress<ProgressNotificationValue> progress, CancellationToken token) => Result(progress, () => runtime.Detach(token));
+
         private static async Task<CallToolResult> Result(IProgress<ProgressNotificationValue> progress, Func<Task<object>> operation)
         {
             try

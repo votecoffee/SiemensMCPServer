@@ -189,10 +189,18 @@ namespace SiemensMCPServer.Mcp
             return value.StartsWith("V", StringComparison.OrdinalIgnoreCase) ? "V" + value.Substring(1) : "V" + value;
         }
 
+        public Task<object> Detach(CancellationToken token) => Enqueue(() => {
+            session?.Dispose(); session = null;
+            return new { attached = false, nativeApplicationClosed = false, projectSaved = false, previewsDiscarded = true };
+        }, token);
+        public void BeginStop()
+        {
+            control.BeginStop(); local.BeginStop(); native.BeginStop();
+        }
         public void Dispose()
         {
             if (Interlocked.Exchange(ref disposed, 1) != 0) return;
-            control.BeginStop(); local.BeginStop(); native.BeginStop();
+            BeginStop();
             // Stop queued work; let dispatched native operations finish, and release
             // their session on its owning STA before disposing pure workers.
             try { control.Dispose(); local.Dispose(); native.Dispose(); }

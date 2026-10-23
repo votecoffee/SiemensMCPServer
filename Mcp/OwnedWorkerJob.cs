@@ -35,14 +35,16 @@ namespace SiemensMCPServer.Mcp
         [DllImport("kernel32.dll")] private static extern IntPtr GetCurrentProcess();
         [DllImport("kernel32.dll")] private static extern bool CloseHandle(IntPtr handle);
 
-        public static void Install(int maximum)
+        public static void Install(int maximum, int memoryMiB = 1024)
         {
             if (maximum < 1 || maximum > 256) throw new ArgumentException("Invalid owned process-tree limit.");
+            if (memoryMiB < 64 || memoryMiB > 16384) throw new ArgumentException("Invalid owned Job memory limit.");
             if (job != IntPtr.Zero) return;
             IntPtr created = CreateJobObject(IntPtr.Zero, null);
             if (created == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error(), "Cannot create the worker lifetime boundary.");
-            var limits = new Extended(); limits.Basic.Flags = 0x2000 | 0x8; // KILL_ON_JOB_CLOSE | ACTIVE_PROCESS
+            var limits = new Extended(); limits.Basic.Flags = 0x2000 | 0x8 | 0x200; // KILL_ON_JOB_CLOSE | ACTIVE_PROCESS | JOB_MEMORY
             limits.Basic.ActiveProcessLimit = (uint)maximum;
+            limits.JobMemoryLimit = (UIntPtr)checked((ulong)memoryMiB * 1024 * 1024);
             if (!SetInformationJobObject(created, 9, ref limits, (uint)Marshal.SizeOf<Extended>())
                 || !AssignProcessToJobObject(created, GetCurrentProcess())) {
                 int error = Marshal.GetLastWin32Error(); CloseHandle(created);

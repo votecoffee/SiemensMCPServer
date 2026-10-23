@@ -93,6 +93,7 @@ namespace SiemensMCPServer.Mcp
         private long nextId;
         private bool faulted;
         private bool stopped;
+        private bool started, bound;
         private string? resourceId;
         private readonly StringBuilder errors = new StringBuilder();
         public ExtensionHello Hello { get; private set; } = null!;
@@ -110,11 +111,13 @@ namespace SiemensMCPServer.Mcp
             try
             {
                 resourceId = ResourceOwnership.Current.Begin("Siemens pure feature worker: " + bundle.Manifest.Module);
-                process.Start();
+                if (!process.Start()) throw new InvalidOperationException("Worker did not start.");
+                started = true;
                 ProcessId = process.Id;
                 // The host Job already contains this child at creation. Do not
                 // send any work until its exact process identity is durable.
                 ResourceOwnership.Current.BindStartedWorker(resourceId, process);
+                bound = true;
                 input = new StreamWriter(process.StandardInput.BaseStream, new UTF8Encoding(false, true)) { AutoFlush = true };
                 // Drain stderr continuously with bounded retained diagnostics.
                 stderrTask = Task.Run(() => {
@@ -128,7 +131,7 @@ namespace SiemensMCPServer.Mcp
                     || Hello.Operations.GroupBy(o => o.Name, StringComparer.Ordinal).Any(g => g.Count() > 1))
                     throw new InvalidOperationException("Extension handshake is incompatible with its manifest or host routes.");
             }
-            catch { Dispose(); throw; }
+            catch { try { Dispose(); } catch { /* Preserve the original failure and retained launch/cleanup evidence. */ } throw; }
         }
         public JsonElement Call(string operation, object input)
         {
@@ -164,7 +167,21 @@ namespace SiemensMCPServer.Mcp
         private void Stop(bool force)
         {
             if (stopped) return;
-            string? cleanup = resourceId == null ? null : ResourceOwnership.Current.BeginCleanup(resourceId);
+            if (!bound) {
+                stopped = true; faulted = true;
+                bool gone = !started;
+                try {
+                    if (started) {
+                        try { process.StandardInput.Close(); } catch (InvalidOperationException) { } catch (IOException) { }
+                        gone = process.WaitForExit(2000);
+                    }
+                    if (resourceId != null) ResourceOwnership.Current.FailedLaunch(resourceId, gone);
+                } finally { process.Dispose(); }
+                return; // Never kill a process whose exact durable binding failed.
+            }
+            string? cleanup;
+            try { cleanup = resourceId == null ? null : ResourceOwnership.Current.BeginCleanup(resourceId); }
+            catch { stopped = true; faulted = true; process.Dispose(); throw; }
             stopped = true;
             faulted = true;
             // A timed-out pure worker may be blocked on stdin. Kill it before flushing/closing pipes.

@@ -108,6 +108,36 @@ public sealed class ResourceOwnershipTests
         Assert.Throws<InvalidOperationException>(() => store.BeginCleanup(worker));
         Assert.Equal(before, File.ReadAllBytes(temp.FilePath(worker)));
     }
+    [Fact] public void ASecondNativeHostCannotAttachThroughAnUnreleasedClaim()
+    {
+        using var temp = new Scratch(); var driver = new Driver(); driver.Add(created: "1");
+        var first = new ResourceOwnership(temp.Root, driver);
+        string held = first.Begin("First TIA attachment", attached: true); first.Bind(held, 100001);
+        first.Barrier(held, "Native outcome needs inspection.");
+        byte[] before = File.ReadAllBytes(temp.FilePath(held));
+        var second = new ResourceOwnership(temp.Root, driver);
+        string denied = second.Begin("Second TIA attachment", attached: true);
+        Assert.Throws<InvalidOperationException>(() => second.Bind(denied, 100001));
+        second.ReleaseAttachment(denied);
+        Assert.Equal(before, File.ReadAllBytes(temp.FilePath(held)));
+        first.ReleaseAttachment(held);
+        string allowed = second.Begin("After explicit detach", attached: true); second.Bind(allowed, 100001);
+        Assert.True(driver.Processes.ContainsKey(100001));
+    }
+    [Theory] [InlineData(true, "failed")] [InlineData(false, "uncertain")]
+    public void FailedUnboundLaunchRetainsEvidenceWithoutProcessCleanup(bool exited, string state)
+    {
+        using var temp = new Scratch(); var store = new ResourceOwnership(temp.Root, new Driver());
+        string id = store.Begin("Unbound launch"); store.FailedLaunch(id, exited);
+        var record = temp.Read(id);
+        Assert.Equal(state, record.GetProperty("state").GetString());
+        Assert.Equal(JsonValueKind.Null, record.GetProperty("receipt").ValueKind);
+        Assert.Equal(exited, record.GetProperty("recovery_barrier").ValueKind == JsonValueKind.Null);
+        byte[] before = File.ReadAllBytes(temp.FilePath(id));
+        Assert.Throws<InvalidOperationException>(() => store.BeginCleanup(id));
+        Assert.Throws<InvalidOperationException>(() => store.FailedLaunch(id, true));
+        Assert.Equal(before, File.ReadAllBytes(temp.FilePath(id)));
+    }
     [Theory]
     [InlineData("{}")]
     [InlineData("{\"schema_version\":1,\"schema_version\":1}")]
