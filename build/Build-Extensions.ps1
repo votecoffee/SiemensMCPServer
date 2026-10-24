@@ -3,7 +3,8 @@ param(
     [string]$Configuration='Release',
     [string]$WorkerVersion='',
     [string]$WorkerDirectory='',
-    [ValidateSet('comfort','unified','plc','project')][string[]]$Modules=@('comfort','unified','plc','project')
+    [ValidateSet('comfort','unified','plc','project')][string[]]$Modules=@('comfort','unified','plc','project'),
+    [switch]$CompactLayout
 )
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Version-Common.ps1')
@@ -32,7 +33,8 @@ if(Test-Path -LiteralPath $registryPath){
     (Get-Content -LiteralPath $registryPath -Raw | ConvertFrom-Json).PSObject.Properties | ForEach-Object {$registry[$_.Name]=$_.Value}
 }
 foreach($module in $Modules) {
-    $relative='releases/'+$module+'/'+$version+'-'+[Guid]::NewGuid().ToString('N')
+    $releaseName = if ($CompactLayout) { [Guid]::NewGuid().ToString('N').Substring(0,12) } else { $version+'-'+[Guid]::NewGuid().ToString('N') }
+    $relative='releases/'+$module+'/'+$releaseName
     $directory=Join-Path $Destination $relative
     New-Item -ItemType Directory -Path $directory | Out-Null
     Get-ChildItem -LiteralPath $WorkerDirectory -Force | Copy-Item -Destination $directory -Recurse

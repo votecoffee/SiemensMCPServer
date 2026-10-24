@@ -3,6 +3,8 @@
   <Import Project="../build/TiaPortal.props" />
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <AppConfig>../App.config</AppConfig>
+    <ApplicationManifest>../Shared/WindowsLongPaths.manifest</ApplicationManifest>
     <TargetFramework>net48</TargetFramework>
     <PlatformTarget>x64</PlatformTarget>
     <LangVersion>latest</LangVersion>

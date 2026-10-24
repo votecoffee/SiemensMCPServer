@@ -47,7 +47,7 @@ if($TiaPortalInstallVersion){$arguments+='-p:TiaPortalInstallVersion='+$TiaPorta
 if($TiaPublicApiDir){$arguments+='-p:TiaPublicApiDir='+$TiaPublicApiDir}
 & dotnet @arguments
 if($LASTEXITCODE -ne 0){throw 'Native publish failed; incomplete candidate retained'}
-& (Join-Path $PSScriptRoot 'Build-Extensions.ps1') -Destination (Join-Path $packageRoot 'server/extensions')
+& (Join-Path $PSScriptRoot 'Build-Extensions.ps1') -Destination (Join-Path $packageRoot 'server/extensions') -CompactLayout
 $executable=Join-Path $packageRoot 'server/SiemensMCPServer.Mcp.exe'
 $info=[Diagnostics.FileVersionInfo]::GetVersionInfo($executable)
 if($info.ProductVersion -cne $release.display_version -or $info.FileVersion -cne $release.file_version -or [Reflection.AssemblyName]::GetAssemblyName($executable).Version.ToString() -cne $release.assembly_version){throw 'Native executable stamp mismatch'}

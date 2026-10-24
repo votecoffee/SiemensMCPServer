@@ -8,6 +8,7 @@
     <RootNamespace>SiemensMCPServer</RootNamespace>
     <AssemblyName>SiemensMCPServer</AssemblyName>
     <ApplicationIcon>assets\SiemensMCPServer.ico</ApplicationIcon>
+    <ApplicationManifest>Shared/WindowsLongPaths.manifest</ApplicationManifest>
     <TargetFramework>net48</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <EnableDefaultItems>false</EnableDefaultItems>
