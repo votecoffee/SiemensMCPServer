@@ -26,7 +26,7 @@ namespace SiemensMCPServer.NativeLauncher
                         "--tia-version=" + selection.Data.TiaVersion,
                         "--settings-file=" + Selection.Safe(selection.Root, "settings/safeguards.json"),
                         "--artifact-root=" + Selection.Safe(selection.Root, "state/sessions"),
-                        "--extensions-root=" + Selection.Safe(selection.Runtime, "extensions")
+                        "--extensions-root=" + Selection.Safe(selection.Root, "extensions")
                     };
                     if (args.Length == 0 && selection.Data.AllowWrites) { Array.Resize(ref launch, launch.Length + 1); launch[launch.Length - 1] = "--allow-writes"; }
                     if (args.Length == 0) Environment.SetEnvironmentVariable("SIEMENS_MCP_MANAGEMENT_REGISTRY", Selection.Safe(selection.Root, "state/registry"));

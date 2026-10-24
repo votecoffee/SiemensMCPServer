@@ -4,6 +4,8 @@ The native implementation targets .NET Framework 4.8. Its app-owned `SiemensMCPS
 
 The native launcher has a fixed ABI identity independent of app timestamps. It verifies a strict hash-pinned selection, exact bounded runtime inventory, ordinary contained paths and open read leases. A pointer update affects new roots; live roots retain their selected generation. The runtime AppDomain remains until process exit because its retained unmanaged parent wait cannot be unloaded reliably after SDK EOF. There is no child MCP process or transport-forwarding wrapper.
 
+Bundled workers stay in the immutable selected runtime. Reviewed extension updates use the separate app-owned `extensions/` root and existing generation/hash-checked staging and reload tools. Never edit selected runtime bytes to reload features. Under the eight-process default, reload one named module at a time so replacement workers fit beside the retained generation; a capacity failure preserves the active generation.
+
 `build/Install-StableNativeMcp.ps1` stages verified native packages under a persistent app-owned root, resolves physical MSIX paths from the opened publication lock, retains immutable runtimes/selection backups, and derives a standalone plugin with four native skills and an absolute stable command/cwd. Existing launcher asset bytes must match. The installer never starts MCP/TIA, edits Codex settings or changes immutable Codex caches.
 
 Normal selection requires an exact-package receipt for metadata, pure workers, disposable native edit/readback, compile, save/reopen/restore and no outstanding uncertainty:
