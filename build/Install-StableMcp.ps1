@@ -17,7 +17,7 @@ if($Native) {
     & (Join-Path $PSScriptRoot 'Install-StableNativeMcp.ps1') @nativeArgs
     exit $LASTEXITCODE
 }
-if ($Help) { Write-Output 'InstallMcp.cmd -Package <reviewed-offline.zip> [-InstallRoot <persistent-root>] [-ExpectedSelectionSha256 <hash-or-absent>] [-NoPause]. Installs/selects app-owned offline bytes and stages the standalone plugin; never edits Codex settings or starts a server.'; exit 0 }
+if ($Help) { Write-Output 'InstallMcp.cmd -Package <reviewed-offline.zip> [-InstallRoot <persistent-root>] [-ExpectedSelectionSha256 <hash-or-absent>] [-NoPause]. For native use -Native -Package <native.zip> -AcceptanceReceipt <exact-package-receipt.json> [-AllowWrites]. Stages immutable app-owned bytes and the standalone plugin; never edits Codex settings or starts a server.'; exit 0 }
 try {
     if (-not $Package) { throw '-Package is required. Build/review an offline package first.' }
     $root = [IO.Path]::GetFullPath($InstallRoot).TrimEnd('\')
