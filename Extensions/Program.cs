@@ -13,7 +13,12 @@ namespace SiemensMCPServer.Extensions
     {
         private static int Main(string[] args)
         {
-            Console.InputEncoding = new UTF8Encoding(false, true); Console.OutputEncoding = new UTF8Encoding(false, true);
+            // WinExe workers have inherited pipes, not a console. Encoding setters
+            // call console APIs and can fail with ERROR_INVALID_HANDLE. Bind the
+            // actual standard streams directly and keep each JSON frame UTF-8.
+            Console.SetIn(new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false, true), false));
+            Console.SetOut(new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false, true)) { AutoFlush = true });
+            Console.SetError(new StreamWriter(Console.OpenStandardError(), new UTF8Encoding(false, true)) { AutoFlush = true });
             if (args.Length == 2 && args[0].StartsWith("--project-texts=", StringComparison.Ordinal) && args[1].StartsWith("--output=", StringComparison.Ordinal))
             {
                 try { Console.WriteLine(JsonSerializer.Serialize(ProjectTranslationFiles.Run(args[0].Substring(16), args[1].Substring(9)), ExtensionWire.Options)); return 0; }
