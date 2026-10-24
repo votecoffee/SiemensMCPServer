@@ -68,6 +68,25 @@ public sealed class OfflineProtocolTests
         Assert.Equal("string", document.RootElement.GetProperty("inputContract").GetProperty("wireType").GetString());
     }
 
+    [Fact] public async Task ScriptTriggerInventoryTraversesTheRealSdkWithoutInferringRuntimeBehavior()
+    {
+        await using var wire = await Wire.Create();
+        var catalog = await wire.Call("siemens_offline_catalog", new { });
+        using var catalogData = JsonDocument.Parse(catalog.GetProperty("content")[0].GetProperty("text").GetString()!);
+        Assert.Equal(17, catalogData.RootElement.GetProperty("operations").GetArrayLength());
+        Assert.False(catalogData.RootElement.GetProperty("runtimeMonitoringAvailable").GetBoolean());
+        string xml = "<Document><Hmi.RuntimeScripting.VBScript ID='0'><AttributeList><Name>Refresh</Name><Code>Sub Refresh()\nx = SmartTags(\"État\")\nEnd Sub</Code></AttributeList></Hmi.RuntimeScripting.VBScript></Document>";
+        string input = JsonSerializer.Serialize(new { resources = new[] { new { hmiId = "panel", path = "VBScripts/Refresh.xml", xml } }, view = "dependencies" });
+        var result = Success(await wire.Analyze(input, "analyze_script_triggers"));
+        Assert.Equal("État", result.GetProperty("page").GetProperty("items")[0].GetProperty("tag").GetString());
+        var summary = result.GetProperty("summary");
+        Assert.Equal(64, summary.GetProperty("analysisSha256").GetString()!.Length);
+        Assert.False(summary.GetProperty("measuredInvocationRateAvailable").GetBoolean());
+        Assert.False(summary.GetProperty("queueOverflowEstablished").GetBoolean());
+        Assert.Equal("unknown", summary.GetProperty("schedulerStatus").GetString());
+        Error(await wire.Analyze("{\"resources\":[],\"maxItems\":201}", "analyze_script_triggers"), "Invalid script analysis");
+    }
+
     [Fact] public async Task LargeUnicodeExportRetainsHashAcrossJsonEscaping()
     {
         await using var wire = await Wire.Create();

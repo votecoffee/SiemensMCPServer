@@ -43,7 +43,7 @@ The server exposes engineering operations through the Model Context Protocol (MC
 | Libraries | Read-only project/open global library metadata: folders, types, versions and master-copy contents. No library updates or instance creation. |
 | Project texts | Active-language discovery, native XLSX extraction/search, language-aware comment/description/text records and reviewed existing-translation updates. Native import acceptance pending. |
 
-The server does not provide device download, runtime control, watch or force operations. See [feature coverage](plugin/FEATURE-COVERAGE.md) and [validation status](plugin/NATIVE-ACCEPTANCE.md) for supported routes and their limits.
+The server does not provide device download, runtime control, watch or force operations. See [feature coverage](plugin/FEATURE-COVERAGE.md) and [validation status](plugin/NATIVE-ACCEPTANCE.md) and the [RT Advanced V15.1 monitoring feasibility](docs/RUNTIME-TAG-MONITORING.md) for supported routes and their limits.
 
 The current native candidate adds explicit detach, four revision/hash-pinned guidance tools, retained parent identity, bounded EOF drain and Windows Job process/memory limits. The GUI exposes the shared Safeguards policy. Exact worker and TIA attachment claims retain ownership and uncertainty; no automatic cleanup of user-owned TIA or write replay is enabled. Its source/build/harmless-fixture checks pass; packaged native activation and project editing still need their own acceptance.
 
@@ -51,7 +51,7 @@ The current native candidate adds explicit detach, four revision/hash-pinned gui
 
 | MCP profile | Exposure | Dependency and acceptance boundary |
 | --- | --- | --- |
-| [Direct offline](plugin-offline/README.md) | Three tools / sixteen supplied-content operations; four scoped skills | Windows/.NET 8; no TIA, worker or framework service. Bounded offline acceptance. |
+| [Direct offline](plugin-offline/README.md) | Three tools / seventeen supplied-content operations; four scoped skills | Windows/.NET 8; no TIA, worker or framework service. Bounded offline acceptance. |
 | [Direct native candidate](plugin-native/README.md) | 52 engineering/lifecycle tools plus four guidance/doctor readers; four native skills | Windows/.NET Framework 4.8 and matching Openness API. Packaged native pilot/installation held. |
 | [Earlier optional framework profile](plugin/APP-HOST.md) | App-owned discovery/context/receipt frontend to native backends and dynamic guidance | Separately pinned Python framework; direct-profile acceptance does not validate this route. |
 

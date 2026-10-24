@@ -24,6 +24,7 @@ namespace SiemensMCPServer.Extensions
                     Op("list_libraries", "List the attached project library and already-open global libraries with exact IDs and bounded metadata. Does not open, upgrade or save libraries.", "projectRead", false, LibraryInspectionOperations.Schema(false), "libraryCatalog"),
                     Op("browse_library", "Browse one returned library/path: folders, types, versions or master-copy content descriptions. Read-only metadata; no instance creation, dependency traversal or library updates.", "projectRead", false, LibraryInspectionOperations.Schema(true), "libraryCatalog") };
                 case "comfort": return new[] {
+                    Op("analyze_script_triggers", "Inventory supplied classic VBScript call candidates, literal tag dependencies and native Script/VBScript event links with acquisition metadata and exact source hashes/locators. Reports configured-handler pressure and unproven reconciliation/clear paths; never executes scripts or establishes scheduler/deployed runtime behavior.", "local", false, SiemensMCPServer.Analysis.HmiScriptAnalysis.Schema()),
                     Op("import_controller_declarations", "Import read-only Rockwell L5X or PLCopen XML declarations with source hashes; inspect paged symbols, types and members. No manually built symbol list, native import or network/controller access.", "local", false, HmiAnalysisOperations.Schema("import_controller_declarations")),
                     Op("analyze_hmi_references", "Trace supplied project classic HMI resources through screen/control/event/animation tag links into mapped controller declarations. Reports exact source paths, missing/ambiguous/opaque references and hashes. Large export folders use the companion analysis command.", "local", false, HmiAnalysisOperations.Schema("analyze_hmi_references")),
                     Op("validate_hmi_bindings", "Validate HMI bindings against imported controller scopes/members/types/array bounds/aliases and explicit connection mappings. Static declaration evidence only; native connection partners and runtime are not established.", "local", false, HmiAnalysisOperations.Schema("validate_hmi_bindings")),
@@ -69,6 +70,7 @@ namespace SiemensMCPServer.Extensions
             JsonElement args = input.TryGetProperty("arguments", out var nested) ? nested : input;
             if (module == "comfort")
             {
+                if (operation == "analyze_script_triggers") return SiemensMCPServer.Analysis.HmiScriptAnalysis.Execute(args);
                 if (operation == "validate_native_text_list") return ExtensionWire.Json(ClassicTextListValidation.Bytes(ExtensionWire.Parse<ClassicByteValidation>(args)));
                 if (operation == "validate_text_list_delta") return ClassicTextListValidation.Delta(ExtensionWire.Parse<ClassicDeltaValidation>(args));
                 if (operation == "validate_text_list_bindings") return ExtensionWire.Json(ClassicTextListEvidence.Bindings(ExtensionWire.Parse<TextListBindingEvidence>(args)));

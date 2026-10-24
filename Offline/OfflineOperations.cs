@@ -18,6 +18,7 @@ internal static class OfflineOperations
         encoding = "Serialize the described operation object as JSON once. The operation inputSchema describes that decoded object, not the outer MCP arguments."
     };
     private static readonly string[] Comfort = {
+        "analyze_script_triggers",
         "import_controller_declarations", "analyze_hmi_references", "validate_hmi_bindings", "reference_impact",
         "inspect_behaviors", "inspect_references", "inspect_screen_items", "inspect_screen_texts", "inspect_screen_layout",
         "validate_package_bindings", "validate_native_text_list", "validate_text_list_delta",
@@ -38,7 +39,7 @@ internal static class OfflineOperations
         maxInputBytes = MaxInputBytes, maxOutputBytes = MaxOutputBytes,
         inputContract = InputContract,
         management = new { status = "Not reporting", restartAvailable = false },
-        nativeEngineeringAvailable = false, filesystemAccessAvailable = false,
+        nativeEngineeringAvailable = false, runtimeMonitoringAvailable = false, filesystemAccessAvailable = false,
         scope = "Caller-supplied serialized exports and declarations only. No file reads/writes, native import, compile, save, attachment, controller, service or worker launch. Caller-supplied native evidence is not established by this server."
     };
 

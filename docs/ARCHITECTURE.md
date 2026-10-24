@@ -7,7 +7,7 @@ SiemensMCPServer owns its Windows applications, native engineering behavior, Cod
 | Component | Implementation | Responsibility |
 | --- | --- | --- |
 | Desktop utility | Root WinForms project and shared native adapters | Comfort/Advanced import/export, API-supported Unified/offline PLC transfers and the shared Safeguards editor. It does not require an MCP connection. |
-| Direct offline | `Offline/`, `plugin-offline/` | Three direct tools over sixteen closed supplied-content operations; no native APIs, process launcher, worker or shared service route. |
+| Direct offline | `Offline/`, `plugin-offline/` | Three direct tools over seventeen closed supplied-content operations; no native APIs, process launcher, worker or shared service route. |
 | Direct native candidate | `Mcp/Program.cs`, `Mcp/McpTools.cs`, `plugin-native/` | Existing engineering implementation, explicit detach and four guidance readers: 56 declared tools. Native/Codex installation acceptance remains pending. |
 | Native execution | `OpennessRuntime`, `RequestLane`, `HmiSession` and workflows | One FIFO STA owns attachment and transactions; pure analysis uses separate bounded worker lanes. GUI/native mutations stay in the shared adapters and workflow implementations. |
 | Feature updates | `Extensions/`, `ExtensionManager`, `ExtensionPlanStore` | Pure feature workers and explicit reviewed reload. A successful reload retains attachment and invalidates previews; a failed reload retains the prior generation. |

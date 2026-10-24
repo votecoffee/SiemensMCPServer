@@ -17,9 +17,10 @@ public sealed class OfflineProfileTests
         var catalog = ExtensionWire.Json(OfflineOperations.Catalog());
         Assert.Equal("direct-offline", catalog.GetProperty("profile").GetString());
         Assert.False(catalog.GetProperty("nativeEngineeringAvailable").GetBoolean());
+        Assert.False(catalog.GetProperty("runtimeMonitoringAvailable").GetBoolean());
         Assert.False(catalog.GetProperty("filesystemAccessAvailable").GetBoolean());
         var names = catalog.GetProperty("operations").EnumerateArray().Select(item => item.GetProperty("name").GetString()).ToArray();
-        Assert.Equal(16, names.Length); Assert.Contains("inspect_text_list", names);
+        Assert.Equal(17, names.Length); Assert.Contains("inspect_text_list", names); Assert.Contains("analyze_script_triggers", names);
         foreach (var name in names) Assert.NotEqual(JsonValueKind.Undefined, ExtensionWire.Json(OfflineOperations.Describe(name!)).ValueKind);
     }
 
