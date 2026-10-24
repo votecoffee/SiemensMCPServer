@@ -42,8 +42,9 @@ class NativePackageTests(unittest.TestCase):
             result=prepare(package,root/'pilot'); self.assertFalse(result['started']); self.assertFalse(result['registered'])
             self.assertFalse(result['writesEnabled']); self.assertTrue(Path(result['connection']['command']).is_absolute())
             self.assertNotIn('--allow-writes',result['connection']['args'])
-            policy=json.loads((root/'pilot/safeguards.json').read_bytes()); self.assertFalse(policy['McpWritesEnabled'])
-            self.assertEqual(policy['MaxOwnedResources'],8)
+            policy=json.loads((root/'pilot/safeguards.json').read_bytes()); self.assertFalse(policy['mcpWritesEnabled'])
+            self.assertEqual(policy['maxOwnedResources'],8)
+            self.assertEqual(policy,json.loads((ROOT/'scripts/fixtures/native-pilot-policy.json').read_bytes()))
             self.assertEqual(before,{p:p.read_bytes() for p in package.rglob('*') if p.is_file()})
 
     def test_tampered_unlisted_and_unsafe_payloads_refuse_before_output_creation(self):

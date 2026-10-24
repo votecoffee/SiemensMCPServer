@@ -11,6 +11,21 @@ namespace SiemensMCPServer.Tests;
 
 public sealed class SafeguardTests
 {
+    [Fact] public void GeneratedNativePilotPolicyUsesTheStrictProductionWireContract()
+    {
+        using var temp = new Scratch();
+        string path = Path.Combine(temp.Root, "pilot.json");
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "native-pilot-policy.json"), path);
+        var policy = new SafeguardStore(path).Current();
+        Assert.False(policy.McpWritesEnabled); Assert.False(policy.DesktopWritesEnabled);
+        foreach (var operation in new[] { GuardedOperation.Apply, GuardedOperation.Compile, GuardedOperation.Save,
+            GuardedOperation.Archive, GuardedOperation.Reopen, GuardedOperation.Delete, GuardedOperation.Overwrite,
+            GuardedOperation.SourceReplacement, GuardedOperation.ProjectTextImport })
+            Assert.Throws<InvalidOperationException>(() => policy.Require(operation, mcp: true));
+        Assert.Equal(1, policy.MaxMcpFrontends); Assert.Equal(1, policy.AnalysisParallelism);
+        Assert.Equal(8, policy.MaxOwnedResources); Assert.Equal(8, policy.MaxProcessTreeSize);
+        Assert.Equal(1024, policy.MaxOwnedJobMemoryMiB); Assert.Equal(15, policy.StdioDrainTimeoutSeconds);
+    }
     private sealed class Scratch : IDisposable
     {
         internal string Root = Path.Combine(Path.GetTempPath(), "siemens-policy-tests-" + Guid.NewGuid().ToString("N"));

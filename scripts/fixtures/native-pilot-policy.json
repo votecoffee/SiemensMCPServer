@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "desktopWritesEnabled": false,
+  "mcpWritesEnabled": false,
+  "allowApply": false,
+  "allowCompile": false,
+  "allowSave": false,
+  "allowArchive": false,
+  "allowReopen": false,
+  "allowDelete": false,
+  "allowOverwrite": false,
+  "allowSourceReplacement": false,
+  "allowProjectTextImport": false,
+  "maxMcpFrontends": 1,
+  "maxOwnedResources": 8,
+  "maxProcessTreeSize": 8,
+  "maxOwnedJobMemoryMiB": 1024,
+  "stdioDrainTimeoutSeconds": 15,
+  "analysisParallelism": 1
+}

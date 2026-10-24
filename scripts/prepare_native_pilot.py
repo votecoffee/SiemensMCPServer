@@ -33,8 +33,9 @@ def prepare(package,output):
     if output==package or package in output.parents: raise ValueError('Pilot state must remain outside immutable package')
     output.mkdir(parents=True,exist_ok=False)
     settings=output/'safeguards.json'
-    policy=dict(SchemaVersion=1,McpWritesEnabled=False,AllowApply=False,AllowCompile=False,AllowSave=False,AllowArchive=False,AllowReopen=False,
-                MaxMcpFrontends=1,MaxOwnedResources=8,MaxProcessTreeSize=8,MaxOwnedJobMemoryMiB=1024,StdioDrainTimeoutSeconds=15,AnalysisParallelism=1)
+    # Shared, strict camelCase wire fixture is also loaded by the production
+    # SafeguardStore in .NET tests. Do not infer JSON names from CLR properties.
+    policy=json.loads((Path(__file__).resolve().parent/'fixtures/native-pilot-policy.json').read_bytes())
     settings.write_text(json.dumps(policy,indent=2)+'\n',encoding='utf-8')
     executable=package/'server/SiemensMCPServer.Mcp.exe'
     connection=dict(command=str(executable),args=['--tia-version='+info['tiaPortalApi'],'--settings-file='+str(settings),'--artifact-root='+str(output/'sessions'),
