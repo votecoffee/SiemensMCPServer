@@ -15,9 +15,7 @@ Two Windows applications are included:
 
 The repository and .NET solution use `SiemensMCPServer`; the plugin and MCP registration use the package ID `siemens-mcp-server`.
 
-Last packaged native candidate: **26.1023.072948** (America/New_York), package `26.1023.72948`, bounded .NET assembly/file identity `26.1023.729.48`. The accepted direct offline profile is a separate package; source/documentation changes do not install or activate either profile. See [timestamp release rules](docs/VERSIONING.md).
-
-The current offline launcher checkpoint is **26.1023.171630**. It retains the explicit JSON string input correction and adds an app-owned, windowless in-process launcher with immutable runtime selection, durable generation records and physical installation paths under Windows MSIX virtualization. Installed/selected bytes, an actual MCP connection and current-chat activation have separate verification steps.
+The current source release stamp is recorded in [app-version.json](plugin/app-version.json). Native and offline packages have separate acceptance and installation records. Both use app-owned, windowless launchers with immutable runtime selection, retained generation records and physical installation paths under Windows MSIX virtualization. Source changes, installed bytes and a chat's active connection are separate states. See [timestamp release rules](docs/VERSIONING.md).
 
 ## Table of Contents
 
@@ -45,14 +43,14 @@ The server exposes engineering operations through the Model Context Protocol (MC
 
 The server does not provide device download, runtime control, watch or force operations. See [feature coverage](plugin/FEATURE-COVERAGE.md) and [validation status](plugin/NATIVE-ACCEPTANCE.md) and the [RT Advanced V15.1 monitoring feasibility](docs/RUNTIME-TAG-MONITORING.md) for supported routes and their limits.
 
-The current native candidate adds explicit detach, four revision/hash-pinned guidance tools, retained parent identity, bounded EOF drain and Windows Job process/memory limits. The GUI exposes the shared Safeguards policy. Exact worker and TIA attachment claims retain ownership and uncertainty; no automatic cleanup of user-owned TIA or write replay is enabled. Its source/build/harmless-fixture checks pass; packaged native activation and project editing still need their own acceptance.
+The direct native host includes explicit detach, four revision/hash-pinned guidance tools, retained parent identity, bounded EOF drain and Windows Job process/memory limits. The GUI exposes the shared Safeguards policy. Exact worker and TIA attachment claims retain ownership and uncertainty; no automatic cleanup of user-owned TIA or write replay is enabled. A packaged Comfort V15.1 pilot passed a selected screen edit, exact readback, compile, save/reopen, restoration and attached worker reload. See the [validation scope](plugin/NATIVE-ACCEPTANCE.md); other operations and families need their own acceptance.
 
 [Comfort TextLists preparation](plugin/CLASSIC-TEXT-LIST-WORKFLOW.md) validates original XML encoding, reviewed entry/translation deltas and supplied native evidence. Selected TextLists stream from verified ZIPs without extracting unrelated graphics/screens. Required checks gate publication. Literal CR/LF preservation in exported XML does not establish that the native HMI accepts every multiline value.
 
 | MCP profile | Exposure | Dependency and acceptance boundary |
 | --- | --- | --- |
 | [Direct offline](plugin-offline/README.md) | Three tools / seventeen supplied-content operations; four scoped skills | Windows/.NET 8; no TIA, worker or framework service. Bounded offline acceptance. |
-| [Direct native candidate](plugin-native/README.md) | 52 engineering/lifecycle tools plus four guidance/doctor readers; four native skills | Windows/.NET Framework 4.8 and matching Openness API. Packaged native pilot/installation held. |
+| [Direct native](plugin-native/README.md) | 52 engineering/lifecycle tools plus four guidance/doctor readers; four native skills | Windows/.NET Framework 4.8 and matching Openness API. Selected Comfort V15.1 native acceptance; Unified/PLC acceptance remains separate. |
 | [Earlier optional framework profile](plugin/APP-HOST.md) | App-owned discovery/context/receipt frontend to native backends and dynamic guidance | Separately pinned Python framework; direct-profile acceptance does not validate this route. |
 
 The [CodexMCPBroker project](https://github.com/votecoffee/CodexMCPBroker) provides a **shared MCP application framework** and a **separate Windows management app**. Siemens keeps its standalone MCP server, application-owned Codex plugin and skills. There is no universal plugin. Direct Siemens profiles do not depend on the framework; the earlier framework profile retains its reviewed dependency pins. The independent manager is optional, is not installed by Siemens' root commands, and cannot infer native project state. Direct-native doctor reports management/restart unavailable. See [implementation architecture](docs/ARCHITECTURE.md) and [profile-specific guidance](plugin/CURRENT-GUIDANCE.md).
@@ -88,7 +86,7 @@ The [native direct candidate](plugin-native/README.md) restores the existing TIA
 powershell.exe -NoProfile -File build/Build-NativePlugin.ps1 -TiaPortalVersion V15.1
 ```
 
-This candidate has no gateway or shared-service dependency. Its installation is held pending a coordinated disposable MCP/TIA pilot; building it leaves the accepted offline installation available. Source builds, harmless lifetime fixtures and package hashes do not establish native engineering acceptance. See the candidate guide for isolated, read-only pilot inputs and remaining checks.
+This candidate has no gateway or shared-service dependency. Normal installation requires an acceptance receipt bound to the exact package for disposable native edits, compile, save/reopen and restoration. The [native launcher guide](docs/NATIVE-LAUNCHER.md) describes installation, editable safeguards and extension staging. Building a candidate preserves the accepted offline installation. Source builds and package hashes alone do not establish native engineering acceptance.
 
 The earlier framework engineering profile remains available for existing deployments. Build that separate profile for the installed API:
 
