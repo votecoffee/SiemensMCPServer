@@ -17,7 +17,11 @@ namespace SiemensMCPServer.NativeLauncher
                 var setup = new AppDomainSetup { ApplicationBase = selection.Runtime, ConfigurationFile = entry + ".config" };
                 var domain = AppDomain.CreateDomain("Siemens reviewed native runtime", null, setup);
                 using var generation = args.Length == 0 ? new Generation(selection) : null;
-                try {
+                // The selected backend owns background parent/Job lifetime
+                // threads. Keep this domain until process teardown: unloading
+                // it can block on its retained unmanaged parent wait even after
+                // orderly SDK EOF. A new selection always uses a new process.
+                {
                     string[] launch = args.Length == 1 ? args : new[] {
                         "--tia-version=" + selection.Data.TiaVersion,
                         "--settings-file=" + Selection.Safe(selection.Root, "settings/safeguards.json"),
@@ -28,7 +32,7 @@ namespace SiemensMCPServer.NativeLauncher
                     if (args.Length == 0) Environment.SetEnvironmentVariable("SIEMENS_MCP_MANAGEMENT_REGISTRY", Selection.Safe(selection.Root, "state/registry"));
                     int code = domain.ExecuteAssembly(entry, launch);
                     generation?.Complete(code); return code;
-                } finally { AppDomain.Unload(domain); }
+                }
             } catch (Exception ex) {
                 Console.Error.WriteLine("Siemens native launcher refused startup/execution: " + ex.GetType().Name + ": " + ex.Message);
                 return 1;

@@ -36,7 +36,7 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination $packageRoot
 Copy-Item -LiteralPath (Join-Path $repoRoot 'plugin/app-version.json') -Destination $packageRoot
 Copy-Item -LiteralPath (Join-Path $repoRoot 'plugin/licenses') -Destination $packageRoot -Recurse
 $scripts=Join-Path $packageRoot 'scripts'; [IO.Directory]::CreateDirectory($scripts) | Out-Null
-foreach($helper in @('Install-Extension.ps1','Write-ComfortPackage.ps1','Analyze-HmiReferences.ps1','Edit-ProjectTexts.ps1','Version-Common.ps1')) {
+foreach($helper in @('Install-Extension.ps1','Write-ComfortPackage.ps1','Analyze-HmiReferences.ps1','Edit-ProjectTexts.ps1','Version-Common.ps1','Install-CodexPlugin.ps1','Install-StableMcp.ps1','Install-StableNativeMcp.ps1')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $helper) -Destination $scripts
 }
 Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts/prepare_native_pilot.py') -Destination $scripts

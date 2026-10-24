@@ -4,9 +4,19 @@ param(
     [string]$InstallRoot = (Join-Path $env:USERPROFILE 'AppData\Local\SiemensMCPServer\StandaloneMcp'),
     [string]$ExpectedSelectionSha256 = '',
     [Alias('h')][switch]$Help,
-    [switch]$NoPause
+    [switch]$NoPause,
+    [switch]$Native,
+    [string]$AcceptanceReceipt='',
+    [switch]$AllowWrites,
+    [switch]$PilotOnly
 )
 $ErrorActionPreference = 'Stop'
+if($Native) {
+    $nativeArgs=@{Package=$Package;AcceptanceReceipt=$AcceptanceReceipt;ExpectedSelectionSha256=$ExpectedSelectionSha256;AllowWrites=$AllowWrites;PilotOnly=$PilotOnly;NoPause=$NoPause}
+    if($PSBoundParameters.ContainsKey('InstallRoot')){$nativeArgs.InstallRoot=$InstallRoot}
+    & (Join-Path $PSScriptRoot 'Install-StableNativeMcp.ps1') @nativeArgs
+    exit $LASTEXITCODE
+}
 if ($Help) { Write-Output 'InstallMcp.cmd -Package <reviewed-offline.zip> [-InstallRoot <persistent-root>] [-ExpectedSelectionSha256 <hash-or-absent>] [-NoPause]. Installs/selects app-owned offline bytes and stages the standalone plugin; never edits Codex settings or starts a server.'; exit 0 }
 try {
     if (-not $Package) { throw '-Package is required. Build/review an offline package first.' }

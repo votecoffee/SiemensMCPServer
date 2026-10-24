@@ -3,7 +3,8 @@ param(
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'SiemensMCPServer\CodexMarketplace'),
     [string]$AppHostRoot = (Join-Path $env:LOCALAPPDATA 'SiemensMCPServer\AppHost'),
     [string]$StableRoot = (Join-Path $env:USERPROFILE 'AppData\Local\SiemensMCPServer\StandaloneMcp'),
-    [switch]$PrepareOnly
+    [switch]$PrepareOnly,
+    [switch]$NativeCandidate
 )
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Version-Common.ps1')
@@ -58,7 +59,9 @@ foreach ($file in $manifest) {
 $plugin = $utf8.GetString($payload['plugin.json']) | ConvertFrom-Json
 $build = $utf8.GetString($payload['build-info.json']).TrimStart([char]0xFEFF) | ConvertFrom-Json
 $isOffline = $build.profile -ceq 'direct-offline'
-if ($build.profile -and -not $isOffline) { throw 'Unknown package profile.' }
+$isNative = $build.profile -ceq 'native-direct-candidate'
+if ($isNative -and (-not $NativeCandidate -or -not $PrepareOnly)) { throw 'Native packages require explicit data-only preparation or the stable native installer.' }
+if ($build.profile -and -not $isOffline -and -not $isNative) { throw 'Unknown package profile.' }
 $validApi = if ($isOffline) { $build.tiaPortalApi -ceq 'none' } else { $build.tiaPortalApi -match '^V\d+(\.\d+)?$' }
 if ($plugin.name -cne 'siemens-mcp-server' -or $plugin.version -notmatch '^\d+\.\d+\.\d+$' -or -not $validApi -or -not (Test-AppVersionEqual $build.pluginVersion $plugin.version)) { throw 'Unexpected plugin identity/build metadata.' }
 if ($isOffline) {
