@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="../scripts/fixtures/native-pilot-policy.json" Link="native-pilot-policy.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="../NativeLauncher/Selection.cs" Link="NativeLauncher/Selection.cs" />
     <Compile Include="../Offline/OfflineOperations.cs" Link="Offline/OfflineOperations.cs" />
     <Compile Include="../Offline/BoundedInputStream.cs" Link="Offline/BoundedInputStream.cs" />
     <Compile Include="../Shared/SafeguardSettings.cs" Link="SafeguardSettings.cs" />

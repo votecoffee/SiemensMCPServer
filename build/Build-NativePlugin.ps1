@@ -40,6 +40,8 @@ foreach($helper in @('Install-Extension.ps1','Write-ComfortPackage.ps1','Analyze
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $helper) -Destination $scripts
 }
 Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts/prepare_native_pilot.py') -Destination $scripts
+[IO.Directory]::CreateDirectory((Join-Path $scripts 'fixtures')) | Out-Null
+Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts/fixtures/native-pilot-policy.json') -Destination (Join-Path $scripts 'fixtures')
 & py -3.13 -B (Join-Path $repoRoot 'scripts/build_native_guidance.py') --repo $repoRoot --destination (Join-Path $packageRoot 'server/native-guidance')
 if($LASTEXITCODE -ne 0){throw 'Native guidance projection failed'}
 $arguments=@('publish',(Join-Path $repoRoot 'Mcp/SiemensMCPServer.Mcp.csproj'),'-c','Release','--nologo','-v','minimal','-p:RestoreLockedMode=true','-p:StageFeatureExtensions=false',('-p:TiaPortalVersion='+$TiaPortalVersion),'-o',(Join-Path $packageRoot 'server'))
@@ -48,6 +50,8 @@ if($TiaPublicApiDir){$arguments+='-p:TiaPublicApiDir='+$TiaPublicApiDir}
 & dotnet @arguments
 if($LASTEXITCODE -ne 0){throw 'Native publish failed; incomplete candidate retained'}
 & (Join-Path $PSScriptRoot 'Build-Extensions.ps1') -Destination (Join-Path $packageRoot 'server/extensions') -CompactLayout
+& dotnet publish (Join-Path $repoRoot 'NativeLauncher/SiemensMCPServer.NativeLauncher.csproj') -c Release --nologo -v minimal -p:RestoreLockedMode=true -o (Join-Path $packageRoot 'native-launcher-assets')
+if($LASTEXITCODE -ne 0){throw 'Native Framework launcher publish failed'}
 $executable=Join-Path $packageRoot 'server/SiemensMCPServer.Mcp.exe'
 $info=[Diagnostics.FileVersionInfo]::GetVersionInfo($executable)
 if($info.ProductVersion -cne $release.display_version -or $info.FileVersion -cne $release.file_version -or [Reflection.AssemblyName]::GetAssemblyName($executable).Version.ToString() -cne $release.assembly_version){throw 'Native executable stamp mismatch'}
