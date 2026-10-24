@@ -2,7 +2,7 @@
 
 This candidate restores the existing local TIA Portal Openness tools through one direct stdio host, with four Siemens workflow skills and data-only, revision-pinned guidance readers. It has no gateway, Python service or universal plugin dependency. Comfort V15.1 is the first native pilot; Unified and PLC acceptance remain separate.
 
-Build it with `build/Build-NativePlugin.ps1`. Building publishes binaries and package bytes only. It never starts the MCP host, workers, TIA or a service, and never changes an installed plugin. The installer deliberately refuses this candidate profile until coordinated runtime/native acceptance. Keep the accepted offline installation available.
+Build it with `build/Build-NativePlugin.ps1`. Building publishes binaries and package bytes only. It never starts MCP, workers, TIA or a service, and never changes an installed plugin. The [stable native installer](../docs/NATIVE-LAUNCHER.md) requires exact-package disposable native acceptance for normal selection. An isolated pilot uses a distinct explicit private root. Keep the accepted offline installation available.
 
 The package contains the 51 existing engineering tools, explicit `tia_detach`, and four guidance/doctor tools. Call `siemens_list_workflows`, then read the chosen workflow with its catalog revision and SHA256. Invoke engineering tools directly using their live schemas. No service/context acquisition is required. Tools are declarations until the packaged host has passed a real disposable MCP probe.
 
