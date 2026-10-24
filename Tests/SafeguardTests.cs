@@ -23,6 +23,7 @@ public sealed class SafeguardTests
             GuardedOperation.SourceReplacement, GuardedOperation.ProjectTextImport })
             Assert.Throws<InvalidOperationException>(() => policy.Require(operation, mcp: true));
         Assert.Equal(1, policy.MaxMcpFrontends); Assert.Equal(1, policy.AnalysisParallelism);
+        Assert.Equal(1, policy.MaxMetadataFrontends); Assert.Equal(128, policy.MetadataJobMemoryMiB);
         Assert.Equal(8, policy.MaxOwnedResources); Assert.Equal(8, policy.MaxProcessTreeSize);
         Assert.Equal(1024, policy.MaxOwnedJobMemoryMiB); Assert.Equal(15, policy.StdioDrainTimeoutSeconds);
     }
@@ -110,6 +111,8 @@ public sealed class SafeguardTests
         var properties = TypeDescriptor.GetProperties(typeof(SafeguardSettings)).Cast<PropertyDescriptor>().Where(p => p.IsBrowsable).ToArray();
         Assert.Contains(properties, p => p.Name == "McpWritesEnabled" && !p.IsReadOnly);
         Assert.Contains(properties, p => p.Name == "MaxMcpFrontends" && !p.IsReadOnly);
+        Assert.Contains(properties, p => p.Name == "MaxMetadataFrontends" && !p.IsReadOnly);
+        Assert.Contains(properties, p => p.Name == "MetadataJobMemoryMiB" && !p.IsReadOnly);
         Assert.Contains(properties, p => p.Name == "MaxOwnedJobMemoryMiB" && !p.IsReadOnly);
         Assert.Contains(properties, p => p.Name == "IdentityChecks" && p.IsReadOnly);
         foreach (var property in properties) Assert.False(string.IsNullOrEmpty(property.Category));

@@ -8,6 +8,7 @@
     <Compile Include="../../../Mcp/NativeHostLifetime.cs" Link="NativeHostLifetime.cs" />
     <Compile Include="../../../Mcp/NativeInputStream.cs" Link="NativeInputStream.cs" />
     <Compile Include="../../../Mcp/OwnedWorkerJob.cs" Link="OwnedWorkerJob.cs" />
+    <Compile Include="../../../Mcp/NativeWorkAdmission.cs" Link="NativeWorkAdmission.cs" />
     <PackageReference Include="System.Text.Json" Version="10.0.10" />
   </ItemGroup>
 </Project>

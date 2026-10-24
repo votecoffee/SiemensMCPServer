@@ -162,6 +162,8 @@ tia_get_api_capabilities()
 
 Direct native clients keep one owning stdio connection: attachments, preview plans and worker generations belong to that host. Read the current guide, attach to an explicit process/project and invoke the direct live tool schemas. A transport that starts a fresh host for every call cannot carry an attach/preview/apply sequence. Explicit `tia_detach` releases the Openness attachment and previews without saving or closing user TIA. Preserve uncertain outcomes and inspect native state; do not replay an old plan or switch hosts to bypass retained evidence.
 
+New native source separates lightweight discovery connections from bounded native/worker workspaces. Explicit detach drains workers before returning a workspace to its discovery budget. Older installed roots retain their original admission behavior until they exit; the [native launcher guide](docs/NATIVE-LAUNCHER.md) gives budgets, transition limits and validation boundaries.
+
 Only the earlier framework profile requires explicit [app-service startup](plugin/APP-HOST.md#installation-and-private-state) and acquisition of `siemens-engineering`. Keep that context for the workflow. A stopped service is reported without automatic launch/restart. Direct profiles require no service/context acquisition. The desktop **Safeguards...** editor controls the native connection ceiling and Job memory along with the other shared policy settings.
 
 ### Reload feature workers

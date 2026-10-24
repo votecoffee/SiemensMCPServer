@@ -20,7 +20,7 @@ namespace SiemensMCPServer.Mcp
         [McpServerTool(Name = "siemens_doctor", ReadOnly = true, OpenWorld = false)]
         [Description("Inspect direct-native identity and guide scope without native API probing or implicit worker/service startup.")]
         public object Doctor() => new { profile = "native-direct-candidate", version = AppRelease.Identity(typeof(NativeGuidanceTools).Assembly),
-            lifetime = NativeHostLifetime.Identity, manager = "Not reporting: no shared management endpoint", restart = "unavailable", guidance = guidance.Catalog(),
+            lifetime = NativeHostLifetime.Identity, execution = NativeWorkAdmission.Snapshot(), manager = "Not reporting: no shared management endpoint", restart = "unavailable", guidance = guidance.Catalog(),
             nativeAcceptance = "separate coordinated disposable TIA pilot required; metadata is not native acceptance" };
     }
 }

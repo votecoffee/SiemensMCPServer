@@ -44,6 +44,32 @@ class NativeLifetimeTests(unittest.TestCase):
         active[0].kill(); active[0].wait(timeout=5)
         replacement = self.start(); ready(replacement)
 
+    def test_metadata_admission_is_independent_of_work_and_demotes_only_after_children_exit(self):
+        clients=[self.start('workspace') for _ in range(6)]
+        for process in clients:ready(process)
+        def command(process,text):
+            process.stdin.write((text+'\n').encode());process.stdin.flush();return ready(process)
+        def budget(row,processes,memory):
+            self.assertEqual(row['job']['processLimit'],processes)
+            self.assertEqual(row['job']['memoryBytes'],memory*1024*1024)
+        for process in clients:
+            initial=command(process,'metadata');self.assertFalse(initial['execution']['active']);budget(initial,1,128)
+        overflow=self.start('workspace');out,err=overflow.communicate(timeout=5)
+        self.assertEqual(overflow.returncode,1);self.assertFalse(out);self.assertIn(b'capacity unavailable',err)
+        admitted=command(clients[0],'work');self.assertTrue(admitted['execution']['active']);budget(admitted,3,256)
+        for process in clients[1:]:
+            refused=command(process,'work');self.assertIn('execution capacity unavailable',refused['error']);budget(refused,1,128)
+            self.assertNotIn('error',command(process,'metadata'))
+        child=command(clients[0],'child');self.assertIsInstance(child['childPid'],int)
+        retained=command(clients[0],'release');self.assertTrue(retained['execution']['active']);budget(retained,3,256)
+        self.assertIn('execution capacity unavailable',command(clients[1],'work')['error'])
+        command(clients[0],'close-child')
+        released=command(clients[0],'release');self.assertFalse(released['execution']['active']);budget(released,1,128)
+        self.assertTrue(command(clients[1],'work')['execution']['active'])
+        clients[1].kill();clients[1].wait(timeout=5)
+        self.assertTrue(command(clients[2],'work')['execution']['active'])
+        for process in clients[:1]+clients[3:]:self.assertNotIn('error',command(process,'metadata'))
+
     def test_eof_hung_drain_exits_124(self):
         process=self.start('force-eof'); ready(process)
         out,err=process.communicate(timeout=5)

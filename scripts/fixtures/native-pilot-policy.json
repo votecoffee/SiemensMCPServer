@@ -12,6 +12,8 @@
   "allowSourceReplacement": false,
   "allowProjectTextImport": false,
   "maxMcpFrontends": 1,
+  "maxMetadataFrontends": 1,
+  "metadataJobMemoryMiB": 128,
   "maxOwnedResources": 8,
   "maxProcessTreeSize": 8,
   "maxOwnedJobMemoryMiB": 1024,

@@ -50,8 +50,12 @@ namespace SiemensMCPServer
         public int MaxPendingPreviews { get; set; } = 100;
         [Category("5. Request limits (host restart)"), DisplayName("Parallel local analysis jobs"), Description("1..8. Native operations always use a single STA lane. Restart applies changes; an explicit --analysis-parallelism launch argument overrides this value.")]
         public int AnalysisParallelism { get; set; } = 2;
-        [Category("5. Request limits (host restart)"), DisplayName("Maximum connected MCP chats"), Description("1..16. Bounds lightweight frontend processes. New connections read this limit; lowering it never terminates an existing chat. The application service must be started explicitly.")]
+        [Category("5. Request limits (host restart)"), DisplayName("Maximum active MCP workspaces"), Description("1..16. Bounds roots using native APIs or feature workers. Discovery has a separate limit. Existing older roots retain their work slots until they exit. Explicit detach releases a new root's work slot after its workers drain; lowering a limit never terminates peers.")]
         public int MaxMcpFrontends { get; set; } = 4;
+        [Category("5. Request limits (host restart)"), DisplayName("Maximum MCP discovery connections"), Description("1..64, default 32. Bounds lightweight roots for initialize, tool schemas, pinned guides and doctor. Each starts with one process and its discovery memory ceiling. Native/worker execution needs a separate workspace slot.")]
+        public int MaxMetadataFrontends { get; set; } = 32;
+        [Category("5. Request limits (host restart)"), DisplayName("Discovery Job memory (MiB)"), Description("64..512, default 128. Committed memory ceiling before native/worker admission; limited further by the owned Job memory setting. Explicit detach attempts to return to this budget after verified worker cleanup.")]
+        public int MetadataJobMemoryMiB { get; set; } = 128;
         [Category("5. Request limits (host restart)"), DisplayName("Maximum owned software resources"), Description("1..256. Default 32 non-retired resource claims per Siemens app across supervisor generations. Includes private workers and user-owned TIA attachments. Retained or uncertain claims require reviewed recovery; increasing this does not clear them.")]
         public int MaxOwnedResources { get; set; } = 32;
         [Category("5. Request limits (host restart)"), DisplayName("Maximum processes per owned tree"), Description("1..256, default 64. Windows Job limit includes each supervisor and its descendants. Applies to new process trees; lowering it never terminates existing ones.")]
@@ -95,6 +99,8 @@ namespace SiemensMCPServer
             Range(MaxPendingPreviews, 1, 1000, nameof(MaxPendingPreviews));
             Range(AnalysisParallelism, 1, 8, nameof(AnalysisParallelism));
             Range(MaxMcpFrontends, 1, 16, nameof(MaxMcpFrontends));
+            Range(MaxMetadataFrontends, 1, 64, nameof(MaxMetadataFrontends));
+            Range(MetadataJobMemoryMiB, 64, 512, nameof(MetadataJobMemoryMiB));
             Range(MaxOwnedResources, 1, 256, nameof(MaxOwnedResources));
             Range(MaxProcessTreeSize, 1, 256, nameof(MaxProcessTreeSize));
             Range(MaxOwnedJobMemoryMiB, 64, 16384, nameof(MaxOwnedJobMemoryMiB));

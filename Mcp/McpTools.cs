@@ -263,7 +263,7 @@ namespace SiemensMCPServer.Mcp
         public Task<CallToolResult> CompilePlc(string plcId, IProgress<ProgressNotificationValue> progress, CancellationToken token) => Result(progress, () => runtime.Invoke(s => s.CompilePlc(plcId), token, writes: true));
 
         [McpServerTool(Name = "tia_detach", ReadOnly = false, Destructive = false, OpenWorld = false)]
-        [Description("Detach this host's explicit TIA session and discard its previews. Never save/close/kill the user's project or TIA process. Uncertain operations must be inspected before detaching.")]
+        [Description("Detach this host's explicit TIA session and discard its previews. Drain its feature workers and release its execution slot when the root fits its discovery budget; otherwise report retained execution memory. The discovery connection stays usable. Never save/close/kill the user's project or TIA process. Uncertain operations must be inspected before detaching.")]
         public Task<CallToolResult> Detach(IProgress<ProgressNotificationValue> progress, CancellationToken token) => Result(progress, () => runtime.Detach(token));
 
         private static async Task<CallToolResult> Result(IProgress<ProgressNotificationValue> progress, Func<Task<object>> operation)

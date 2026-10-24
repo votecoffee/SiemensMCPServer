@@ -38,10 +38,10 @@ namespace SiemensMCPServer.Mcp
                 throw new InvalidOperationException("Cannot prove native host/parent creation identity.");
             return new { pid, creationFileTime = creation.ToString(System.Globalization.CultureInfo.InvariantCulture), image = image.ToString() };
         }
-        public static void Install(int maximumSessions, int eofDrainSeconds)
+        public static void Install(int maximumSessions, int eofDrainSeconds, string? testPrefix = null)
         {
             if (Environment.OSVersion.Platform != PlatformID.Win32NT) throw new PlatformNotSupportedException("Native direct host requires Windows.");
-            if (maximumSessions < 1 || maximumSessions > 16 || eofDrainSeconds < 1 || eofDrainSeconds > 600) throw new ArgumentException("Invalid native session/drain bounds.");
+            if (maximumSessions < 1 || maximumSessions > 64 || eofDrainSeconds < 1 || eofDrainSeconds > 600) throw new ArgumentException("Invalid native session/drain bounds.");
             if (Identity != null) throw new InvalidOperationException("Native host lifetime already installed.");
             drainSeconds = eofDrainSeconds;
             uint ownPid;
@@ -67,7 +67,7 @@ namespace SiemensMCPServer.Mcp
                 new Thread(() => {
                     try {
                         for (int index = 0; index < maximumSessions; index++) {
-                            var candidate = new Mutex(false, "Local\\SiemensMCPServer-NativeDirect-v1-" + sid + "-" + index);
+                            var candidate = new Mutex(false, (testPrefix ?? "Local\\SiemensMCPServer-NativeMetadata-v1-" + sid + "-") + index);
                             bool owned; try { owned = candidate.WaitOne(0); } catch (AbandonedMutexException) { owned = true; }
                             if (owned) { slot = candidate; break; } candidate.Dispose();
                         }

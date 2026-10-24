@@ -65,6 +65,25 @@ public sealed class ExtensionConcurrencyTests
             Assert.All(fixture.Workers.Where(worker => worker.Hello.Version == "0.13.0"), worker => Assert.True(worker.Disposed));
         } finally { release.Set(); }
     }
+    [Fact] public async Task ExplicitWorkerResetDrainsLocalCallsAndRecreatesTheirGeneration()
+    {
+        using var fixture = new Fixture(); using var started = new ManualResetEventSlim(); using var release = new ManualResetEventSlim();
+        fixture.Configure = worker => {
+            if (worker.ProcessId == 2) worker.Work = () => { started.Set(); if (!release.Wait(TimeSpan.FromSeconds(10))) throw new TimeoutException(); return ExtensionWire.Json(new { ok = true }); };
+            return worker;
+        };
+        using var manager = fixture.Manager(); string original = manager.Generation("comfort");
+        try {
+            var request = Task.Run(() => manager.ExecuteLocal("comfort", "inspect_xml", new { }));
+            Assert.True(started.Wait(TimeSpan.FromSeconds(5)));
+            var reset = Task.Run(() => manager.ResetWorkers());
+            Assert.False(reset.IsCompleted); Assert.All(fixture.Workers, worker => Assert.False(worker.Disposed));
+            release.Set(); await request.WaitAsync(TimeSpan.FromSeconds(10)); await reset.WaitAsync(TimeSpan.FromSeconds(10));
+            Assert.All(fixture.Workers, worker => Assert.True(worker.Disposed));
+            Assert.NotEqual(original, manager.Generation("comfort"));
+            Assert.True(ExtensionWire.Json(manager.ExecuteLocal("comfort", "inspect_xml", new { })).GetProperty("data").GetProperty("ok").GetBoolean());
+        } finally { release.Set(); }
+    }
     [Fact] public void FailedReloadPreservesTheCurrentGenerationAndItsLocalPool()
     {
         using var fixture = new Fixture(); using var manager = fixture.Manager();

@@ -22,7 +22,7 @@ class Client:
         self.process = subprocess.Popen([
             str(fixture), '--allow-writes', '--settings-file='+str(native/'safeguards.json'),
             '--artifact-root='+str(native/name), '--extensions-root='+str(external)],
-            env={**os.environ, 'SIEMENS_FIXTURE_STATE': str(native)}, stdin=subprocess.PIPE,
+            env={**os.environ, 'SIEMENS_FIXTURE_STATE': str(native), 'SIEMENS_MCP_MANAGEMENT_REGISTRY': str(native/'registry')}, stdin=subprocess.PIPE,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8',
             bufsize=1, creationflags=subprocess.CREATE_NO_WINDOW)
 
@@ -41,7 +41,7 @@ class Client:
             'clientInfo': {'name': 'standalone-adapter-fixture', 'version': '1.0'}})
         assert hello['protocolVersion'] == '2025-11-25'
         self.send('notifications/initialized', {}, notification=True)
-        assert len(self.send('tools/list', {})['tools']) == 51
+        assert len(self.send('tools/list', {})['tools']) == 56
 
     def send(self, method, params, notification=False):
         self.sequence += 1
@@ -68,7 +68,9 @@ class Client:
     def app(self, tool, arguments=None):
         result = self.call(tool, arguments)
         assert not result.get('isError'), result
-        return result['structuredContent']['result']
+        data=result.get('structuredContent')
+        if data is None:data=json.loads(next(item['text'] for item in result['content'] if item['type']=='text'))
+        return data.get('result',data)
 
     def close(self, lost=False):
         self.process.stdin.close()
@@ -153,6 +155,15 @@ def exercise(fixture, native, external):
         owner.app('tia_reopen_project', {'expectedProjectPath': project})
         assert not owner.app('tia_get_status')['projectModified']
 
+        retired = preview('Do not adopt a detached preview')
+        detached = owner.app('tia_detach')
+        assert detached['executionReleased'] and not detached['execution']['active']
+        assert not owner.app('siemens_doctor')['execution']['active']
+        assert not owner.app('tia_get_status')['attached']
+        owner.app('tia_attach', attach)
+        assert owner.call('hmi_apply_text_edits', apply_args(retired)).get('isError')
+        assert len(effects(native, 'import-effect')) == 2
+
         abandoned = preview('Do not adopt this plan')
         owner.close()
         owner = Client(fixture, native, external, 'replacement')
@@ -186,6 +197,7 @@ def exercise(fixture, native, external):
         'productionHandlersAndWorkers': True, 'completeIndependentReadResultsEqual': True,
         'unicodeReadbackCharacters': len(literal), 'foreignProcessHashConsumedAndStalePlansRejected': True,
         'reloadInvalidatesAndFailedReloadRetainsPlans': True, 'compileSaveReopenSeparate': True,
+        'explicitDetachDrainsWorkersAndReleasesExecution': True,
         'restartDiscardsSelectionAndPlans': True, 'lostReplyObserved': lost_reply,
         'independentImportEffects': 3, 'zeroReplay': True, 'projectAttached': False, 'nativeWrites': False}
 
@@ -205,6 +217,8 @@ def main():
                 assert not source.name.startswith('Siemens.Engineering')
                 shutil.copy2(source, fixture_dir/source.name)
         shutil.copytree(host.parent/'extensions', fixture_dir/'extensions')
+        from build_native_guidance import build as build_guidance
+        build_guidance(repo, fixture_dir/'native-guidance')
         build = subprocess.run(['dotnet', 'build', str(repo/'scripts/fixtures/SiemensMCPServer.Mcp.Fixture.csproj'),
             '-c', 'Release', '-p:HostDirectory='+str(host.parent), '--nologo', '-v', 'minimal', '-o', str(fixture_dir)],
             capture_output=True, text=True, encoding='utf-8', timeout=90)

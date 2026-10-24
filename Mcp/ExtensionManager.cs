@@ -328,8 +328,17 @@ namespace SiemensMCPServer.Mcp
         public void Dispose()
         {
             generations.EnterWriteLock();
-            try { if (disposed) return; disposed = true; foreach (var worker in active.Values) worker.Dispose(); active.Clear(); }
+            try { if (disposed) return; ResetWorkers(); disposed = true; }
             finally { generations.ExitWriteLock(); }
+        }
+        internal void ResetWorkers()
+        {
+            generations.EnterWriteLock();
+            try {
+                if (disposed) throw new ObjectDisposedException(nameof(ExtensionManager));
+                foreach (var worker in active.Values) worker.Dispose();
+                active.Clear();
+            } finally { generations.ExitWriteLock(); }
         }
     }
 }

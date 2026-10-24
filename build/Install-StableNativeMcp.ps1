@@ -80,7 +80,7 @@ public static class SiemensNativePhysicalPath {
         if(-not(Test-Path -LiteralPath $settings)){
             [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($settings))|Out-Null
             $policy=Get-Content -LiteralPath (Join-Path $source 'scripts/fixtures/native-pilot-policy.json') -Raw|ConvertFrom-Json
-            if(-not $PilotOnly){$policy.maxMcpFrontends=4;$policy.maxOwnedResources=64;$policy.analysisParallelism=2}
+            if(-not $PilotOnly){$policy.maxMcpFrontends=4;$policy.maxMetadataFrontends=32;$policy.maxOwnedResources=64;$policy.analysisParallelism=2}
             if($AllowWrites){foreach($field in @('desktopWritesEnabled','mcpWritesEnabled','allowApply','allowCompile','allowSave','allowArchive','allowReopen','allowDelete','allowOverwrite','allowSourceReplacement','allowProjectTextImport')){$policy.$field=$true}}
             Write-Record $settings $policy
         }

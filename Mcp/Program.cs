@@ -43,8 +43,13 @@ namespace SiemensMCPServer.Mcp
                 }
                 var safeguards = new SafeguardStore(settingsFile);
                 var initial = safeguards.Current();
-                OwnedWorkerJob.Install(initial.MaxProcessTreeSize, initial.MaxOwnedJobMemoryMiB);
-                NativeHostLifetime.Install(initial.MaxMcpFrontends, initial.StdioDrainTimeoutSeconds);
+                int metadataMemory = Math.Min(initial.MetadataJobMemoryMiB, initial.MaxOwnedJobMemoryMiB);
+                // Only the separately compiled IHmiSession fixture supplies a
+                // factory. Production exposes no namespace/fixture switch.
+                string? testNamespace = sessionFactory == null ? null : "Local\\SiemensMCPServer-AdapterFixture-v2-" + System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value + "-";
+                OwnedWorkerJob.Install(1, metadataMemory);
+                NativeHostLifetime.Install(initial.MaxMetadataFrontends, initial.StdioDrainTimeoutSeconds, testNamespace == null ? null : testNamespace + "metadata-");
+                NativeWorkAdmission.Configure(initial.MaxMcpFrontends, initial.MaxProcessTreeSize, initial.MaxOwnedJobMemoryMiB, metadataMemory, testNamespace == null ? null : testNamespace + "work-");
                 ResourceOwnership.Initialize(initial.MaxOwnedResources);
                 if (!explicitArtifactRoot && initial.McpArtifactRoot.Length != 0) root = initial.McpArtifactRoot;
                 var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { DisableDefaults = true });

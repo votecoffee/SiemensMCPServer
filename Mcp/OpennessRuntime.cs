@@ -64,6 +64,7 @@ namespace SiemensMCPServer.Mcp
         private int disposed;
         private readonly ExtensionManager extensions;
         private readonly Func<string, IFeatureEngine, IHmiSession>? sessionFactory;
+        private readonly ReaderWriterLockSlim work = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
         public OpennessRuntime(string? version, string artifactRoot, bool allowWrites, string? extensionsRoot = null, int analysisParallelism = 2,
             Func<string, IFeatureEngine, IHmiSession>? sessionFactory = null, SafeguardStore? safeguards = null)
@@ -80,9 +81,9 @@ namespace SiemensMCPServer.Mcp
             native = new RequestLane("TIA Openness STA", 1, startupSettings.NativeQueueCapacity, sta: true, cleanup: () => session?.Dispose());
         }
 
-        public Task<object> ListExtensions(CancellationToken token) => control.Enqueue(() => extensions.List(new {
+        public Task<object> ListExtensions(CancellationToken token) => control.Enqueue(() => Work(() => extensions.List(new {
             native = native.Snapshot(), local = local.Snapshot(), control = control.Snapshot(),
-            scope = "Native calls/transactions are FIFO on one STA. Pure local analysis uses separate bounded workers. Queued cancellation removes work before dispatch; running operations finish without thread abort. Reload drains active generation leases." }), token, nameof(ListExtensions));
+            scope = "Native calls/transactions are FIFO on one STA. Pure local analysis uses separate bounded workers. Queued cancellation removes work before dispatch; running operations finish without thread abort. Reload drains active generation leases." })), token, nameof(ListExtensions));
         public Task<object> ReloadExtensions(string module, CancellationToken token) => Enqueue(() => { safeguards.Current().Require(GuardedOperation.ExtensionReload, mcp: true); return extensions.Reload(module, () => session?.InvalidatePreviews()); }, token);
         private static JsonElement Arguments(string json)
         {
@@ -94,12 +95,12 @@ namespace SiemensMCPServer.Mcp
             ExtensionBundle.ModuleName(module);
             if (operation == null || operation.Length == 0 || operation.Length > 128 || operation.Any(char.IsControl)) throw new ArgumentException("Use an advertised bounded extension operation name.");
             if (argumentsJson == null || argumentsJson.Length > 16 * 1024 * 1024) throw new ArgumentException("Supply a bounded JSON arguments object.");
-            var route = (string)await control.Enqueue(() => {
+            var route = (string)await control.Enqueue(() => Work(() => {
                 var descriptor = extensions.Operation(module, operation);
                 if (descriptor.Preview) throw new ArgumentException("Use a preview for this extension operation.");
                 return descriptor.Route;
-            }, token, "Route extension read").ConfigureAwait(false);
-            if (route == "local") return await local.Enqueue(() => extensions.ExecuteLocal(module, operation, Arguments(argumentsJson)), token, module + "/" + operation).ConfigureAwait(false);
+            }), token, "Route extension read").ConfigureAwait(false);
+            if (route == "local") return await local.Enqueue(() => Work(() => extensions.ExecuteLocal(module, operation, Arguments(argumentsJson))), token, module + "/" + operation).ConfigureAwait(false);
             return await Enqueue(() => {
                 // Reload can happen after classification. Revalidate before native capture.
                 var descriptor = extensions.Operation(module, operation);
@@ -123,10 +124,10 @@ namespace SiemensMCPServer.Mcp
             safeguardsFile = safeguards.FilePath, safeguards = safeguards.Current(),
             startupRequestLimits = new { startupSettings.NativeQueueCapacity, startupSettings.AnalysisQueueCapacity, startupSettings.ControlQueueCapacity, startupSettings.WorkerTimeoutSeconds },
             launchWritePermission = allowWrites
-        }, token);
+        }, token, workRequired: false);
 
         public Task<object> PrepareClassicBundle(string sourceDirectory, string[] categories, ClassicFolderName[] folderNames, CancellationToken token, bool repairXmlDeclaration = false, string targetVersion = "V15.1", string[]? selectedTextLists = null)
-            => local.Enqueue(() => {
+            => local.Enqueue(() => Work(() => {
                 string destination = Path.Combine(artifactRoot, "classic-export-bundles", Guid.NewGuid().ToString("N"));
                 if (categories != null && categories.Length == 1 && categories[0] == "TextLists") {
                     if (folderNames == null || folderNames.Length != 0) throw new ArgumentException("TextLists have no native folder-name overrides.");
@@ -134,7 +135,7 @@ namespace SiemensMCPServer.Mcp
                 }
                 if (repairXmlDeclaration || selectedTextLists != null) throw new ArgumentException("Declaration repair and selectedTextLists require categories=['TextLists'].");
                 return ClassicExportBundle.Prepare(sourceDirectory, destination, categories, folderNames);
-            }, token, nameof(PrepareClassicBundle));
+            }), token, nameof(PrepareClassicBundle));
 
         public Task<object> SelectVersion(string version, CancellationToken token) => Enqueue(() => {
             string selected = Normalize(version);
@@ -144,7 +145,7 @@ namespace SiemensMCPServer.Mcp
                 throw new InvalidOperationException("Restart the MCP server before switching engineering versions after loading Siemens assemblies.");
             requestedVersion = selected;
             return (object)new { selectedEngineeringVersion = selected };
-        }, token);
+        }, token, workRequired: false);
 
         public Task<object> Invoke(Func<IHmiSession, object> operation, CancellationToken token, bool writes = false, [CallerMemberName] string operationName = "") => Enqueue(() => {
             if (writes) {
@@ -174,12 +175,19 @@ namespace SiemensMCPServer.Mcp
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static IHmiSession CreateSession(string root, IFeatureEngine features, Func<SafeguardSettings> settings) => new HmiSession(root, features, settings);
 
-        private Task<object> Enqueue(Func<object> operation, CancellationToken token, [CallerMemberName] string operationName = "")
+        private object Work(Func<object> operation)
+        {
+            work.EnterReadLock();
+            try { NativeWorkAdmission.EnsureActive(); return operation(); }
+            finally { work.ExitReadLock(); }
+        }
+
+        private Task<object> Enqueue(Func<object> operation, CancellationToken token, [CallerMemberName] string operationName = "", bool workRequired = true)
         {
             if (Volatile.Read(ref disposed) != 0) throw new ObjectDisposedException(nameof(OpennessRuntime));
             // Materialize deferred native enumerations on the owning thread. Only
             // immutable JSON crosses the native queue's response boundary.
-            return native.EnqueueSnapshot(operation, token, operationName);
+            return native.EnqueueSnapshot(workRequired ? () => Work(operation) : operation, token, operationName);
         }
 
         private static string Normalize(string version)
@@ -190,9 +198,15 @@ namespace SiemensMCPServer.Mcp
         }
 
         public Task<object> Detach(CancellationToken token) => Enqueue(() => {
-            session?.Dispose(); session = null;
-            return new { attached = false, nativeApplicationClosed = false, projectSaved = false, previewsDiscarded = true };
-        }, token);
+            work.EnterWriteLock();
+            try {
+                session?.Dispose(); session = null;
+                extensions.ResetWorkers();
+                bool released = NativeWorkAdmission.ReleaseAfterDrain();
+                return new { attached = false, nativeApplicationClosed = false, projectSaved = false, previewsDiscarded = true,
+                    executionReleased = released, execution = NativeWorkAdmission.Snapshot() };
+            } finally { work.ExitWriteLock(); }
+        }, token, workRequired: false);
         public void BeginStop()
         {
             control.BeginStop(); local.BeginStop(); native.BeginStop();

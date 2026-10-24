@@ -44,6 +44,19 @@ These selected checks do not establish every control, caption storage mode, beha
 
 ## Known boundaries
 
+### Enabled tool families and native evidence
+
+| Enabled family | Actual acceptance boundary |
+| --- | --- |
+| Direct metadata/guidance and private feature workers | Packaged/installed 26.1024.105326 protocol checks exposed all 56 schemas, read pinned guidance and exercised all four worker handshakes plus a selected local Comfort XML inspection. This establishes discovery and the selected pure-data path. |
+| Comfort/classic native screen scalar editing and project lifecycle | 26.1024.105326 passed the selected V15.1 screen-color preview/apply/readback, inverse restoration, archive creation, compile/save/reopen and detach/EOF checks described above. Generic screen import/export was also exercised on the earlier 26.1024.103115 pilot. |
+| Other Comfort object, text-list, control and behavior operations | Source/model/worker checks and the explicitly versioned historical native cases above. The selected current screen-color test does not establish every enabled Comfort operation. |
+| Unified engineering | Source, worker-model and API-signature coverage; separate native attached-project import/edit/compile/save acceptance remains pending. |
+| Offline Siemens PLC engineering | Source, worker-model and API-signature coverage; representative native PLC editing/import/compile/save acceptance remains pending. Imported L5X/PLCopen declaration analysis is supplied-content evidence, not a Siemens PLC native trial. |
+| Project/global libraries and multilingual project workbooks | Source/model/API-signature evidence as qualified above; current-package native read/import acceptance remains separate. No global library is opened implicitly. |
+| New discovery/execution admission split | Harmless Windows process/Job tests and a production MCP-handler/worker test with a synthetic IHmiSession provider pass. They establish the tested admission/drain behavior; packaged load, installed-route and native acceptance are separate. |
+| Controller/runtime operation | Online control, download, force and runtime monitoring are not provided by this direct engineering profile. |
+
 - Classic V15.1 import retains active translation slots. Clear existing translation text instead of removing the slot.
 - Classic alarm definitions, library faceplate definitions and controls outside Siemens' export surface require separate support or native engineering workflows.
 - Generic native import/generation acceptance is distinct from strict candidate/readback equality. Consult each tool's documented scope and result.
