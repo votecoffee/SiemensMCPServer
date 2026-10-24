@@ -73,4 +73,26 @@ public sealed class NativeXmlStageTests : IDisposable
         Assert.Empty(Directory.GetDirectories(root));
         Assert.Throws<ArgumentException>(() => NativeXmlStage.Create("../escape.xml", new[] { root }));
     }
+
+    [Fact]
+    public void BinaryArchiveOutputFallsBackFromLongRootWithoutChangingTemp()
+    {
+        string longRoot = Path.Combine(root, new string('x', 100));
+        Directory.CreateDirectory(longRoot);
+        string? originalTemp = Environment.GetEnvironmentVariable("TEMP");
+        string operation;
+        using (var stage = NativeXmlStage.Create("b.zap15_1", new[] { longRoot, root }, maximumPath: 143))
+        {
+            operation = stage.DirectoryPath;
+            Assert.Equal(root, Path.GetDirectoryName(operation));
+            Assert.True(stage.Report.NativePath.Length <= 143);
+            // Native Archive writes a binary result directly; XML validation is
+            // reserved for XML transfers, not directory ownership/cleanup.
+            File.WriteAllBytes(stage.Report.NativePath, new byte[] { 0, 255, 1 });
+            Assert.Equal(new byte[] { 0, 255, 1 }, File.ReadAllBytes(stage.Report.NativePath));
+        }
+        Assert.False(Directory.Exists(operation));
+        Assert.Empty(Directory.GetDirectories(longRoot));
+        Assert.Equal(originalTemp, Environment.GetEnvironmentVariable("TEMP"));
+    }
 }

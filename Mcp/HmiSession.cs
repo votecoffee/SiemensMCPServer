@@ -335,19 +335,14 @@ namespace SiemensMCPServer.Mcp
                 CheckProject();
                 if (project!.IsModified) throw new InvalidOperationException("Project has unsaved changes. Save within the user's authorization before archiving.");
                 Directory.CreateDirectory(directory);
-                // V15.1 limits the native archive path to 143 characters. Stage in
-                // a short temporary directory, then retain it under the artifact root.
-                string tempRoot = Path.GetFullPath(Path.GetTempPath()).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-                string staging = Path.GetFullPath(Path.Combine(tempRoot, "tia-archive-" + Guid.NewGuid().ToString("N")));
-                if (!staging.StartsWith(tempRoot, StringComparison.OrdinalIgnoreCase)) throw new IOException("Invalid archive staging path.");
-                if (Path.Combine(staging, fileName).Length > 143) throw new IOException("TIA V15.1 needs an archive path no longer than 143 characters. Configure a shorter Windows TEMP directory.");
-                Directory.CreateDirectory(staging);
-                try
+                // Reuse private physical short-directory ownership for binary output;
+                // no XML read/write/validation is involved. Packaged Windows TEMP
+                // can itself exceed V15.1's 143-character archive limit.
+                using (var staging = NativeXmlStage.Create(fileName, maximumPath: 143))
                 {
-                    project.Archive(new DirectoryInfo(staging), fileName, ProjectArchivationMode.Compressed);
-                    File.Move(Path.Combine(staging, fileName), Path.Combine(directory, fileName));
+                    project.Archive(new DirectoryInfo(staging.NativeDirectory), fileName, ProjectArchivationMode.Compressed);
+                    File.Move(staging.Report.NativePath, Path.Combine(directory, fileName));
                 }
-                finally { Directory.Delete(staging, true); }
             }
             string path = Path.Combine(directory, fileName);
             if (!File.Exists(path)) throw new IOException("Siemens did not create the expected project archive: " + path);
