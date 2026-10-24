@@ -55,11 +55,13 @@ if($LASTEXITCODE -ne 0){throw 'Native Framework launcher publish failed'}
 $executable=Join-Path $packageRoot 'server/SiemensMCPServer.Mcp.exe'
 $info=[Diagnostics.FileVersionInfo]::GetVersionInfo($executable)
 if($info.ProductVersion -cne $release.display_version -or $info.FileVersion -cne $release.file_version -or [Reflection.AssemblyName]::GetAssemblyName($executable).Version.ToString() -cne $release.assembly_version){throw 'Native executable stamp mismatch'}
-foreach($file in Get-ChildItem -LiteralPath $packageRoot -Recurse -File -Filter '*.exe') {
+foreach($file in Get-ChildItem -LiteralPath (Join-Path $packageRoot 'server') -Recurse -File -Filter '*.exe') {
     $raw=[IO.File]::ReadAllBytes($file.FullName); $pe=[BitConverter]::ToInt32($raw,0x3c)
     if($pe -lt 0 -or $pe+94 -gt $raw.Length -or [BitConverter]::ToUInt32($raw,$pe) -ne 0x4550 -or [BitConverter]::ToUInt16($raw,$pe+24+68) -ne 2){throw 'Native/worker executables must use the Windows subsystem'}
     if([Diagnostics.FileVersionInfo]::GetVersionInfo($file.FullName).ProductVersion -cne $release.display_version){throw 'Worker stamp mismatch'}
 }
+$launcher = Join-Path $packageRoot 'native-launcher-assets/SiemensMCPServer.NativeLauncher.exe'
+if([Diagnostics.FileVersionInfo]::GetVersionInfo($launcher).ProductVersion -cne 'native-launcher-contract-1') { throw 'Native launcher ABI differs' }
 if(Get-ChildItem -LiteralPath $packageRoot -Recurse -File | Where-Object { $_.Name -match '^Siemens\.Engineering|\.whl$|^launch\.py$' }){throw 'Vendor DLL/shared service runtime in native candidate'}
 $tools=@(foreach($file in @('Mcp/McpTools.cs','Mcp/NativeGuidanceTools.cs')) {
     [regex]::Matches([IO.File]::ReadAllText((Join-Path $repoRoot $file)),'McpServerTool\(Name = "([^"]+)"') | ForEach-Object {$_.Groups[1].Value}
