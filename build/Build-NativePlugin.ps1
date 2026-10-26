@@ -63,13 +63,23 @@ foreach($file in Get-ChildItem -LiteralPath (Join-Path $packageRoot 'server') -R
 $launcher = Join-Path $packageRoot 'native-launcher-assets/SiemensMCPServer.NativeLauncher.exe'
 if([Diagnostics.FileVersionInfo]::GetVersionInfo($launcher).ProductVersion -cne 'native-launcher-contract-1') { throw 'Native launcher ABI differs' }
 if(Get-ChildItem -LiteralPath $packageRoot -Recurse -File | Where-Object { $_.Name -match '^Siemens\.Engineering|\.whl$|^launch\.py$' }){throw 'Vendor DLL/shared service runtime in native candidate'}
+foreach($assetName in @('extensions','native-guidance')) {
+    $assetDirectory=[IO.Path]::GetFullPath((Join-Path $packageRoot ('server/'+$assetName)))
+    $expected=[IO.Path]::GetFullPath((Join-Path $packageRoot 'server')).TrimEnd('\')+'\'
+    if(-not $assetDirectory.StartsWith($expected,[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($assetDirectory) -cne $assetName){throw 'Unsafe native asset staging directory'}
+    & py -3.13 -B (Join-Path $repoRoot 'scripts/pack_native_assets.py') --source $assetDirectory --destination ($assetDirectory+'.zip') --purpose $assetName
+    if($LASTEXITCODE -ne 0){throw 'Native asset archive verification failed; staging preserved'}
+    # Only the verified, explicitly contained generated staging directory is removed.
+    if(Get-ChildItem -LiteralPath $assetDirectory -Recurse -Force | Where-Object {$_.Attributes -band [IO.FileAttributes]::ReparsePoint}){throw 'Linked generated asset staging directory'}
+    Remove-Item -LiteralPath $assetDirectory -Recurse -Force
+}
 $tools=@(foreach($file in @('Mcp/McpTools.cs','Mcp/NativeGuidanceTools.cs')) {
     [regex]::Matches([IO.File]::ReadAllText((Join-Path $repoRoot $file)),'McpServerTool\(Name = "([^"]+)"') | ForEach-Object {$_.Groups[1].Value}
 })
 if($tools.Count -ne 56 -or @($tools | Sort-Object -Unique).Count -ne 56){throw 'Unexpected static native tool inventory'}
 [IO.File]::WriteAllText((Join-Path $packageRoot 'tool-declarations.json'),([ordered]@{sourceOnly=$true;runtimeValidated=$false;tools=$tools}|ConvertTo-Json -Depth 5),$utf8)
 $metadata=[ordered]@{profile='native-direct-candidate';pluginVersion=$release.package_version;displayVersion=$release.display_version;assemblyVersion=$release.assembly_version;fileVersion=$release.file_version; tiaPortalApi=$TiaPortalVersion;
-    sourceCommit=(& git -C $repoRoot rev-parse HEAD);sourceHasLocalChanges=[bool](& git -C $repoRoot status --porcelain);mcpStarted=$false;nativeAcceptance='Pending coordinated disposable TIA pilot';installation='Held; accepted installed offline package unchanged';builtUtc=[DateTime]::UtcNow.ToString('o')}
+    sourceCommit=(& git -C $repoRoot rev-parse HEAD);sourceHasLocalChanges=[bool](& git -C $repoRoot status --porcelain);mcpStarted=$false;nativeAcceptance='Pending coordinated disposable TIA pilot';installation='Held; this build does not modify existing installations or selections';builtUtc=[DateTime]::UtcNow.ToString('o')}
 [IO.File]::WriteAllText((Join-Path $packageRoot 'build-info.json'),($metadata | ConvertTo-Json),$utf8)
 $sources=@($sourcePaths | ForEach-Object {[ordered]@{path=$_;sha256=Get-NativeHash (Join-Path $repoRoot $_)}})
 [IO.File]::WriteAllText((Join-Path $packageRoot 'source-manifest.json'),(ConvertTo-Json -InputObject $sources -Depth 5),$utf8)

@@ -9,6 +9,47 @@ using Xunit;
 
 public sealed class ExtensionTests
 {
+    [Fact] public void WorkerPayloadLeasesRejectSubstitutionAndBlockWritesUntilReleased()
+    {
+        using var fixture = new Fixture(); string directory = Path.Combine(fixture.Bundled, "comfort");
+        var bundle = ExtensionBundle.Read(directory, "comfort"); string entry = Path.Combine(directory, bundle.Manifest.EntryPoint);
+        using (var lease = bundle.LeasePayload()) {
+            Assert.NotEmpty(File.ReadAllBytes(entry));
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT) Assert.Throws<IOException>(() => File.WriteAllText(entry, "changed"));
+        }
+        File.WriteAllText(entry, "changed");
+        Assert.Throws<InvalidDataException>(() => bundle.LeasePayload());
+    }
+    [Fact] public void ArchivedWorkersBindExpandedManifestsToTheOriginalInventory()
+    {
+        using var fixture = new Fixture();
+        File.WriteAllText(Path.Combine(fixture.Bundled, "active.json"), "{\"comfort\":\"comfort\",\"unified\":\"unified\",\"plc\":\"plc\"}");
+        var files = System.IO.Directory.GetFiles(fixture.Bundled, "*", SearchOption.AllDirectories).ToDictionary(p => p.Substring(fixture.Bundled.Length + 1).Replace('\\', '/'), File.ReadAllBytes);
+        NativeAssetArchiveTests.WriteArchive(fixture.Bundled + ".zip", files);
+        System.IO.Directory.Move(fixture.Bundled, fixture.Bundled + "-source");
+        using var manager = fixture.Manager(); manager.Generation("comfort");
+        string expanded = System.IO.Directory.GetDirectories(fixture.Cache, "bundled-*").Single();
+        File.WriteAllText(Path.Combine(expanded, "active.json"), "{\"unified\":\"../../escape\"}");
+        fixture.Bundle("unified", "0.7.1", Path.Combine(expanded, "unified"));
+        Assert.Throws<InvalidDataException>(() => manager.Generation("unified"));
+        Assert.Single(fixture.Workers);
+    }
+    [Fact] public void FailedArchiveExpansionStartsNoWorkerAndDoesNotRetryInTheSameRoot()
+    {
+        using var fixture = new Fixture();
+        var files = System.IO.Directory.GetFiles(fixture.Bundled, "*", SearchOption.AllDirectories).ToDictionary(p => p.Substring(fixture.Bundled.Length + 1).Replace('\\', '/'), File.ReadAllBytes);
+        var changed = new Dictionary<string, byte[]>(files); string last = files.Keys.Last();
+        changed[last] = Enumerable.Repeat((byte)0, files[last].Length).ToArray();
+        NativeAssetArchiveTests.WriteArchive(fixture.Bundled + ".zip", files, changed);
+        System.IO.Directory.Move(fixture.Bundled, fixture.Bundled + "-source");
+        using var manager = fixture.Manager();
+        Assert.Throws<InvalidDataException>(() => manager.Generation("comfort"));
+        Assert.Empty(fixture.Workers);
+        Assert.Single(System.IO.Directory.GetDirectories(fixture.Cache, "bundled-*"));
+        File.Delete(fixture.Bundled + ".zip"); NativeAssetArchiveTests.WriteArchive(fixture.Bundled + ".zip", files);
+        Assert.Throws<InvalidOperationException>(() => manager.Generation("comfort"));
+        Assert.Empty(fixture.Workers);
+    }
     [Theory]
     [InlineData("edit_text_list")]
     [InlineData("change_text_list")]

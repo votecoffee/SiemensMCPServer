@@ -22,6 +22,7 @@
     <Compile Include="../Shared/UnifiedScreenCatalog.cs" Link="UnifiedScreenCatalog.cs" />
     <Compile Include="../Mcp/JsonDefaults.cs" Link="JsonDefaults.cs" />
     <Compile Include="../Mcp/ExtensionManager.cs" Link="ExtensionManager.cs" />
+    <Compile Include="../Mcp/NativeAssetArchive.cs" Link="NativeAssetArchive.cs" />
     <Compile Include="../Mcp/ExtensionWorkerPool.cs" Link="ExtensionWorkerPool.cs" />
     <Compile Include="../Mcp/RequestLane.cs" Link="RequestLane.cs" />
     <Compile Include="../Mcp/ResourceOwnership.cs" Link="ResourceOwnership.cs" />

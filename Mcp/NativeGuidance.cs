@@ -26,6 +26,11 @@ namespace SiemensMCPServer.Mcp
         {
             if (string.IsNullOrWhiteSpace(relative) || relative.IndexOf('\\') >= 0 || relative.IndexOf(':') >= 0 || Path.IsPathRooted(relative)
                 || relative.Split('/').Any(p => p == "" || p == "." || p == "..")) throw new InvalidDataException("Guidance paths must remain in their package.");
+            if (File.Exists(root + ".zip")) {
+                if (Directory.Exists(root)) throw new InvalidDataException("Ambiguous native guidance layout.");
+                using var packed = new NativeAssetArchive(root + ".zip", "native-guidance");
+                return packed.Read(relative, maximum);
+            }
             string path = root;
             foreach (var part in new[] { "" }.Concat(relative.Split('/'))) {
                 if (part.Length != 0) path = Path.Combine(path, part);

@@ -44,6 +44,8 @@ namespace SiemensMCPServer.Mcp
             if (string.IsNullOrEmpty(relative) || Path.IsPathRooted(relative) || relative.Contains('\\') || relative.Split('/').Any(p => p == "" || p == "." || p == ".." || p.Contains(':')))
                 throw new ArgumentException("Extension paths must stay inside their root.");
             string current = Path.GetFullPath(root);
+            for (string? parent = Path.GetDirectoryName(current); parent != null; parent = Path.GetDirectoryName(parent))
+                if (System.IO.Directory.Exists(parent) && (File.GetAttributes(parent) & FileAttributes.ReparsePoint) != 0) throw new ArgumentException("Linked extension ancestors are not supported.");
             foreach (string part in new[] { "" }.Concat(relative.Split('/')))
             {
                 if (part.Length != 0) current = Path.Combine(current, part);
@@ -76,6 +78,24 @@ namespace SiemensMCPServer.Mcp
             if (actual.Count != seen.Count || !seen.Contains(manifest.EntryPoint)) throw new ArgumentException("Extension has missing or unlisted files.");
             return new ExtensionBundle { Directory = Path.GetFullPath(directory), Manifest = manifest, ManifestSha256 = TextListDocument.Hash(File.ReadAllBytes(Path.Combine(directory, "extension.json"))) };
         }
+        internal IDisposable LeasePayload()
+        {
+            var held = new PayloadLease();
+            try {
+                foreach (var file in Manifest.Files.Concat(new[] { new TransferFile { Path = "extension.json", Sha256 = ManifestSha256, Bytes = new FileInfo(SafePath(Directory, "extension.json")).Length } })) {
+                    var stream = new FileStream(SafePath(Directory, file.Path), FileMode.Open, FileAccess.Read, FileShare.Read); held.Files.Add(stream);
+                    using var sha = System.Security.Cryptography.SHA256.Create();
+                    string hash = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+                    if (stream.Length != file.Bytes || hash != file.Sha256) throw new InvalidDataException("Worker payload changed before its execution lease.");
+                }
+                return held;
+            } catch { held.Dispose(); throw; }
+        }
+        private sealed class PayloadLease : IDisposable
+        {
+            internal readonly List<FileStream> Files = new List<FileStream>();
+            public void Dispose() { foreach (var file in Files) file.Dispose(); Files.Clear(); }
+        }
     }
     internal interface IExtensionWorker : IDisposable
     {
@@ -95,6 +115,8 @@ namespace SiemensMCPServer.Mcp
         private bool stopped;
         private bool startAttempted, started, bound;
         private string? resourceId;
+        private IDisposable? payload;
+        private static readonly List<IDisposable> uncertainPayloads = new List<IDisposable>();
         private readonly StringBuilder errors = new StringBuilder();
         public ExtensionHello Hello { get; private set; } = null!;
         public int ProcessId { get; private set; }
@@ -110,6 +132,7 @@ namespace SiemensMCPServer.Mcp
             } };
             try
             {
+                payload = bundle.LeasePayload();
                 resourceId = ResourceOwnership.Current.Begin("Siemens pure feature worker: " + bundle.Manifest.Module);
                 startAttempted = true;
                 if (!process.Start()) throw new InvalidOperationException("Worker did not start.");
@@ -165,6 +188,13 @@ namespace SiemensMCPServer.Mcp
         }
         public void Dispose()
             => Stop(false);
+        private void ReleasePayload(bool gone)
+        {
+            if (payload == null) return;
+            if (gone) payload.Dispose();
+            else lock (uncertainPayloads) uncertainPayloads.Add(payload); // retain until root teardown
+            payload = null;
+        }
         private void Stop(bool force)
         {
             if (stopped) return;
@@ -180,12 +210,12 @@ namespace SiemensMCPServer.Mcp
                         try { gone = process.HasExited; } catch (InvalidOperationException) { } // failed Start is not proof of no native child
                     }
                     if (resourceId != null) ResourceOwnership.Current.FailedLaunch(resourceId, gone);
-                } finally { process.Dispose(); }
+                } finally { process.Dispose(); ReleasePayload(gone); }
                 return; // Never kill a process whose exact durable binding failed.
             }
             string? cleanup;
             try { cleanup = resourceId == null ? null : ResourceOwnership.Current.BeginCleanup(resourceId); }
-            catch { stopped = true; faulted = true; process.Dispose(); throw; }
+            catch { stopped = true; faulted = true; process.Dispose(); ReleasePayload(false); throw; }
             stopped = true;
             faulted = true;
             // A timed-out pure worker may be blocked on stdin. Kill it before flushing/closing pipes.
@@ -196,7 +226,7 @@ namespace SiemensMCPServer.Mcp
             bool exited = false;
             try { exited = process.HasExited; } catch (InvalidOperationException) { }
             try { if (resourceId != null && cleanup != null) ResourceOwnership.Current.CompleteCleanup(resourceId, cleanup, exited); }
-            finally { process.Dispose(); } // journal failure retains its receipt; do not leak our original OS handle
+            finally { process.Dispose(); ReleasePayload(exited); } // uncertain process/payload claims remain retained
         }
     }
     // Native calls use the primary worker on the STA. Pure local calls use a
@@ -211,7 +241,26 @@ namespace SiemensMCPServer.Mcp
             public string Generation = Guid.NewGuid().ToString("N");
             public void Dispose() { try { Local.Dispose(); } finally { Worker.Dispose(); } }
         }
-        private readonly string bundledRoot, externalRoot, cacheRoot;
+        private readonly string bundledSource, externalRoot, cacheRoot;
+        private NativeAssetArchive? packed;
+        private string? expanded;
+        private Exception? expansionFailure;
+        private string BundledRoot {
+            get {
+                lock (activation) {
+                    if (expansionFailure != null) throw new InvalidOperationException("Bundled asset expansion previously failed; retain its evidence and use a fresh root after inspection.", expansionFailure);
+                    if (!File.Exists(bundledSource + ".zip")) return bundledSource;
+                    if (System.IO.Directory.Exists(bundledSource)) throw new InvalidDataException("Ambiguous bundled extension layout.");
+                    if (expanded != null) return expanded;
+                    try {
+                        packed = new NativeAssetArchive(bundledSource + ".zip", "extensions");
+                        string target = Path.Combine(cacheRoot, "bundled-" + Guid.NewGuid().ToString("N"));
+                        packed.Extract(target); expanded = target;
+                    } catch (Exception ex) { packed?.Dispose(); packed = null; expansionFailure = ex; throw; }
+                    return expanded;
+                }
+            }
+        }
         private readonly Func<ExtensionBundle, IExtensionWorker> factory;
         private readonly Dictionary<string, Active> active = new Dictionary<string, Active>(StringComparer.Ordinal);
         private readonly object activation = new object();
@@ -221,7 +270,7 @@ namespace SiemensMCPServer.Mcp
         public ExtensionManager(string bundledRoot, string externalRoot, string cacheRoot, Func<ExtensionBundle, IExtensionWorker>? factory = null, int localParallelism = 2)
         {
             if (localParallelism < 1 || localParallelism > 8) throw new ArgumentException("Local analysis parallelism must be 1..8.");
-            this.localParallelism = localParallelism; this.bundledRoot = Path.GetFullPath(bundledRoot); this.externalRoot = Path.GetFullPath(externalRoot); this.cacheRoot = Path.GetFullPath(cacheRoot); this.factory = factory ?? (b => new ExtensionWorker(b));
+            this.localParallelism = localParallelism; this.bundledSource = Path.GetFullPath(bundledRoot); this.externalRoot = Path.GetFullPath(externalRoot); this.cacheRoot = Path.GetFullPath(cacheRoot); this.factory = factory ?? (b => new ExtensionWorker(b));
         }
         private T Read<T>(Func<T> action)
         {
@@ -233,9 +282,11 @@ namespace SiemensMCPServer.Mcp
         {
             root = root ?? externalRoot;
             string file = ExtensionBundle.SafePath(root, "active.json");
-            if (!File.Exists(file)) return new Dictionary<string, string>(StringComparer.Ordinal);
-            if ((File.GetAttributes(file) & FileAttributes.ReparsePoint) != 0 || new FileInfo(file).Length > 65536) throw new ArgumentException("Invalid extension registry.");
-            var registry = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(file, Encoding.UTF8), JsonDefaults.Options) ?? throw new ArgumentException("Missing extension registry.");
+            bool archived = packed != null && root == expanded;
+            if (!archived && !File.Exists(file)) return new Dictionary<string, string>(StringComparer.Ordinal);
+            if (!archived && ((File.GetAttributes(file) & FileAttributes.ReparsePoint) != 0 || new FileInfo(file).Length > 65536)) throw new ArgumentException("Invalid extension registry.");
+            string json = archived ? Encoding.UTF8.GetString(packed!.Read("active.json", 65536)) : File.ReadAllText(file, Encoding.UTF8);
+            var registry = JsonSerializer.Deserialize<Dictionary<string, string>>(json, JsonDefaults.Options) ?? throw new ArgumentException("Missing extension registry.");
             if (registry.Count > 16) throw new ArgumentException("At most 16 extension modules may be configured.");
             foreach (var item in registry) { ExtensionBundle.ModuleName(item.Key); ExtensionBundle.SafePath(root, item.Value); }
             return registry;
@@ -243,10 +294,12 @@ namespace SiemensMCPServer.Mcp
         private Active Load(string module, IDictionary<string, string> registry)
         {
             ExtensionBundle.ModuleName(module);
-            var bundled = Registry(bundledRoot);
+            var bundled = Registry(BundledRoot);
             string source = registry.TryGetValue(module, out var relative) ? ExtensionBundle.SafePath(externalRoot, relative)
-                : ExtensionBundle.SafePath(bundledRoot, bundled.TryGetValue(module, out var fallback) ? fallback : module);
+                : ExtensionBundle.SafePath(BundledRoot, bundled.TryGetValue(module, out var fallback) ? fallback : module);
             var original = ExtensionBundle.Read(source, module);
+            if (packed != null && source.StartsWith(expanded + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                packed.RequireHash(source.Substring(expanded!.Length + 1).Replace('\\', '/') + "/extension.json", original.ManifestSha256);
             string staged = ExtensionBundle.SafePath(cacheRoot, module + "/" + Guid.NewGuid().ToString("N"));
             TransferFiles.Copy(source, staged);
             var bundle = ExtensionBundle.Read(staged, module);
@@ -301,7 +354,7 @@ namespace SiemensMCPServer.Mcp
         public object List(object? requests = null) => Read<object>(() => {
             var registry = Registry();
             string[] known; lock (activation) known = active.Keys.ToArray();
-            var modules = new[] { "comfort", "unified", "plc" }.Concat(Registry(bundledRoot).Keys).Concat(registry.Keys).Concat(known).Distinct(StringComparer.Ordinal).OrderBy(s => s, StringComparer.Ordinal).ToArray();
+            var modules = new[] { "comfort", "unified", "plc" }.Concat(Registry(BundledRoot).Keys).Concat(registry.Keys).Concat(known).Distinct(StringComparer.Ordinal).OrderBy(s => s, StringComparer.Ordinal).ToArray();
             return new { hostProcessId = Process.GetCurrentProcess().Id, extensionRoot = externalRoot,
                 modules = modules.Select(module => { var a = Get(module); return new { module, a.Bundle.Manifest.Version, a.Generation, workerProcessId = a.Worker.ProcessId, localWorkerProcessIds = a.Local.ProcessIds, a.Bundle.ManifestSha256, operations = a.Worker.Hello.Operations }; }).ToArray(), requests,
                 scope = "Trusted local worker code; hashes detect changes, not publisher identity. Workers receive serialized data, never Siemens objects. Reload does not save or alter the project." };
@@ -312,7 +365,7 @@ namespace SiemensMCPServer.Mcp
             try {
             if (disposed) throw new ObjectDisposedException(nameof(ExtensionManager));
             var registry = Registry();
-            string[] modules = module == "" ? new[] { "comfort", "unified", "plc" }.Concat(Registry(bundledRoot).Keys).Concat(registry.Keys).Concat(active.Keys).Distinct(StringComparer.Ordinal).ToArray() : new[] { module };
+            string[] modules = module == "" ? new[] { "comfort", "unified", "plc" }.Concat(Registry(BundledRoot).Keys).Concat(registry.Keys).Concat(active.Keys).Distinct(StringComparer.Ordinal).ToArray() : new[] { module };
             var replacements = new Dictionary<string, Active>(StringComparer.Ordinal);
             try { foreach (string name in modules) replacements.Add(name, Load(name, registry)); }
             catch { foreach (var candidate in replacements.Values) candidate.Dispose(); throw; }
@@ -328,7 +381,7 @@ namespace SiemensMCPServer.Mcp
         public void Dispose()
         {
             generations.EnterWriteLock();
-            try { if (disposed) return; ResetWorkers(); disposed = true; }
+            try { if (disposed) return; ResetWorkers(); packed?.Dispose(); disposed = true; }
             finally { generations.ExitWriteLock(); }
         }
         internal void ResetWorkers()

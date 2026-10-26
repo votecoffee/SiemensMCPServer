@@ -32,6 +32,28 @@ public sealed class NativeGuidanceTests
         Assert.Equal(Encoding.UTF8.GetString(temp.Text), result.GetProperty("markdown").GetString());
         Assert.Throws<InvalidOperationException>(() => reader.Get("guide-0", temp.Revision, ResourceOwnership.Hash(temp.Text), "reference"));
     }
+    [Fact] public void PackedGuidanceRetainsRevisionContentPinsAndRejectsAmbiguousLayout()
+    {
+        using var temp = new Scratch(); string revision = temp.Revision, hash = ResourceOwnership.Hash(temp.Text);
+        var files = Directory.GetFiles(temp.Root).ToDictionary(Path.GetFileName, File.ReadAllBytes);
+        string archive = temp.Root + ".zip", source = temp.Root + "-source";
+        NativeAssetArchiveTests.WriteArchive(archive, files, purpose: "native-guidance");
+        try {
+            var reader = new NativeGuidance(temp.Root);
+            Assert.Throws<InvalidDataException>(() => reader.Catalog());
+            Directory.Move(temp.Root, source);
+            var catalog = JsonSerializer.SerializeToElement(reader.Catalog());
+            Assert.Equal(3, catalog.GetProperty("workflows").GetArrayLength());
+            var result = JsonSerializer.SerializeToElement(reader.Get("guide-0", revision, hash, "workflow"));
+            Assert.Equal(Encoding.UTF8.GetString(temp.Text), result.GetProperty("markdown").GetString());
+            Assert.Throws<InvalidOperationException>(() => reader.Get("guide-0", new string('0',64), hash, "workflow"));
+            Assert.Throws<InvalidOperationException>(() => reader.Get("guide-0", revision, new string('0',64), "workflow"));
+            Assert.False(Directory.Exists(temp.Root));
+        } finally {
+            File.Delete(archive);
+            if (Directory.Exists(source)) Directory.Move(source, temp.Root);
+        }
+    }
     [Fact] public void StaleRevisionHashAndTamperedContentAreRefused()
     {
         using var temp = new Scratch(); var reader = new NativeGuidance(temp.Root); string revision = temp.Revision, hash = ResourceOwnership.Hash(temp.Text);
