@@ -28,6 +28,7 @@
     <Compile Include="../Mcp/ResourceOwnership.cs" Link="ResourceOwnership.cs" />
     <Compile Include="../Mcp/NativeGuidance.cs" Link="NativeGuidance.cs" />
     <Compile Include="../Mcp/NativeInputStream.cs" Link="NativeInputStream.cs" />
+    <Compile Include="../Mcp/NativeLifecycleDiagnostics.cs" Link="NativeLifecycleDiagnostics.cs" />
     <Compile Include="../Mcp/ExtensionPlanStore.cs" Link="ExtensionPlanStore.cs" />
     <Compile Include="../Extensions/ExtensionContract.cs" Link="ExtensionContract.cs" />
     <Compile Include="../Extensions/FeatureOperations.cs" Link="FeatureOperations.cs" />

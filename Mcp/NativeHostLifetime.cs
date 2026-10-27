@@ -92,6 +92,7 @@ namespace SiemensMCPServer.Mcp
         }
         private static void RequestStop(int code, string reason)
         {
+            NativeLifecycleDiagnostics.Record("stop-requested", new { code, reason });
             Interlocked.CompareExchange(ref exitCode, code, 0); Interlocked.Exchange(ref requested, 1);
             BeginDrain(reason);
             try { stop?.Invoke(); } catch (Exception ex) { Console.Error.WriteLine("Native stop callback failed: " + ex.Message); }
@@ -103,6 +104,8 @@ namespace SiemensMCPServer.Mcp
             Console.Error.WriteLine("Siemens native direct drain: " + reason + "; retained native/worker evidence is never replayed or cleared.");
             new Thread(() => {
                 Thread.Sleep(TimeSpan.FromSeconds(drainSeconds));
+                NativeLifecycleDiagnostics.Record("forced-drain-exit-intent", new { code = ExitCode == 0 ? 124 : 127 });
+                NativeLifecycleDiagnostics.Flush();
                 Console.Error.WriteLine("Siemens native direct drain expired; private Job closes with root. Native outcome remains subject to retained journal/attachment inspection.");
                 Environment.Exit(ExitCode == 0 ? 124 : 127);
             }) { IsBackground = true, Name = "SiemensNativeDrainFence" }.Start();

@@ -21,6 +21,7 @@ namespace SiemensMCPServer.Mcp
                     Console.WriteLine(AppRelease.Identity(typeof(Program).Assembly));
                     return 0; // no SDK host, native resource owner, worker or TIA API is initialized
                 }
+                NativeLifecycleDiagnostics.Start();
                 string? version = Environment.GetEnvironmentVariable("TIA_PORTAL_VERSION");
                 string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SiemensMCPServer", "Mcp", "Sessions");
                 bool writes = false;
@@ -49,6 +50,7 @@ namespace SiemensMCPServer.Mcp
                 string? testNamespace = sessionFactory == null ? null : "Local\\SiemensMCPServer-AdapterFixture-v2-" + System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value + "-";
                 OwnedWorkerJob.Install(1, metadataMemory);
                 NativeHostLifetime.Install(initial.MaxMetadataFrontends, initial.StdioDrainTimeoutSeconds, testNamespace == null ? null : testNamespace + "metadata-");
+                NativeLifecycleDiagnostics.Record("metadata-lifetime-installed", NativeHostLifetime.Identity);
                 NativeWorkAdmission.Configure(initial.MaxMcpFrontends, initial.MaxProcessTreeSize, initial.MaxOwnedJobMemoryMiB, metadataMemory, testNamespace == null ? null : testNamespace + "work-");
                 ResourceOwnership.Initialize(initial.MaxOwnedResources);
                 if (!explicitArtifactRoot && initial.McpArtifactRoot.Length != 0) root = initial.McpArtifactRoot;
@@ -76,13 +78,15 @@ namespace SiemensMCPServer.Mcp
                 }), Console.OpenStandardOutput()).WithTools<McpTools>().WithTools<NativeGuidanceTools>();
                 using (var host = builder.Build()) {
                     var lifetime = host.Services.GetRequiredService<IHostApplicationLifetime>();
-                    lifetime.ApplicationStopping.Register(() => { runtimeInstance?.BeginStop(); NativeHostLifetime.BeginDrain("host-or-stdio-completion"); });
+                    lifetime.ApplicationStopping.Register(() => { NativeLifecycleDiagnostics.Record("host-stopping"); runtimeInstance?.BeginStop(); NativeHostLifetime.BeginDrain("host-or-stdio-completion"); });
                     NativeHostLifetime.BindStop(lifetime.StopApplication);
                     await host.RunAsync().ConfigureAwait(false);
                 }
+                NativeLifecycleDiagnostics.Record("main-return-intent", new { code = NativeHostLifetime.ExitCode });
+                NativeLifecycleDiagnostics.Flush();
                 return NativeHostLifetime.ExitCode;
             }
-            catch (Exception ex) { Console.Error.WriteLine(ex.Message); return 1; }
+            catch (Exception ex) { NativeLifecycleDiagnostics.Record("backend-error", new { type = ex.GetType().Name }); NativeLifecycleDiagnostics.Flush(); Console.Error.WriteLine(ex.Message); return 1; }
         }
     }
 }

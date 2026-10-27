@@ -25,6 +25,7 @@ namespace SiemensMCPServer.Mcp
         }
         internal static void EnsureActive()
         {
+            NativeLifecycleDiagnostics.Record("work-admission-requested");
             lock (sync) {
                 if (maximum == 0) return; // separate model harness has no OS budget
                 if (slot != null) {
